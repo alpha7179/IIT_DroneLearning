@@ -1,0 +1,4 @@
+/[Nn]o[Gg]it/
+/node_modules/
+*.prettierrc
+*.json
