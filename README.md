@@ -117,9 +117,8 @@ graph TB
 ## **5. 공유 문서 (Shared Documents)**
 
 * **프로젝트 문서**
-    * 구현 가이드 (Implementation Blueprint): [Docs/IMPLEMENTATION_GUIDE.md](Docs/IMPLEMENTATION_GUIDE.md)
-    * Unity 프로젝트 상세 문서: [IIT_DroneLearning/Docs/PROJECT_DETAILS.md](IIT_DroneLearning/Docs/PROJECT_DETAILS.md)
-    * 파란학기제 기획서: [2026-1학기 파란학기제 참가신청서](2026-1학기%20파란학기제%20참가신청서%202f34bb83f24f80778936f61977b88f49.md)
+    * 구현 가이드 (Implementation Blueprint): [IMPLEMENTATION_BLUEPRINT.md](Docs/IMPLEMENTATION_GUIDE.md)
+
 * **Notion**
     * 프로젝트 기획서: [링크 추가 예정]
     * 주간 회의록: [링크 추가 예정]
