@@ -117,7 +117,7 @@ graph TB
 ## **5. 공유 문서 (Shared Documents)**
 
 * **프로젝트 문서**
-    * 구현 가이드 (Implementation Blueprint): [IMPLEMENTATION_BLUEPRINT.md](Docs/IMPLEMENTATION_GUIDE.md)
+    * 구현 가이드 (Implementation Blueprint): [IMPLEMENTATION_BLUEPRINT.md](Docs/IMPLEMENTATION_BLUEPRINT.md)
 
 * **Notion**
     * 프로젝트 기획서: [링크 추가 예정]
