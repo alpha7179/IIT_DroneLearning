@@ -99,3 +99,16 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+# RL pipeline artifacts (Pursuer)
+/python/results/
+/python/models/
+/python/runs/
+/python/checkpoints/
+/python/exports/
+*.onnx
+*.pt
+*.pth
+events.out.tfevents*
+__pycache__/
+.ipynb_checkpoints/
