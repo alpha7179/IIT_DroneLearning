@@ -55,10 +55,10 @@ def parse_args() -> argparse.Namespace:
         description="Occlusion-aware 경로 탐색 알고리즘 비교 벤치마크",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    p.add_argument("--grid-size",  type=int, default=10,
-                   help="GridWorld 크기 (N×N)")
-    p.add_argument("--n-trials",   type=int, default=100,
-                   help="모드별 반복 시나리오 수")
+    p.add_argument("--grid-size",  type=int, default=500,
+                   help="GridWorld 크기 (N×N, 기본 500×500)")
+    p.add_argument("--n-trials",   type=int, default=5,
+                   help="모드별 반복 시나리오 수 (대용량 격자는 5~10 권장)")
     p.add_argument("--modes",      nargs="+",
                    default=["urban_block", "random", "pursuer_centered"],
                    choices=["urban_block", "random", "pursuer_centered"],

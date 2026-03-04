@@ -87,18 +87,16 @@ def astar(
     if start == goal:
         return PathResult([start], 0.0, 0, 0.0, True)
 
-    # LOS 맵 사전 계산 (los_weight > 0인 경우)
-    los_map: dict[tuple[int, int], bool] = {}
-    if los_weight > 0 and pursuer_pos is not None:
-        for r in range(env.size):
-            for c in range(env.size):
-                if env.grid[r, c] == 0:
-                    los_map[(r, c)] = env.is_los_visible(pursuer_pos, (r, c))
+    # LOS 페널티: 지연 평가(lazy) 캐시 — 대용량 격자에서 전체 맵 사전 계산 대신
+    # 실제 A*가 방문하는 노드만 계산하므로 500×500에서도 빠름
+    _los_cache: dict[tuple[int, int], bool] = {}
 
     def los_penalty(pos: tuple[int, int]) -> float:
-        if los_weight <= 0 or not los_map:
+        if los_weight <= 0 or pursuer_pos is None:
             return 0.0
-        return los_weight if los_map.get(pos, False) else 0.0
+        if pos not in _los_cache:
+            _los_cache[pos] = env.is_los_visible(pursuer_pos, pos)
+        return los_weight if _los_cache[pos] else 0.0
 
     # 우선순위 큐: (f, g, pos)
     # g_cost: 시작점부터 현재 노드까지 실제 비용
@@ -231,17 +229,27 @@ def rrt_star(
     env: GridWorld,
     start: tuple[int, int],
     goal: tuple[int, int],
-    max_iter: int = 3000,
-    step_size: float = 1.5,
-    goal_radius: float = 1.5,
-    rewire_radius: float = 3.0,
+    max_iter: int | None = None,
+    step_size: float | None = None,
+    goal_radius: float | None = None,
+    rewire_radius: float | None = None,
     seed: int | None = None,
 ) -> PathResult:
     """
     RRT*: 샘플링 기반 점근적 최적 경로 탐색.
 
     Grid 셀 좌표를 사용하되 연속 공간으로 확장 후 가장 가까운 유효 셀로 스냅.
+    파라미터 미지정 시 격자 크기에 맞게 자동 스케일.
     """
+    N = env.size
+    if max_iter is None:
+        max_iter = max(3000, N * 40)           # 500×500: 20000회
+    if step_size is None:
+        step_size = max(1.5, N * 0.03)         # 500×500: 15셀
+    if goal_radius is None:
+        goal_radius = max(1.5, N * 0.015)      # 500×500: 7.5셀
+    if rewire_radius is None:
+        rewire_radius = max(3.0, N * 0.06)     # 500×500: 30셀
     t0 = time.perf_counter()
 
     if not (env.is_valid(start) and env.is_valid(goal)):
