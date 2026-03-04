@@ -17,6 +17,19 @@ matplotlib.use("Agg")          # GUI 없는 환경 (Colab/서버) 대응
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.colors import LinearSegmentedColormap
+from matplotlib import font_manager
+
+# 한글 폰트 설정 (Windows: 맑은 고딕, Linux/Mac: 폴백)
+def _set_korean_font() -> None:
+    candidates = ["Malgun Gothic", "AppleGothic", "NanumGothic", "Gulim", "DejaVu Sans"]
+    available = {f.name for f in font_manager.fontManager.ttflist}
+    for name in candidates:
+        if name in available:
+            matplotlib.rcParams["font.family"] = name
+            break
+    matplotlib.rcParams["axes.unicode_minus"] = False
+
+_set_korean_font()
 
 from .algorithms import ALGORITHM_LABELS, ALGORITHM_NAMES, PathResult
 from .benchmark import AlgorithmStats

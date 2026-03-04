@@ -23,6 +23,12 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+
+# Windows 터미널 UTF-8 출력 강제
+if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if sys.stderr.encoding and sys.stderr.encoding.lower() not in ("utf-8", "utf8"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 from pathlib import Path
 
 # 레포 루트를 Python 경로에 추가 (어디서 실행하든 동작)
@@ -88,7 +94,7 @@ def main() -> None:
     algos = args.algorithms or ALGORITHM_NAMES
 
     print("=" * 60)
-    print("  Pathfinding Benchmark — IIT_DroneLearning")
+    print("  Pathfinding Benchmark - IIT_DroneLearning")
     print("=" * 60)
     print(f"  Grid size   : {args.grid_size}×{args.grid_size}")
     print(f"  Trials/mode : {args.n_trials}")
@@ -194,7 +200,7 @@ def main() -> None:
     print("  결과 요약 (Composite Score 순위)")
     print("=" * 60)
     for rank, s in enumerate(stats, 1):
-        bar = "█" * int(s.composite_score * 20)
+        bar = "#" * int(s.composite_score * 20)
         print(
             f"  {rank:2d}. {s.label:<22s} "
             f"score={s.composite_score:.3f} [{bar:<20s}] "
@@ -205,7 +211,7 @@ def main() -> None:
     print()
     if stats:
         best = stats[0]
-        print(f"  ✔ 추천: {best.label}")
+        print(f"  [추천] {best.label}")
         print(f"    복합 점수 {best.composite_score:.3f} | "
               f"LOS 노출 {best.los_exposure_mean:.1f}% | "
               f"성공률 {best.success_rate*100:.1f}%")
