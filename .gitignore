@@ -2,3 +2,25 @@
 /node_modules/
 *.prettierrc
 *.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+.venv/
+
+# Python 실험 결과 (대용량 — Drive에 별도 보관)
+python/models/
+python/results/
+!python/models/.gitkeep
+!python/results/.gitkeep
+
+# Claude Code (프로젝트 commands는 커밋, memory/는 사용자 전용)
+.claude/memory/
+.claude/settings.local.json
+
+# OS
+.DS_Store
+Thumbs.db
