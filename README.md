@@ -106,7 +106,7 @@ graph TB
 
 ## **4. 기술 스택 (Tech Stack)**
 
-* **Engine:** Unity 6000.0.x
+* **Engine:** Unity 6000.0.69f1
 * **Language:** C# 10.0, Python 3.9+
 * **Framework:** Unity ML-Agents 3.0+
 * **Deep Learning:** PyTorch 2.0+
