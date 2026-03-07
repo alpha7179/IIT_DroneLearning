@@ -1,4 +1,5 @@
 site_name: IIT DroneLearning
+docs_dir: Docs
 site_description: 도심 Occlusion 환경 드론 추격-회피 MARL 시스템 — 아주대 2026-1 파란학기
 site_author: 이재왕
 site_url: https://zaeee-wang.github.io/IIT_DroneLearning/

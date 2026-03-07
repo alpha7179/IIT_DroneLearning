@@ -5,15 +5,45 @@ hide:
   - toc
 ---
 
-# 도심 Occlusion 환경 드론 추격-회피 MARL 시스템
+<div class="hero" markdown>
 
-**아주대학교 2026-1 파란학기** &nbsp;|&nbsp; Digital Twin · MARL · Sim2Real
+# 도심 Occlusion 환경<br>드론 추격-회피 MARL 시스템
 
+<p class="hero-subtitle">Urban Occlusion-Aware Multi-Agent Reinforcement Learning for Drone Pursuit-Evasion</p>
+
+<div class="hero-badges">
+  <span class="badge">아주대 2026-1 파란학기</span>
+  <span class="badge">Digital Twin</span>
+  <span class="badge">MARL</span>
+  <span class="badge">Sim2Real</span>
+</div>
+
+<div class="hero-buttons" markdown>
 [프로젝트 소개](system.md){ .md-button .md-button--primary }
 [알고리즘 분석](analysis.md){ .md-button }
 [:fontawesome-brands-github: GitHub](https://github.com/alpha7179/IIT_DroneLearning){ .md-button }
+</div>
 
----
+</div>
+
+<div class="stats-strip">
+  <div class="stat-item">
+    <span class="stat-value">500×500</span>
+    <span class="stat-label">도시 그리드</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-value">8종</span>
+    <span class="stat-label">경로 탐색 알고리즘</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-value">100%</span>
+    <span class="stat-label">Theta* 성공률</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-value">16주</span>
+    <span class="stat-label">프로젝트 일정</span>
+  </div>
+</div>
 
 ## 핵심 차별점
 
