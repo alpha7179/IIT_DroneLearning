@@ -51,7 +51,7 @@
 /* ── 3. 전역 타이포그래피 ────────────────────────────────────── */
 body,
 .md-typeset {
-  font-family: 'Poppins', 'Noto Sans KR', sans-serif;
+  font-family: 'Poppins', 'Noto Serif KR', serif;
   font-size: 0.9rem;
   font-weight: 300;
   line-height: 1.8;
@@ -93,9 +93,15 @@ code, pre, .md-typeset code {
 
 /* ── 4. 헤더 / 네비게이션 ────────────────────────────────────── */
 .md-header {
-  background-color: #15193E;
-  border-bottom: 1px solid rgba(244, 245, 240, 0.06);
+  background-color: #00416A;
+  border-bottom: 1px solid rgba(240, 234, 214, 0.1);
   box-shadow: none;
+}
+
+.md-header__title,
+.md-header__button,
+.md-header [data-md-component="search"] input {
+  color: #F0EAD6;
 }
 
 .md-header__title {
@@ -105,28 +111,32 @@ code, pre, .md-typeset code {
   letter-spacing: 0.08em;
 }
 
+.md-header .md-icon svg {
+  fill: #F0EAD6;
+}
+
 .md-tabs {
-  background-color: #15193E;
-  border-bottom: 1px solid rgba(244, 245, 240, 0.06);
+  background-color: #00416A;
+  border-bottom: 1px solid rgba(240, 234, 214, 0.1);
 }
 
 .md-tabs__link {
   font-family: 'Poppins', sans-serif;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 400;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  opacity: 0.6;
-  transition: opacity 0.2s;
+  color: rgba(240, 234, 214, 0.65) !important;
+  transition: color 0.2s;
 }
 
 .md-tabs__link:hover,
 .md-tabs__link--active {
-  opacity: 1;
+  color: #F0EAD6 !important;
 }
 
 .md-tabs__link--active {
-  border-bottom: 1px solid #f4f5f0;
+  border-bottom: 1px solid rgba(240, 234, 214, 0.7);
 }
 
 /* ── 5. 사이드바 ─────────────────────────────────────────────── */
@@ -315,7 +325,7 @@ code, pre, .md-typeset code {
 .neo-feature__desc {
   font-size: 0.77rem;
   font-weight: 300;
-  color: rgba(244, 245, 240, 0.5);
+  color: rgba(244, 245, 240, 0.68);
   line-height: 1.75;
 }
 
@@ -389,7 +399,7 @@ code, pre, .md-typeset code {
 .featured-split__desc {
   font-size: 0.82rem;
   font-weight: 300;
-  color: rgba(244, 245, 240, 0.58);
+  color: rgba(244, 245, 240, 0.72);
   line-height: 1.8;
   max-width: 440px;
 }

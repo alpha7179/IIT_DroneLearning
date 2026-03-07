@@ -7,7 +7,7 @@ hide:
 
 <div class="neo-hero">
 
-<div class="neo-hero__title">도심 Occlusion 환경<br>드론 추격-회피<br>MARL 시스템</div>
+<div class="neo-hero__title">Urban Drone<br>Pursuit-Evasion<br>MARL System</div>
 
 <div class="neo-hero__subtitle-block">
   <div class="neo-hero__subtitle-bar"></div>
