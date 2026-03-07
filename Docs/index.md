@@ -7,7 +7,7 @@ hide:
 
 # 도심 Occlusion 환경 드론 추격-회피 MARL 시스템
 
-**아주대학교 2026-1 캡스톤 디자인** &nbsp;|&nbsp; Digital Twin · MARL · Sim2Real
+**아주대학교 2026-1 파란학기** &nbsp;|&nbsp; Digital Twin · MARL · Sim2Real
 
 [프로젝트 소개](system.md){ .md-button .md-button--primary }
 [알고리즘 분석](analysis.md){ .md-button }
