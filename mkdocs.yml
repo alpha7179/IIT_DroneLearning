@@ -11,20 +11,9 @@ theme:
   name: material
   language: ko
   palette:
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: indigo
-      accent: blue
-      toggle:
-        icon: material/weather-night
-        name: 다크 모드로 전환
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: indigo
-      accent: light-blue
-      toggle:
-        icon: material/weather-sunny
-        name: 라이트 모드로 전환
+    scheme: slate
+    primary: custom
+    accent: custom
   features:
     - navigation.tabs
     - navigation.tabs.sticky
@@ -33,9 +22,7 @@ theme:
     - search.suggest
     - search.highlight
     - content.code.copy
-  font:
-    text: Noto Sans KR
-    code: JetBrains Mono
+  font: false
   icon:
     repo: fontawesome/brands/github
 

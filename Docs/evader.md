@@ -1,3 +1,28 @@
+<div class="featured-split">
+<div class="featured-split__image featured-split__svg">
+<svg viewBox="0 0 400 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M60 260 C100 220 140 180 180 140 C210 110 230 90 260 100 C290 110 300 140 320 120 C340 100 350 70 370 60" stroke="rgba(244,245,240,0.15)" stroke-width="1.5" fill="none"/>
+  <path d="M60 260 C100 200 160 160 200 130 C240 100 270 80 310 70" stroke="rgba(200,212,184,0.12)" stroke-width="1" fill="none" stroke-dasharray="4 6"/>
+  <circle cx="60" cy="260" r="6" fill="rgba(244,245,240,0.3)"/>
+  <circle cx="310" cy="70" r="8" fill="rgba(200,212,184,0.4)" stroke="rgba(200,212,184,0.2)" stroke-width="1"/>
+  <circle cx="180" cy="140" r="3" fill="rgba(244,245,240,0.2)"/>
+  <circle cx="260" cy="100" r="3" fill="rgba(244,245,240,0.2)"/>
+  <line x1="180" y1="140" x2="200" y2="120" stroke="rgba(244,245,240,0.08)" stroke-width="1"/>
+  <line x1="200" y1="120" x2="240" y2="160" stroke="rgba(244,245,240,0.06)" stroke-width="1" stroke-dasharray="3 5"/>
+  <rect x="220" y="150" width="40" height="40" stroke="rgba(244,245,240,0.06)" stroke-width="1" fill="none"/>
+  <rect x="100" y="200" width="30" height="30" stroke="rgba(244,245,240,0.06)" stroke-width="1" fill="none"/>
+  <rect x="300" y="170" width="35" height="35" stroke="rgba(244,245,240,0.06)" stroke-width="1" fill="none"/>
+</svg>
+</div>
+<div class="featured-split__content">
+  <span class="featured-split__tag">RL Design</span>
+  <div class="featured-split__title">Evader Design</div>
+  <p class="featured-split__desc">회피 드론이 목표 지점에 도달하면서 추격자의 시선(LOS)을 차단하는 전략을 학습하는 PPO 기반 에이전트 설계.</p>
+</div>
+</div>
+
+<div class="page-body" markdown>
+
 # Evader Design
 
 담당: 이재왕 &nbsp;|&nbsp; 브랜치: `work/evader`
@@ -155,3 +180,5 @@ tensorboard --logdir python/results/
 !!! note "학습 결과"
     Stage 0 학습은 Unity 환경 구성 완료 후 시작 예정입니다.
     수렴 그래프와 Eval 결과는 업데이트 시 이 페이지에 추가됩니다.
+
+</div>

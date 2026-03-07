@@ -1,3 +1,33 @@
+<div class="featured-split">
+<div class="featured-split__image featured-split__svg">
+<svg viewBox="0 0 400 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <line x1="200" y1="20" x2="200" y2="300" stroke="rgba(244,245,240,0.1)" stroke-width="1"/>
+  <circle cx="200" cy="50"  r="5" fill="rgba(200,212,184,0.5)"/>
+  <circle cx="200" cy="100" r="4" fill="rgba(244,245,240,0.3)"/>
+  <circle cx="200" cy="150" r="4" fill="rgba(244,245,240,0.3)"/>
+  <circle cx="200" cy="200" r="4" fill="rgba(244,245,240,0.2)"/>
+  <circle cx="200" cy="250" r="4" fill="rgba(244,245,240,0.15)"/>
+  <line x1="200" y1="50"  x2="270" y2="50"  stroke="rgba(244,245,240,0.07)" stroke-width="1"/>
+  <line x1="200" y1="100" x2="130" y2="100" stroke="rgba(244,245,240,0.07)" stroke-width="1"/>
+  <line x1="200" y1="150" x2="270" y2="150" stroke="rgba(244,245,240,0.07)" stroke-width="1"/>
+  <line x1="200" y1="200" x2="130" y2="200" stroke="rgba(244,245,240,0.07)" stroke-width="1"/>
+  <line x1="200" y1="250" x2="270" y2="250" stroke="rgba(244,245,240,0.07)" stroke-width="1"/>
+  <text x="278" y="54"  font-size="10" fill="rgba(244,245,240,0.25)" font-family="sans-serif">M0</text>
+  <text x="100" y="104" font-size="10" fill="rgba(244,245,240,0.22)" font-family="sans-serif">M1</text>
+  <text x="278" y="154" font-size="10" fill="rgba(244,245,240,0.18)" font-family="sans-serif">M2–3</text>
+  <text x="90"  y="204" font-size="10" fill="rgba(244,245,240,0.14)" font-family="sans-serif">M4–5</text>
+  <text x="278" y="254" font-size="10" fill="rgba(244,245,240,0.1)"  font-family="sans-serif">M6</text>
+</svg>
+</div>
+<div class="featured-split__content">
+  <span class="featured-split__tag">Planning</span>
+  <div class="featured-split__title">Roadmap</div>
+  <p class="featured-split__desc">아주대학교 2026-1 파란학기 16주 일정. Stage 0 환경 구축부터 Sim2Real 검증까지의 마일스톤 계획.</p>
+</div>
+</div>
+
+<div class="page-body" markdown>
+
 # Roadmap
 
 아주대학교 2026-1 파란학기 — 2026년 3월 ~ 6월 (16주)
@@ -53,3 +83,5 @@
 | **World** (이강민) | PID 파이프라인, deterministic reset, capture/collision 판정 API | 필수 (M0) |
 | **Sensor** (배민우) | Ray 태그 표준, 역방향 LOS raycast (`is_visible_to_pursuer`) | 필수 (M1) |
 | **Pursuer** (박재현) | Stage 0용 Scripted 추격 baseline, RL Pursuer 인터페이스 | 필수 (M1) |
+
+</div>

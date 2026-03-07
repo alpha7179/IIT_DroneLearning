@@ -1,3 +1,16 @@
+<div class="featured-split">
+<div class="featured-split__image">
+<img src="../assets/grid_comparison.png" alt="Grid Comparison" style="object-fit:cover;width:100%;height:100%;">
+</div>
+<div class="featured-split__content">
+  <span class="featured-split__tag">Benchmark</span>
+  <div class="featured-split__title">Algorithm Analysis</div>
+  <p class="featured-split__desc">500×500 도시 그리드에서 8종 경로 탐색 알고리즘을 Occlusion-aware LOS 기준으로 비교 분석. Theta*가 종합 1위를 달성했습니다.</p>
+</div>
+</div>
+
+<div class="page-body" markdown>
+
 # Algorithm Analysis
 
 Evader 회피 경로 계획 알고리즘 선정을 위한 벤치마크.
@@ -110,3 +123,5 @@ python python/scripts/run_pathfinding.py \
 ```
 
 결과 파일: `benchmark_results.json`, `stats_summary.json`, `grid_comparison.png`, `metrics_bar.png`
+
+</div>

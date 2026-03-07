@@ -1,3 +1,34 @@
+<div class="featured-split">
+<div class="featured-split__image featured-split__svg">
+<svg viewBox="0 0 400 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="200" cy="60" r="28" stroke="rgba(244,245,240,0.18)" stroke-width="1"/>
+  <circle cx="80" cy="180" r="20" stroke="rgba(244,245,240,0.12)" stroke-width="1"/>
+  <circle cx="200" cy="180" r="20" stroke="rgba(244,245,240,0.12)" stroke-width="1"/>
+  <circle cx="320" cy="180" r="20" stroke="rgba(244,245,240,0.12)" stroke-width="1"/>
+  <circle cx="120" cy="280" r="14" stroke="rgba(244,245,240,0.08)" stroke-width="1"/>
+  <circle cx="200" cy="280" r="14" stroke="rgba(244,245,240,0.08)" stroke-width="1"/>
+  <circle cx="280" cy="280" r="14" stroke="rgba(244,245,240,0.08)" stroke-width="1"/>
+  <line x1="200" y1="88" x2="80" y2="160" stroke="rgba(244,245,240,0.08)" stroke-width="1"/>
+  <line x1="200" y1="88" x2="200" y2="160" stroke="rgba(244,245,240,0.08)" stroke-width="1"/>
+  <line x1="200" y1="88" x2="320" y2="160" stroke="rgba(244,245,240,0.08)" stroke-width="1"/>
+  <line x1="80" y1="200" x2="120" y2="266" stroke="rgba(244,245,240,0.06)" stroke-width="1"/>
+  <line x1="200" y1="200" x2="200" y2="266" stroke="rgba(244,245,240,0.06)" stroke-width="1"/>
+  <line x1="320" y1="200" x2="280" y2="266" stroke="rgba(244,245,240,0.06)" stroke-width="1"/>
+  <circle cx="200" cy="60" r="4" fill="rgba(244,245,240,0.5)"/>
+  <circle cx="80" cy="180" r="3" fill="rgba(244,245,240,0.3)"/>
+  <circle cx="200" cy="180" r="3" fill="rgba(244,245,240,0.3)"/>
+  <circle cx="320" cy="180" r="3" fill="rgba(244,245,240,0.3)"/>
+</svg>
+</div>
+<div class="featured-split__content">
+  <span class="featured-split__tag">Architecture</span>
+  <div class="featured-split__title">System Overview</div>
+  <p class="featured-split__desc">Unity Digital Twin 환경과 Python 학습 파이프라인이 ML-Agents를 통해 연결되는 전체 시스템 구조와 Sim2Real 제어 계층을 설명합니다.</p>
+</div>
+</div>
+
+<div class="page-body" markdown>
+
 # System Overview
 
 ## 전체 아키텍처
@@ -101,3 +132,5 @@ Physics 적용 주기: **50Hz** (FixedUpdate 0.02s), Decision Period: 5 steps
 !!! note "진행 상황"
     현재 Stage 0 학습 환경 준비 중입니다.
     Unity 맵 및 PID 파이프라인 구현 완료 후 학습을 시작합니다.
+
+</div>

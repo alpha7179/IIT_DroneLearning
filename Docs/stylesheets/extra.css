@@ -1,178 +1,579 @@
-/* ── Hero Section ─────────────────────────────────────────── */
-.hero {
-  background: linear-gradient(135deg, #1a237e 0%, #1565c0 50%, #0277bd 100%);
-  color: white;
-  padding: 64px 32px 56px;
-  text-align: center;
-  margin: -0.8rem -0.8rem 2rem;
-  border-radius: 0 0 20px 20px;
+/* ═══════════════════════════════════════════════════════════
+   IIT DroneLearning — Neo Minimalism Theme
+   Palette: #09181B (bg) / #f4f5f0 (fg)
+   Fonts:   Cormorant Garamond (headings) / Poppins (body)
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── 1. Google Fonts ────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Poppins:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ── 2. MkDocs Material CSS 변수 오버라이드 ────────────────── */
+:root,
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color:            #09181B;
+  --md-default-bg-color--light:     #0e2027;
+  --md-default-bg-color--lighter:   #132830;
+  --md-default-bg-color--lightest:  #1a3540;
+
+  --md-default-fg-color:            #f4f5f0;
+  --md-default-fg-color--light:     rgba(244, 245, 240, 0.72);
+  --md-default-fg-color--lighter:   rgba(244, 245, 240, 0.48);
+  --md-default-fg-color--lightest:  rgba(244, 245, 240, 0.12);
+
+  --md-primary-fg-color:            #f4f5f0;
+  --md-primary-fg-color--light:     rgba(244, 245, 240, 0.7);
+  --md-primary-fg-color--dark:      #c8d4b8;
+  --md-primary-bg-color:            #09181B;
+  --md-primary-bg-color--light:     rgba(9, 24, 27, 0.54);
+
+  --md-accent-fg-color:             #c8d4b8;
+  --md-accent-fg-color--transparent: rgba(200, 212, 184, 0.12);
+  --md-accent-bg-color:             #09181B;
+
+  --md-typeset-color:               #f4f5f0;
+  --md-typeset-a-color:             #c8d4b8;
+
+  --md-code-fg-color:               #d4e0c4;
+  --md-code-bg-color:               rgba(244, 245, 240, 0.05);
+  --md-code-hl-color:               rgba(200, 212, 184, 0.15);
+
+  --md-footer-bg-color:             #060f11;
+  --md-footer-bg-color--dark:       #040c0e;
+  --md-footer-fg-color:             rgba(244, 245, 240, 0.6);
+  --md-footer-fg-color--light:      rgba(244, 245, 240, 0.45);
+  --md-footer-fg-color--lighter:    rgba(244, 245, 240, 0.28);
+
+  --md-shadow-z1: 0 0 0 1px rgba(244, 245, 240, 0.06), 0 4px 16px rgba(0, 0, 0, 0.5);
+  --md-shadow-z2: 0 0 0 1px rgba(244, 245, 240, 0.08), 0 8px 32px rgba(0, 0, 0, 0.6);
+  --md-shadow-z3: 0 0 0 1px rgba(244, 245, 240, 0.1),  0 16px 48px rgba(0, 0, 0, 0.7);
 }
 
-.hero h1 {
-  font-size: 2.2rem;
-  font-weight: 800;
-  line-height: 1.3;
-  margin-bottom: 12px;
-  color: white !important;
-  border-bottom: none !important;
+/* ── 3. 전역 타이포그래피 ────────────────────────────────────── */
+body,
+.md-typeset {
+  font-family: 'Poppins', 'Noto Sans KR', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 300;
+  line-height: 1.8;
+  color: #f4f5f0;
 }
 
-.hero-subtitle {
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3 {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  color: #f4f5f0;
+}
+
+.md-typeset h1 {
+  font-size: 2.4rem;
+  line-height: 1.2;
+  border-bottom: 1px solid rgba(244, 245, 240, 0.1);
+  padding-bottom: 0.6rem;
+  margin-bottom: 1.6rem;
+}
+
+.md-typeset h2 {
+  font-size: 1.7rem;
+  border-bottom: none;
+  margin-top: 2.4rem;
+}
+
+.md-typeset h3 {
+  font-size: 1.2rem;
+  font-weight: 400;
+}
+
+code, pre, .md-typeset code {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.82rem;
+}
+
+/* ── 4. 헤더 / 네비게이션 ────────────────────────────────────── */
+.md-header {
+  background-color: rgba(9, 24, 27, 0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(244, 245, 240, 0.07);
+  box-shadow: none;
+}
+
+.md-header__title {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 400;
   font-size: 1rem;
-  opacity: 0.88;
-  margin-bottom: 20px;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.08em;
 }
 
-.hero-badges {
+.md-tabs {
+  background-color: transparent;
+  border-bottom: 1px solid rgba(244, 245, 240, 0.07);
+}
+
+.md-tabs__link {
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.md-tabs__link:hover,
+.md-tabs__link--active {
+  opacity: 1;
+}
+
+.md-tabs__link--active {
+  border-bottom: 1px solid #f4f5f0;
+}
+
+/* ── 5. 사이드바 ─────────────────────────────────────────────── */
+.md-nav__title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.45;
+}
+
+.md-nav__link {
+  font-size: 0.82rem;
+  font-weight: 300;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.md-nav__link--active,
+.md-nav__link:hover {
+  opacity: 1;
+  color: #f4f5f0;
+}
+
+/* ── 6. Neo Minimalism 홈 컴포넌트 ──────────────────────────── */
+
+/* Hero */
+.neo-hero {
+  text-align: center;
+  padding: 96px 24px 64px;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.neo-hero h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(2.6rem, 6vw, 4.8rem);
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  line-height: 1.12;
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+  margin-bottom: 0;
+  color: #f4f5f0;
+}
+
+.neo-hero h1 em {
+  font-style: italic;
+  color: #c8d4b8;
+}
+
+.neo-divider {
+  width: 48px;
+  height: 1px;
+  background: rgba(244, 245, 240, 0.25);
+  margin: 28px auto;
+}
+
+.neo-subtitle {
+  font-size: 0.82rem;
+  font-weight: 300;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(244, 245, 240, 0.55);
+  margin-bottom: 32px;
+  line-height: 1.6;
+}
+
+/* Badges */
+.neo-badges {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
-  margin-bottom: 28px;
+  margin-bottom: 36px;
 }
 
-.badge {
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 20px;
-  padding: 4px 14px;
-  font-size: 0.82rem;
-  font-weight: 500;
-  backdrop-filter: blur(6px);
+.neo-badge {
+  border: 1px solid rgba(244, 245, 240, 0.2);
+  border-radius: 2px;
+  padding: 4px 12px;
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(244, 245, 240, 0.65);
 }
 
-.hero-buttons {
+/* Ghost Buttons */
+.neo-buttons {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 10px;
-  margin-top: 4px;
+  gap: 12px;
 }
 
-.hero .md-button {
-  border-radius: 8px;
-  font-weight: 600;
-  padding: 10px 22px;
-  font-size: 0.9rem;
+.neo-btn {
+  display: inline-block;
+  border: 1px solid rgba(244, 245, 240, 0.35);
+  padding: 10px 28px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #f4f5f0 !important;
+  text-decoration: none !important;
+  transition: background 0.2s, border-color 0.2s;
 }
 
-.hero .md-button--primary {
-  background: white !important;
-  color: #1a237e !important;
-  border-color: white !important;
+.neo-btn:hover {
+  background: rgba(244, 245, 240, 0.07);
+  border-color: rgba(244, 245, 240, 0.7);
 }
 
-.hero .md-button--primary:hover {
-  background: rgba(255, 255, 255, 0.9) !important;
+.neo-btn--primary {
+  background: rgba(244, 245, 240, 0.06);
+  border-color: rgba(244, 245, 240, 0.6);
 }
 
-.hero .md-button:not(.md-button--primary) {
-  color: white !important;
-  border-color: rgba(255, 255, 255, 0.5) !important;
+.neo-btn--primary:hover {
+  background: rgba(244, 245, 240, 0.13);
 }
 
-.hero .md-button:not(.md-button--primary):hover {
-  background: rgba(255, 255, 255, 0.12) !important;
-  border-color: white !important;
-}
-
-/* ── Stats Strip ──────────────────────────────────────────── */
-.stats-strip {
+/* Stats Strip */
+.neo-stats {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-around;
-  gap: 16px;
-  padding: 28px 24px;
-  background: var(--md-code-bg-color);
-  border-radius: 14px;
-  margin: 0 0 2rem;
-  border: 1px solid var(--md-default-border-color, rgba(0,0,0,0.07));
+  justify-content: center;
+  gap: 0;
+  border-top: 1px solid rgba(244, 245, 240, 0.08);
+  border-bottom: 1px solid rgba(244, 245, 240, 0.08);
+  margin: 0 0 3rem;
+  padding: 0;
 }
 
-.stat-item {
+.neo-stat {
+  flex: 1;
+  min-width: 120px;
   text-align: center;
-  min-width: 100px;
+  padding: 36px 24px;
+  border-right: 1px solid rgba(244, 245, 240, 0.08);
 }
 
-.stat-value {
-  font-size: 2rem;
-  font-weight: 800;
-  color: var(--md-primary-fg-color);
+.neo-stat:last-child {
+  border-right: none;
+}
+
+.neo-stat__value {
+  display: block;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2.8rem;
+  font-weight: 300;
+  color: #f4f5f0;
   line-height: 1;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+}
+
+.neo-stat__label {
+  font-size: 0.68rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(244, 245, 240, 0.4);
+}
+
+/* Feature Grid (미니멀 리스트) */
+.neo-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  border-top: 1px solid rgba(244, 245, 240, 0.08);
+  margin: 0 0 3rem;
+}
+
+.neo-feature {
+  padding: 40px 32px;
+  border-right: 1px solid rgba(244, 245, 240, 0.08);
+  border-bottom: 1px solid rgba(244, 245, 240, 0.08);
+}
+
+.neo-feature:nth-child(4n) {
+  border-right: none;
+}
+
+.neo-feature__icon {
+  width: 28px;
+  height: 28px;
+  margin-bottom: 20px;
+  color: rgba(244, 245, 240, 0.35);
+}
+
+.neo-feature__title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.15rem;
+  font-weight: 400;
+  margin-bottom: 10px;
+  color: #f4f5f0;
+}
+
+.neo-feature__desc {
+  font-size: 0.78rem;
+  font-weight: 300;
+  color: rgba(244, 245, 240, 0.55);
+  line-height: 1.7;
+}
+
+/* ── 7. Featured Split (서브 페이지 레이아웃) ──────────────── */
+.featured-split {
+  display: grid;
+  grid-template-columns: 45fr 55fr;
+  min-height: 62vh;
+  margin: -1rem -1.6rem 3rem;
+  border-bottom: 1px solid rgba(244, 245, 240, 0.07);
+}
+
+.featured-split__image {
+  overflow: hidden;
+  background: #060f11;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.featured-split__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.featured-split__svg {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.featured-split__svg svg {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.featured-split__content {
+  padding: 4rem 3.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-left: 1px solid rgba(244, 245, 240, 0.07);
+}
+
+.featured-split__tag {
+  font-size: 0.68rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(244, 245, 240, 0.38);
+  margin-bottom: 16px;
   display: block;
 }
 
-.stat-label {
-  font-size: 0.75rem;
-  opacity: 0.65;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+.featured-split__title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 300;
+  line-height: 1.15;
+  color: #f4f5f0;
+  margin-bottom: 20px;
+  letter-spacing: 0.01em;
 }
 
-/* ── Feature Cards ────────────────────────────────────────── */
-.md-typeset .grid.cards > :is(ul, ol) > li {
-  border-radius: 12px !important;
-  transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+.featured-split__desc {
+  font-size: 0.82rem;
+  font-weight: 300;
+  color: rgba(244, 245, 240, 0.58);
+  line-height: 1.8;
+  max-width: 440px;
 }
 
-.md-typeset .grid.cards > :is(ul, ol) > li:hover {
-  transform: translateY(-4px) !important;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.13) !important;
+/* 서브 페이지 본문 내 첫 번째 h1 숨김 */
+.page-body .md-typeset > h1:first-child {
+  display: none;
 }
 
-/* ── Section Headings ─────────────────────────────────────── */
-.md-typeset h2 {
-  font-weight: 700;
+.page-body {
+  padding: 0.5rem 0 2rem;
 }
 
-/* ── Images ───────────────────────────────────────────────── */
-.md-typeset img {
-  border-radius: 10px;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.14);
-  max-width: 100%;
-}
+/* ── 8. 서브 페이지 공통 스타일 ──────────────────────────────── */
 
-/* ── Table Styling ────────────────────────────────────────── */
+/* 테이블 */
 .md-typeset table:not([class]) {
-  border-radius: 10px;
+  border: 1px solid rgba(244, 245, 240, 0.08);
+  border-radius: 0;
+  box-shadow: none;
   overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
 }
 
 .md-typeset table:not([class]) th {
-  background: var(--md-primary-fg-color) !important;
-  color: white !important;
-  font-weight: 600;
+  background: rgba(244, 245, 240, 0.05) !important;
+  color: rgba(244, 245, 240, 0.7) !important;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(244, 245, 240, 0.1) !important;
 }
 
-/* ── Admonition ───────────────────────────────────────────── */
+.md-typeset table:not([class]) td {
+  border-bottom: 1px solid rgba(244, 245, 240, 0.05);
+  font-size: 0.83rem;
+  font-weight: 300;
+}
+
+.md-typeset table:not([class]) tr:last-child td {
+  border-bottom: none;
+}
+
+/* 코드 블록 */
+.md-typeset pre {
+  border: 1px solid rgba(244, 245, 240, 0.07);
+  border-radius: 2px;
+}
+
+.md-typeset code:not([class]) {
+  background: rgba(244, 245, 240, 0.07);
+  border-radius: 2px;
+  padding: 2px 6px;
+  font-size: 0.8rem;
+  color: #c8d4b8;
+}
+
+/* Admonition */
 .md-typeset .admonition {
-  border-radius: 10px;
-  overflow: hidden;
+  border-radius: 0;
+  border: none;
+  border-left: 2px solid rgba(244, 245, 240, 0.2);
+  background: rgba(244, 245, 240, 0.03);
+  box-shadow: none;
 }
 
-/* ── Responsive Hero ──────────────────────────────────────── */
-@media (max-width: 600px) {
-  .hero h1 {
-    font-size: 1.6rem;
-  }
+.md-typeset .admonition-title {
+  background: rgba(244, 245, 240, 0.04) !important;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 
-  .hero {
-    padding: 44px 16px 40px;
-  }
+/* 이미지 (일반 콘텐츠용) */
+.md-typeset img {
+  border-radius: 2px;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.4);
+  max-width: 100%;
+}
 
-  .stats-strip {
-    gap: 24px;
+/* Mermaid */
+.mermaid svg {
+  background: transparent !important;
+}
+
+/* 수평선 */
+.md-typeset hr {
+  border-color: rgba(244, 245, 240, 0.08);
+  margin: 2.5rem 0;
+}
+
+/* 링크 */
+.md-typeset a {
+  color: #c8d4b8;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(200, 212, 184, 0.3);
+  transition: border-color 0.15s;
+}
+
+.md-typeset a:hover {
+  border-bottom-color: #c8d4b8;
+}
+
+/* ── 9. 검색 ─────────────────────────────────────────────────── */
+.md-search__input {
+  background: rgba(244, 245, 240, 0.06);
+  border: 1px solid rgba(244, 245, 240, 0.1);
+  border-radius: 2px;
+}
+
+/* ── 10. 푸터 ────────────────────────────────────────────────── */
+.md-footer {
+  background: #060f11;
+  border-top: 1px solid rgba(244, 245, 240, 0.06);
+}
+
+.md-footer-meta {
+  background: #040c0e;
+}
+
+/* ── 11. 반응형 ──────────────────────────────────────────────── */
+@media (max-width: 960px) {
+  .neo-features {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .neo-feature:nth-child(4n) {
+    border-right: 1px solid rgba(244, 245, 240, 0.08);
+  }
+  .neo-feature:nth-child(2n) {
+    border-right: none;
   }
 }
 
-/* ── Dark Mode ────────────────────────────────────────────── */
-[data-md-color-scheme="slate"] .hero {
-  background: linear-gradient(135deg, #0d1340 0%, #0d3a7a 50%, #014f7a 100%);
+@media (max-width: 768px) {
+  .featured-split {
+    grid-template-columns: 1fr;
+    min-height: auto;
+    margin: -0.8rem -0.8rem 2rem;
+  }
+  .featured-split__image,
+  .featured-split__svg {
+    height: 260px;
+    min-height: unset;
+  }
+  .featured-split__content {
+    padding: 2.5rem 1.5rem;
+    border-left: none;
+    border-top: 1px solid rgba(244, 245, 240, 0.07);
+  }
+  .neo-stats {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .neo-stat {
+    flex: 1 1 45%;
+    border-right: none;
+    border-bottom: 1px solid rgba(244, 245, 240, 0.08);
+  }
+  .neo-hero {
+    padding: 60px 16px 40px;
+  }
 }
 
-[data-md-color-scheme="slate"] .md-typeset table:not([class]) th {
-  background: var(--md-primary-fg-color) !important;
+@media (max-width: 480px) {
+  .neo-features {
+    grid-template-columns: 1fr;
+  }
+  .neo-stat {
+    flex: 1 1 100%;
+  }
 }
