@@ -1,0 +1,57 @@
+# evader_s1_obstacle_template.yaml
+# Stage1: 장애물 도입 + Ground-truth Pursuer 힌트 제거
+# 목표: survival_rate ≥ 50%, crash_rate ≤ 15% (장애물 환경)
+#
+# 변경 사항 (Stage0 대비):
+#   - EvaderAgent._currentStage = 1 (Unity Inspector에서 변경)
+#   - Pursuer 상대좌표 힌트 제거 → Ray 기반 추격자 감지만 허용
+#   - buffer_size 증가 (더 복잡한 환경)
+#   - learning_rate 소폭 낮춤 (안정화)
+#
+# 실행 (Stage0 체크포인트에서 warm-start):
+#   mlagents-learn python/config/evader_s1_obstacle_template.yaml \
+#     --run-id=evader_s1_base_seed42 \
+#     --initialize-from=evader_s0_base_seed42 \
+#     --force
+
+behaviors:
+  EvaderAgent:
+    trainer_type: ppo
+
+    hyperparameters:
+      batch_size: 128          # Stage1은 더 다양한 상황 → 배치 크기 증가
+      buffer_size: 20480       # 환경 복잡도 증가에 따라 버퍼 확대
+      learning_rate: 2.0e-4    # Stage0보다 낮게 (warm-start 안정화)
+      beta: 3.0e-3             # 엔트로피 감소 (탐색 → 활용 전환 시작)
+      epsilon: 0.2
+      lambd: 0.99
+      num_epoch: 3
+      learning_rate_schedule: linear
+
+    network_settings:
+      normalize: true
+      hidden_units: 256
+      num_layers: 2
+
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+
+    max_steps: 1000000         # Stage1은 더 많은 학습 필요
+    time_horizon: 128          # 장애물 환경에서 에피소드 길이 증가 고려
+    summary_freq: 10000
+    checkpoint_interval: 50000
+    keep_checkpoints: 5
+
+# ============================================================
+# Stage1 보상 함수 가이드라인 (Unity EvaderReward.cs 조정)
+#
+# Stage0 대비 변경:
+#   _occlusionBonus = 0.0 (Stage1에서도 비활성 유지)
+#   _goalShapingCoeff: 0.02 유지 (필요시 0.01로 낮춰 과도한 돌진 방지)
+#
+# 주의: 장애물 환경에서 crash_rate가 높으면
+#   → R_collision 페널티 강화 (-1.5 이상)
+#   → step penalty 약화 (-0.0005)로 조정
+# ============================================================
