@@ -213,13 +213,13 @@ namespace ProceduralCityGenerator.Tests
             GameObject go2 = new GameObject("TestBuilding2");
             GameObject go3 = new GameObject("TestBuilding3");
 
-            GridCell cell1 = new GridCell { x = 0, z = 0, hasBuilding = true, buildingHeight = 10f, worldPosition = new Vector3(25, 0, 25) };
-            GridCell cell2 = new GridCell { x = 1, z = 1, hasBuilding = true, buildingHeight = 50f, worldPosition = new Vector3(50, 0, 50) };
-            GridCell cell3 = new GridCell { x = 2, z = 2, hasBuilding = true, buildingHeight = 100f, worldPosition = new Vector3(75, 0, 75) };
+            GridCell cell1 = new GridCell { x = 0, z = 0, hasBuilding = true, buildingHeight = 10f, worldPosition = new Vector3(-25, 0, -25) };
+            GridCell cell2 = new GridCell { x = 1, z = 1, hasBuilding = true, buildingHeight = 50f, worldPosition = new Vector3(0, 0, 0) };
+            GridCell cell3 = new GridCell { x = 2, z = 2, hasBuilding = true, buildingHeight = 100f, worldPosition = new Vector3(25, 0, 25) };
 
-            Building building1 = new Building(go1, new Vector3(25, 0, 25), new Vector3(10, 10, 10), 10f, cell1);
-            Building building2 = new Building(go2, new Vector3(50, 0, 50), new Vector3(10, 50, 10), 50f, cell2);
-            Building building3 = new Building(go3, new Vector3(75, 0, 75), new Vector3(10, 100, 10), 100f, cell3);
+            Building building1 = new Building(go1, new Vector3(-25, 0, -25), new Vector3(10, 10, 10), 10f, cell1);
+            Building building2 = new Building(go2, new Vector3(0, 0, 0), new Vector3(10, 50, 10), 50f, cell2);
+            Building building3 = new Building(go3, new Vector3(25, 0, 25), new Vector3(10, 100, 10), 100f, cell3);
 
             Building[] buildings = new Building[] { building1, building2, building3 };
 

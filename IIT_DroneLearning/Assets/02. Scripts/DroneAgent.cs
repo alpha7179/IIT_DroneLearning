@@ -2,17 +2,19 @@ using UnityEngine;
 using Unity.MLAgents;
 using Unity.MLAgents.Sensors;
 using Unity.MLAgents.Actuators;
+using BMW.DroneSensor;
 
 /// <summary>
 /// 드론 에이전트 기본 클래스
 /// Tracker/Evader 공통 구조
 /// 액션 공간: Discrete 13가지 (이동 7 + 회전 6)
-/// 상태 공간: 12차원
+/// 상태 공간: 38차원 (기존 12차원 + 센서 26차원)
 /// </summary>
 public class DroneAgent : Agent
 {
     [Header("컴포넌트")]
     private DronePhysics _dronePhysics;
+    private DroneSensorSystem _sensorSystem;
 
     [Header("참조 오브젝트")]
     public Transform TargetTransform;
@@ -31,6 +33,7 @@ public class DroneAgent : Agent
     {
         base.Awake(); // 부모 Agent.Awake() 먼저 실행
         _dronePhysics = GetComponent<DronePhysics>();
+        _sensorSystem = GetComponent<DroneSensorSystem>();
     }
     /// <summary>
     /// 에피소드 시작 시 초기화
@@ -47,7 +50,7 @@ public class DroneAgent : Agent
     }
 
     /// <summary>
-    /// 상태 공간 정의 (총 12차원)
+    /// 상태 공간 정의 (총 38차원: 기존 12차원 + 센서 26차원)
     /// </summary>
     public override void CollectObservations(VectorSensor sensor)
     {
@@ -68,6 +71,24 @@ public class DroneAgent : Agent
             sensor.AddObservation(TargetTransform.localPosition - transform.localPosition);
         else
             sensor.AddObservation(Vector3.zero);
+
+        // 센서 데이터 추가 (26개 거리 값)
+        if (_sensorSystem != null)
+        {
+            float[] distances = _sensorSystem.GetAllNormalizedDistances();
+            foreach (float distance in distances)
+            {
+                sensor.AddObservation(distance);
+            }
+        }
+        else
+        {
+            // 센서 시스템이 없으면 0으로 채움
+            for (int i = 0; i < 26; i++)
+            {
+                sensor.AddObservation(0f);
+            }
+        }
     }
 
     /// <summary>

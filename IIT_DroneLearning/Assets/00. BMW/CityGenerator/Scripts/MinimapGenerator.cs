@@ -63,9 +63,11 @@ namespace ProceduralCityGenerator
             }
             minimap.SetPixels(pixels);
 
-            // 건물이 없으면 빈 미니맵 반환
+            // 건물이 없으면 전략적 마커만 그리고 반환
             if (buildings == null || buildings.Length == 0)
             {
+                if (strategicLocations != null && strategicLocations.Count > 0)
+                    DrawStrategicMarkers(minimap, strategicLocations);
                 minimap.Apply();
                 return minimap;
             }

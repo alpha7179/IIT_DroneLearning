@@ -1,0 +1,449 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="51" result="Failed(Child)" total="51" passed="41" failed="10" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:37Z" duration="0.1479278">
+  <test-suite type="TestSuite" id="1242" name="IIT_DroneLearning" fullname="IIT_DroneLearning" runstate="Runnable" testcasecount="216" result="Failed" site="Child" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:37Z" duration="0.147928" total="51" passed="41" failed="10" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <failure>
+      <message><![CDATA[One or more child tests had errors]]></message>
+    </failure>
+    <test-suite type="Assembly" id="1053" name="DroneSensorSystemTests.dll" fullname="C:/WorkSpace/Hub/IIT_DroneLearning/IIT_DroneLearning/Library/ScriptAssemblies/DroneSensorSystemTests.dll" runstate="Runnable" testcasecount="51" result="Failed" site="Child" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:37Z" duration="0.129933" total="51" passed="41" failed="10" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="22948" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestSuite" id="1054" name="BMW" fullname="BMW" runstate="Runnable" testcasecount="51" result="Failed" site="Child" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:37Z" duration="0.128370" total="51" passed="41" failed="10" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-suite type="TestSuite" id="1055" name="DroneSensor" fullname="BMW.DroneSensor" runstate="Runnable" testcasecount="51" result="Failed" site="Child" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:37Z" duration="0.127294" total="51" passed="41" failed="10" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <failure>
+            <message><![CDATA[One or more child tests had errors]]></message>
+          </failure>
+          <test-suite type="TestFixture" id="1001" name="DroneSensorSystemTests" fullname="BMW.DroneSensor.DroneSensorSystemTests" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" testcasecount="51" result="Failed" site="Child" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:37Z" duration="0.124405" total="51" passed="41" failed="10" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <failure>
+              <message><![CDATA[One or more child tests had errors]]></message>
+            </failure>
+            <test-case id="1038" name="AllRays_UseCachedDirectionVectors" fullname="BMW.DroneSensor.DroneSensorSystemTests.AllRays_UseCachedDirectionVectors" methodname="AllRays_UseCachedDirectionVectors" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="341816699" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.021043" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1046" name="DetectionLayerMask_CanBeSet" fullname="BMW.DroneSensor.DroneSensorSystemTests.DetectionLayerMask_CanBeSet" methodname="DetectionLayerMask_CanBeSet" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="1383026247" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.002076" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1045" name="DetectionLayerMask_IsExposedInInspector" fullname="BMW.DroneSensor.DroneSensorSystemTests.DetectionLayerMask_IsExposedInInspector" methodname="DetectionLayerMask_IsExposedInInspector" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="730228476" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.000462" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1040" name="DisabledRays_StillUseCachedDirectionVectors" fullname="BMW.DroneSensor.DroneSensorSystemTests.DisabledRays_StillUseCachedDirectionVectors" methodname="DisabledRays_StillUseCachedDirectionVectors" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="1473599124" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.001607" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1043" name="DroneSensorSystem_DoesNotModifyTransform" fullname="BMW.DroneSensor.DroneSensorSystemTests.DroneSensorSystem_DoesNotModifyTransform" methodname="DroneSensorSystem_DoesNotModifyTransform" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="1979789522" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.004558" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1041" name="DroneSensorSystem_DoesNotRequireDronePhysics" fullname="BMW.DroneSensor.DroneSensorSystemTests.DroneSensorSystem_DoesNotRequireDronePhysics" methodname="DroneSensorSystem_DoesNotRequireDronePhysics" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="1427640922" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.002915" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1042" name="DroneSensorSystem_OnlyUsesTransform" fullname="BMW.DroneSensor.DroneSensorSystemTests.DroneSensorSystem_OnlyUsesTransform" methodname="DroneSensorSystem_OnlyUsesTransform" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="1049954345" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.001182" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1044" name="DroneSensorSystem_WorksWithAnyGameObject" fullname="BMW.DroneSensor.DroneSensorSystemTests.DroneSensorSystem_WorksWithAnyGameObject" methodname="DroneSensorSystem_WorksWithAnyGameObject" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="1638870284" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.001458" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1025" name="GetAllNormalizedDistances_BeforeInitialization_ReturnsEmptyArray" fullname="BMW.DroneSensor.DroneSensorSystemTests.GetAllNormalizedDistances_BeforeInitialization_ReturnsEmptyArray" methodname="GetAllNormalizedDistances_BeforeInitialization_ReturnsEmptyArray" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="831277668" result="Failed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.006433" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <failure>
+                <message><![CDATA[Unhandled log message: '[Error] [DroneSensorSystem] 치명적 오류: 센서가 아직 초기화되지 않았습니다.'. Use UnityEngine.TestTools.LogAssert.Expect]]></message>
+                <stack-trace><![CDATA[BMW.DroneSensor.DroneSensorSystem:GetAllNormalizedDistances () (at Assets/00. BMW/DroneSenser/Scripts/DroneSensorSystem.cs:223)
+BMW.DroneSensor.DroneSensorSystemTests:GetAllNormalizedDistances_BeforeInitialization_ReturnsEmptyArray () (at Assets/00. BMW/DroneSenser/Tests/DroneSensorSystemTests.cs:509)
+System.Reflection.MethodBase:Invoke (object,object[])
+NUnit.Framework.Internal.Reflect:InvokeMethod (System.Reflection.MethodInfo,object,object[])
+NUnit.Framework.Internal.MethodWrapper:Invoke (object,object[])
+NUnit.Framework.Internal.Commands.TestMethodCommand:RunNonAsyncTestMethod (NUnit.Framework.Internal.ITestExecutionContext)
+NUnit.Framework.Internal.Commands.TestMethodCommand:RunTestMethod (NUnit.Framework.Internal.ITestExecutionContext)
+NUnit.Framework.Internal.Commands.TestMethodCommand:Execute (NUnit.Framework.Internal.ITestExecutionContext)
+UnityEditor.EditorApplication:Internal_CallUpdateFunctions ()
+
+]]></stack-trace>
+              </failure>
+              <output><![CDATA[[DroneSensorSystem] 치명적 오류: 센서가 아직 초기화되지 않았습니다.
+]]></output>
+            </test-case>
+            <test-case id="1035" name="GetAllNormalizedDistances_ReturnsConsistentArraySize" fullname="BMW.DroneSensor.DroneSensorSystemTests.GetAllNormalizedDistances_ReturnsConsistentArraySize" methodname="GetAllNormalizedDistances_ReturnsConsistentArraySize" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="1753473215" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.000441" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1011" name="GetForwardRayDirection_BeforeInitialization_ReturnsDefaultForward" fullname="BMW.DroneSensor.DroneSensorSystemTests.GetForwardRayDirection_BeforeInitialization_ReturnsDefaultForward" methodname="GetForwardRayDirection_BeforeInitialization_ReturnsDefaultForward" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="268561738" result="Failed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.001539" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <failure>
+                <message><![CDATA[Unhandled log message: '[Error] [DroneSensorSystem] 치명적 오류: 센서가 아직 초기화되지 않았습니다.'. Use UnityEngine.TestTools.LogAssert.Expect]]></message>
+                <stack-trace><![CDATA[BMW.DroneSensor.DroneSensorSystem:GetForwardRayDirection () (at Assets/00. BMW/DroneSenser/Scripts/DroneSensorSystem.cs:420)
+BMW.DroneSensor.DroneSensorSystemTests:GetForwardRayDirection_BeforeInitialization_ReturnsDefaultForward () (at Assets/00. BMW/DroneSenser/Tests/DroneSensorSystemTests.cs:236)
+System.Reflection.MethodBase:Invoke (object,object[])
+NUnit.Framework.Internal.Reflect:InvokeMethod (System.Reflection.MethodInfo,object,object[])
+NUnit.Framework.Internal.MethodWrapper:Invoke (object,object[])
+NUnit.Framework.Internal.Commands.TestMethodCommand:RunNonAsyncTestMethod (NUnit.Framework.Internal.ITestExecutionContext)
+NUnit.Framework.Internal.Commands.TestMethodCommand:RunTestMethod (NUnit.Framework.Internal.ITestExecutionContext)
+NUnit.Framework.Internal.Commands.TestMethodCommand:Execute (NUnit.Framework.Internal.ITestExecutionContext)
+UnityEditor.EditorApplication:Internal_CallUpdateFunctions ()
+
+]]></stack-trace>
+              </failure>
+              <output><![CDATA[[DroneSensorSystem] 치명적 오류: 센서가 아직 초기화되지 않았습니다.
+]]></output>
+            </test-case>
+            <test-case id="1010" name="GetForwardRayDirection_IsNormalized" fullname="BMW.DroneSensor.DroneSensorSystemTests.GetForwardRayDirection_IsNormalized" methodname="GetForwardRayDirection_IsNormalized" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="138353208" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.000594" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1008" name="GetForwardRayDirection_ReturnsMiddleLayerNorthDirection" fullname="BMW.DroneSensor.DroneSensorSystemTests.GetForwardRayDirection_ReturnsMiddleLayerNorthDirection" methodname="GetForwardRayDirection_ReturnsMiddleLayerNorthDirection" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="6230598" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.000463" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1009" name="GetForwardRayDirection_TransformsWithDroneRotation" fullname="BMW.DroneSensor.DroneSensorSystemTests.GetForwardRayDirection_TransformsWithDroneRotation" methodname="GetForwardRayDirection_TransformsWithDroneRotation" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="1100913956" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.000633" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1026" name="GetNormalizedDistance_BeforeInitialization_ReturnsZero" fullname="BMW.DroneSensor.DroneSensorSystemTests.GetNormalizedDistance_BeforeInitialization_ReturnsZero" methodname="GetNormalizedDistance_BeforeInitialization_ReturnsZero" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="120326532" result="Failed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.001537" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <failure>
+                <message><![CDATA[Unhandled log message: '[Error] [DroneSensorSystem] 치명적 오류: 센서가 아직 초기화되지 않았습니다.'. Use UnityEngine.TestTools.LogAssert.Expect]]></message>
+                <stack-trace><![CDATA[BMW.DroneSensor.DroneSensorSystem:GetNormalizedDistance (BMW.DroneSensor.DroneSensorSystem/SensorLayer,BMW.DroneSensor.DroneSensorSystem/CompassDirection) (at Assets/00. BMW/DroneSenser/Scripts/DroneSensorSystem.cs:292)
+BMW.DroneSensor.DroneSensorSystemTests:GetNormalizedDistance_BeforeInitialization_ReturnsZero () (at Assets/00. BMW/DroneSenser/Tests/DroneSensorSystemTests.cs:539)
+System.Reflection.MethodBase:Invoke (object,object[])
+NUnit.Framework.Internal.Reflect:InvokeMethod (System.Reflection.MethodInfo,object,object[])
+NUnit.Framework.Internal.MethodWrapper:Invoke (object,object[])
+NUnit.Framework.Internal.Commands.TestMethodCommand:RunNonAsyncTestMethod (NUnit.Framework.Internal.ITestExecutionContext)
+NUnit.Framework.Internal.Commands.TestMethodCommand:RunTestMethod (NUnit.Framework.Internal.ITestExecutionContext)
+NUnit.Framework.Internal.Commands.TestMethodCommand:Execute (NUnit.Framework.Internal.ITestExecutionContext)
+UnityEditor.EditorApplication:Internal_CallUpdateFunctions ()
+
+]]></stack-trace>
+              </failure>
+              <output><![CDATA[[DroneSensorSystem] 치명적 오류: 센서가 아직 초기화되지 않았습니다.
+]]></output>
+            </test-case>
+            <test-case id="1039" name="GetNormalizedDistance_UsesCachedData" fullname="BMW.DroneSensor.DroneSensorSystemTests.GetNormalizedDistance_UsesCachedData" methodname="GetNormalizedDistance_UsesCachedData" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="1680613008" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.000388" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1032" name="GetNormalizedDistance_WithInvalidLayer_ReturnsZero" fullname="BMW.DroneSensor.DroneSensorSystemTests.GetNormalizedDistance_WithInvalidLayer_ReturnsZero" methodname="GetNormalizedDistance_WithInvalidLayer_ReturnsZero" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="1907064696" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.002812" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[[DroneSensorSystem] 치명적 오류: 잘못된 센서 레이어: 999
+[DroneSensorSystem] 치명적 오류: 잘못된 레이 인덱스: -1
+]]></output>
+            </test-case>
+            <test-case id="1050" name="LayerMask_CanBeChangedAtRuntime" fullname="BMW.DroneSensor.DroneSensorSystemTests.LayerMask_CanBeChangedAtRuntime" methodname="LayerMask_CanBeChangedAtRuntime" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="664196000" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.000601" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1049" name="LayerMask_WithEverything_DetectsAllObjects" fullname="BMW.DroneSensor.DroneSensorSystemTests.LayerMask_WithEverything_DetectsAllObjects" methodname="LayerMask_WithEverything_DetectsAllObjects" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="256086798" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.001603" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1051" name="LayerMask_WithMultipleLayers_DetectsObjectsOnAnySpecifiedLayer" fullname="BMW.DroneSensor.DroneSensorSystemTests.LayerMask_WithMultipleLayers_DetectsObjectsOnAnySpecifiedLayer" methodname="LayerMask_WithMultipleLayers_DetectsObjectsOnAnySpecifiedLayer" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="1654249" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.000942" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1048" name="LayerMask_WithNothing_PreventsAllDetections" fullname="BMW.DroneSensor.DroneSensorSystemTests.LayerMask_WithNothing_PreventsAllDetections" methodname="LayerMask_WithNothing_PreventsAllDetections" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="638328181" result="Failed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.002771" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <failure>
+                <message><![CDATA[Expected log did not appear: [Warning] \[DroneSensorSystem]\ 경고:\ DetectionLayerMask가\ Nothing으로\ 설정되어\ 있습니다\.\ 모든\ 레이가\ 충돌을\ 감지하지\ 못합니다\.]]></message>
+              </failure>
+              <output><![CDATA[[DroneSensorSystem] 경고: DetectionLayerMask가 Nothing으로 설정되어 있습니다. 모든 레이가 충돌을 감지하지 못합니다.
+]]></output>
+            </test-case>
+            <test-case id="1052" name="PhysicsRaycast_ReceivesDetectionLayerMask" fullname="BMW.DroneSensor.DroneSensorSystemTests.PhysicsRaycast_ReceivesDetectionLayerMask" methodname="PhysicsRaycast_ReceivesDetectionLayerMask" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="959531069" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.000837" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1047" name="Raycast_OnlyDetectsObjectsOnSpecifiedLayers" fullname="BMW.DroneSensor.DroneSensorSystemTests.Raycast_OnlyDetectsObjectsOnSpecifiedLayers" methodname="Raycast_OnlyDetectsObjectsOnSpecifiedLayers" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="765511411" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.000954" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1034" name="RayDirectionVectors_AreCachedDuringInitialization" fullname="BMW.DroneSensor.DroneSensorSystemTests.RayDirectionVectors_AreCachedDuringInitialization" methodname="RayDirectionVectors_AreCachedDuringInitialization" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="145384524" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.000466" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1037" name="RayDirectionVectors_TransformCorrectlyAfterRotation" fullname="BMW.DroneSensor.DroneSensorSystemTests.RayDirectionVectors_TransformCorrectlyAfterRotation" methodname="RayDirectionVectors_TransformCorrectlyAfterRotation" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="431819518" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.000860" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1036" name="SensorDataArray_IsReusedAcrossUpdates" fullname="BMW.DroneSensor.DroneSensorSystemTests.SensorDataArray_IsReusedAcrossUpdates" methodname="SensorDataArray_IsReusedAcrossUpdates" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="992302745" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.001079" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1023" name="SetDebugVisualization_MultipleTimes_TogglesCorrectly" fullname="BMW.DroneSensor.DroneSensorSystemTests.SetDebugVisualization_MultipleTimes_TogglesCorrectly" methodname="SetDebugVisualization_MultipleTimes_TogglesCorrectly" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="407719429" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.000678" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1022" name="SetDebugVisualization_WithFalse_DisablesDebugRays" fullname="BMW.DroneSensor.DroneSensorSystemTests.SetDebugVisualization_WithFalse_DisablesDebugRays" methodname="SetDebugVisualization_WithFalse_DisablesDebugRays" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="644459011" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.000284" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1024" name="SetDebugVisualization_WithSameValue_RemainsConsistent" fullname="BMW.DroneSensor.DroneSensorSystemTests.SetDebugVisualization_WithSameValue_RemainsConsistent" methodname="SetDebugVisualization_WithSameValue_RemainsConsistent" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="1019275601" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.000358" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1021" name="SetDebugVisualization_WithTrue_EnablesDebugRays" fullname="BMW.DroneSensor.DroneSensorSystemTests.SetDebugVisualization_WithTrue_EnablesDebugRays" methodname="SetDebugVisualization_WithTrue_EnablesDebugRays" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="931887771" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.000247" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1005" name="SetMaxDetectionRange_MultipleTimes_UpdatesCorrectly" fullname="BMW.DroneSensor.DroneSensorSystemTests.SetMaxDetectionRange_MultipleTimes_UpdatesCorrectly" methodname="SetMaxDetectionRange_MultipleTimes_UpdatesCorrectly" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="862892158" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.000308" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1031" name="SetMaxDetectionRange_WithInfinity_AcceptsValue" fullname="BMW.DroneSensor.DroneSensorSystemTests.SetMaxDetectionRange_WithInfinity_AcceptsValue" methodname="SetMaxDetectionRange_WithInfinity_AcceptsValue" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="1453210247" result="Failed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.009121" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <failure>
+                <message><![CDATA[  MaxDetectionRange should accept positive infinity (though not recommended)
+  Expected: Infinity
+  But was:  50.0f
+]]></message>
+                <stack-trace><![CDATA[at BMW.DroneSensor.DroneSensorSystemTests.SetMaxDetectionRange_WithInfinity_AcceptsValue () [0x00012] in C:\WorkSpace\Hub\IIT_DroneLearning\IIT_DroneLearning\Assets\00. BMW\DroneSenser\Tests\DroneSensorSystemTests.cs:682
+]]></stack-trace>
+              </failure>
+              <output><![CDATA[[DroneSensorSystem] 경고: MaxDetectionRange는 양수여야 합니다. 입력값: Infinitym. 기본값 50m로 복원합니다.
+]]></output>
+            </test-case>
+            <test-case id="1007" name="SetMaxDetectionRange_WithLargeValue_SetsCorrectly" fullname="BMW.DroneSensor.DroneSensorSystemTests.SetMaxDetectionRange_WithLargeValue_SetsCorrectly" methodname="SetMaxDetectionRange_WithLargeValue_SetsCorrectly" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="939076787" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.000387" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1030" name="SetMaxDetectionRange_WithNaN_ResetsToDefault" fullname="BMW.DroneSensor.DroneSensorSystemTests.SetMaxDetectionRange_WithNaN_ResetsToDefault" methodname="SetMaxDetectionRange_WithNaN_ResetsToDefault" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="1603175872" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.001409" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[[DroneSensorSystem] 경고: MaxDetectionRange는 양수여야 합니다. 입력값: NaNm. 기본값 50m로 복원합니다.
+]]></output>
+            </test-case>
+            <test-case id="1004" name="SetMaxDetectionRange_WithNegativeValue_ResetsToDefault" fullname="BMW.DroneSensor.DroneSensorSystemTests.SetMaxDetectionRange_WithNegativeValue_ResetsToDefault" methodname="SetMaxDetectionRange_WithNegativeValue_ResetsToDefault" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="1097974019" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.001196" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[[DroneSensorSystem] 경고: MaxDetectionRange는 양수여야 합니다. 입력값: -10m. 기본값 50m로 복원합니다.
+]]></output>
+            </test-case>
+            <test-case id="1006" name="SetMaxDetectionRange_WithSmallPositiveValue_SetsCorrectly" fullname="BMW.DroneSensor.DroneSensorSystemTests.SetMaxDetectionRange_WithSmallPositiveValue_SetsCorrectly" methodname="SetMaxDetectionRange_WithSmallPositiveValue_SetsCorrectly" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="2141572435" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.000348" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1002" name="SetMaxDetectionRange_WithValidValue_SetsCorrectly" fullname="BMW.DroneSensor.DroneSensorSystemTests.SetMaxDetectionRange_WithValidValue_SetsCorrectly" methodname="SetMaxDetectionRange_WithValidValue_SetsCorrectly" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="791337097" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.000274" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1003" name="SetMaxDetectionRange_WithZeroValue_ResetsToDefault" fullname="BMW.DroneSensor.DroneSensorSystemTests.SetMaxDetectionRange_WithZeroValue_ResetsToDefault" methodname="SetMaxDetectionRange_WithZeroValue_ResetsToDefault" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="174596304" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.001011" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[[DroneSensorSystem] 경고: MaxDetectionRange는 양수여야 합니다. 입력값: 0m. 기본값 50m로 복원합니다.
+]]></output>
+            </test-case>
+            <test-case id="1019" name="SetRayEnabled_MultipleTimes_WorksCorrectly" fullname="BMW.DroneSensor.DroneSensorSystemTests.SetRayEnabled_MultipleTimes_WorksCorrectly" methodname="SetRayEnabled_MultipleTimes_WorksCorrectly" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="1480634778" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.000927" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1020" name="SetRayEnabled_OnAllRays_WorksCorrectly" fullname="BMW.DroneSensor.DroneSensorSystemTests.SetRayEnabled_OnAllRays_WorksCorrectly" methodname="SetRayEnabled_OnAllRays_WorksCorrectly" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="1987747717" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.000333" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1033" name="SetRayEnabled_WithBoundaryIndices_WorksCorrectly" fullname="BMW.DroneSensor.DroneSensorSystemTests.SetRayEnabled_WithBoundaryIndices_WorksCorrectly" methodname="SetRayEnabled_WithBoundaryIndices_WorksCorrectly" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="523512643" result="Failed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.001831" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <failure>
+                <message><![CDATA[Expected log did not appear: [Warning] \[DroneSensorSystem]\ 경고:\ 잘못된\ 레이\ 인덱스:\ -1\.\ 유효\ 범위는\ 0~25입니다\.]]></message>
+              </failure>
+              <output><![CDATA[[DroneSensorSystem] 경고: 잘못된 레이 인덱스: -1. 유효 범위는 0~25입니다.
+[DroneSensorSystem] 경고: 잘못된 레이 인덱스: 26. 유효 범위는 0~25입니다.
+]]></output>
+            </test-case>
+            <test-case id="1015" name="SetRayEnabled_WithIndexTwentyFive_WorksCorrectly" fullname="BMW.DroneSensor.DroneSensorSystemTests.SetRayEnabled_WithIndexTwentyFive_WorksCorrectly" methodname="SetRayEnabled_WithIndexTwentyFive_WorksCorrectly" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="1950607426" result="Passed" start-time="2026-03-08 13:18:36Z" end-time="2026-03-08 13:18:36Z" duration="0.000307" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1017" name="SetRayEnabled_WithIndexTwentySix_LogsWarning" fullname="BMW.DroneSensor.DroneSensorSystemTests.SetRayEnabled_WithIndexTwentySix_LogsWarning" methodname="SetRayEnabled_WithIndexTwentySix_LogsWarning" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="811308291" result="Failed" start-time="2026-03-08 13:18:37Z" end-time="2026-03-08 13:18:37Z" duration="0.001133" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <failure>
+                <message><![CDATA[Expected log did not appear: [Warning] \[DroneSensorSystem]\ 경고:\ 잘못된\ 레이\ 인덱스:\ 26\.\ 유효\ 범위는\ 0~25입니다\.]]></message>
+              </failure>
+              <output><![CDATA[[DroneSensorSystem] 경고: 잘못된 레이 인덱스: 26. 유효 범위는 0~25입니다.
+]]></output>
+            </test-case>
+            <test-case id="1014" name="SetRayEnabled_WithIndexZero_WorksCorrectly" fullname="BMW.DroneSensor.DroneSensorSystemTests.SetRayEnabled_WithIndexZero_WorksCorrectly" methodname="SetRayEnabled_WithIndexZero_WorksCorrectly" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="225444819" result="Passed" start-time="2026-03-08 13:18:37Z" end-time="2026-03-08 13:18:37Z" duration="0.000299" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1018" name="SetRayEnabled_WithLargeIndex_LogsWarning" fullname="BMW.DroneSensor.DroneSensorSystemTests.SetRayEnabled_WithLargeIndex_LogsWarning" methodname="SetRayEnabled_WithLargeIndex_LogsWarning" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="1823228823" result="Failed" start-time="2026-03-08 13:18:37Z" end-time="2026-03-08 13:18:37Z" duration="0.001640" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <failure>
+                <message><![CDATA[Expected log did not appear: [Warning] \[DroneSensorSystem]\ 경고:\ 잘못된\ 레이\ 인덱스:\ 100\.\ 유효\ 범위는\ 0~25입니다\.]]></message>
+              </failure>
+              <output><![CDATA[[DroneSensorSystem] 경고: 잘못된 레이 인덱스: 100. 유효 범위는 0~25입니다.
+]]></output>
+            </test-case>
+            <test-case id="1016" name="SetRayEnabled_WithNegativeIndex_LogsWarning" fullname="BMW.DroneSensor.DroneSensorSystemTests.SetRayEnabled_WithNegativeIndex_LogsWarning" methodname="SetRayEnabled_WithNegativeIndex_LogsWarning" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="774486508" result="Failed" start-time="2026-03-08 13:18:37Z" end-time="2026-03-08 13:18:37Z" duration="0.001476" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <failure>
+                <message><![CDATA[Expected log did not appear: [Warning] \[DroneSensorSystem]\ 경고:\ 잘못된\ 레이\ 인덱스:\ -1\.\ 유효\ 범위는\ 0~25입니다\.]]></message>
+              </failure>
+              <output><![CDATA[[DroneSensorSystem] 경고: 잘못된 레이 인덱스: -1. 유효 범위는 0~25입니다.
+]]></output>
+            </test-case>
+            <test-case id="1013" name="SetRayEnabled_WithValidIndex_DisablesRay" fullname="BMW.DroneSensor.DroneSensorSystemTests.SetRayEnabled_WithValidIndex_DisablesRay" methodname="SetRayEnabled_WithValidIndex_DisablesRay" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="2003312160" result="Passed" start-time="2026-03-08 13:18:37Z" end-time="2026-03-08 13:18:37Z" duration="0.000300" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1012" name="SetRayEnabled_WithValidIndex_EnablesRay" fullname="BMW.DroneSensor.DroneSensorSystemTests.SetRayEnabled_WithValidIndex_EnablesRay" methodname="SetRayEnabled_WithValidIndex_EnablesRay" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="1683988904" result="Passed" start-time="2026-03-08 13:18:37Z" end-time="2026-03-08 13:18:37Z" duration="0.000215" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1028" name="ValidateConfiguration_ClampsMiddleBottomElevation_WhenOutOfRange" fullname="BMW.DroneSensor.DroneSensorSystemTests.ValidateConfiguration_ClampsMiddleBottomElevation_WhenOutOfRange" methodname="ValidateConfiguration_ClampsMiddleBottomElevation_WhenOutOfRange" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="2141628081" result="Passed" start-time="2026-03-08 13:18:37Z" end-time="2026-03-08 13:18:37Z" duration="0.003972" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[[DroneSensorSystem] 경고: MiddleBottomElevation은 -90~0도 범위여야 합니다. 입력값: -120도. -90도로 클램핑합니다.
+]]></output>
+            </test-case>
+            <test-case id="1027" name="ValidateConfiguration_ClampsTopMiddleElevation_WhenOutOfRange" fullname="BMW.DroneSensor.DroneSensorSystemTests.ValidateConfiguration_ClampsTopMiddleElevation_WhenOutOfRange" methodname="ValidateConfiguration_ClampsTopMiddleElevation_WhenOutOfRange" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="2108511629" result="Passed" start-time="2026-03-08 13:18:37Z" end-time="2026-03-08 13:18:37Z" duration="0.001720" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[[DroneSensorSystem] 경고: TopMiddleElevation은 0~90도 범위여야 합니다. 입력값: 120도. 90도로 클램핑합니다.
+]]></output>
+            </test-case>
+            <test-case id="1029" name="ValidateConfiguration_WarnsWhenLayerMaskIsNothing" fullname="BMW.DroneSensor.DroneSensorSystemTests.ValidateConfiguration_WarnsWhenLayerMaskIsNothing" methodname="ValidateConfiguration_WarnsWhenLayerMaskIsNothing" classname="BMW.DroneSensor.DroneSensorSystemTests" runstate="Runnable" seed="1321832513" result="Failed" start-time="2026-03-08 13:18:37Z" end-time="2026-03-08 13:18:37Z" duration="0.001368" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <failure>
+                <message><![CDATA[Expected log did not appear: [Warning] \[DroneSensorSystem]\ 경고:\ DetectionLayerMask가\ Nothing으로\ 설정되어\ 있습니다\.\ 모든\ 레이가\ 충돌을\ 감지하지\ 못합니다\.]]></message>
+              </failure>
+              <output><![CDATA[[DroneSensorSystem] 경고: DetectionLayerMask가 Nothing으로 설정되어 있습니다. 모든 레이가 충돌을 감지하지 못합니다.
+Saving results to: C:/Users/alpha/AppData/LocalLow/DefaultCompany/IIT_DroneLearning\TestResults.xml
+]]></output>
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

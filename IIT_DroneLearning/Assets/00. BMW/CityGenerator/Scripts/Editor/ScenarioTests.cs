@@ -49,6 +49,14 @@ namespace ProceduralCityGenerator.Tests
                 Object.DestroyImmediate(testGameObject);
             }
 
+            // 이전 테스트에서 남은 stray "City" 오브젝트 정리
+            GameObject cityObj = GameObject.Find("City");
+            while (cityObj != null)
+            {
+                Object.DestroyImmediate(cityObj);
+                cityObj = GameObject.Find("City");
+            }
+
             // 테스트 프리셋 파일 삭제
             CleanupTestPresets();
         }

@@ -100,6 +100,7 @@ namespace ProceduralCityGenerator.Tests
             // Create a new GameObject without RawImage
             GameObject newObject = new GameObject("NoRawImage");
             newObject.transform.SetParent(testCanvas.transform);
+            // [RequireComponent] 제거됨: AddComponent 시 RawImage 자동 추가 안 됨
             MinimapRenderer newRenderer = newObject.AddComponent<MinimapRenderer>();
 
             Texture2D testTexture = new Texture2D(256, 256);

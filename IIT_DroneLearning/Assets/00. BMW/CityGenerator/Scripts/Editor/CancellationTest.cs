@@ -29,9 +29,16 @@ namespace ProceduralCityGenerator.Tests
         [TearDown]
         public void Teardown()
         {
+            if (generator != null)
+                generator.ClearCity();
             if (testObject != null)
-            {
                 Object.DestroyImmediate(testObject);
+            // 이전 테스트에서 남은 stray "City" 오브젝트 정리
+            GameObject cityObj = GameObject.Find("City");
+            while (cityObj != null)
+            {
+                Object.DestroyImmediate(cityObj);
+                cityObj = GameObject.Find("City");
             }
         }
 
@@ -142,7 +149,7 @@ namespace ProceduralCityGenerator.Tests
 
             // Assert: 정상 생성 시 성공 반환
             Assert.IsTrue(result.success, "정상 생성 시 success가 true여야 합니다");
-            Assert.IsNull(result.errorMessage, "정상 생성 시 errorMessage가 null이어야 합니다");
+            Assert.IsTrue(string.IsNullOrEmpty(result.errorMessage), "정상 생성 시 errorMessage가 null 또는 빈 문자열이어야 합니다");
             Assert.Greater(result.buildingCount, 0, "건물이 생성되어야 합니다");
 
             Debug.Log($"CancellationTest: 정상 생성 시 성공 반환 확인 ({result.buildingCount}개 건물)");

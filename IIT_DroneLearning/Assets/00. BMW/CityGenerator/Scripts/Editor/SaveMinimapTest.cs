@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools;
 using System.IO;
 
 namespace ProceduralCityGenerator.Tests
@@ -11,15 +12,18 @@ namespace ProceduralCityGenerator.Tests
     [TestFixture]
     public class SaveMinimapTest
     {
-        private const string TestDirectoryPath = "Assets/CityMaps";
+        // 실제 저장 경로: MinimapGenerator.GetProceduralCityFolder() 기준
+        private string TestDirectoryPath =>
+            Path.Combine(Application.dataPath, "00. BMW", "CityGenerator", "CityMaps");
 
         [TearDown]
         public void TearDown()
         {
             // 테스트 후 생성된 파일 정리
-            if (Directory.Exists(TestDirectoryPath))
+            string dir = TestDirectoryPath;
+            if (Directory.Exists(dir))
             {
-                string[] files = Directory.GetFiles(TestDirectoryPath, "Minimap_*.png");
+                string[] files = Directory.GetFiles(dir, "Minimap_*.png");
                 foreach (string file in files)
                 {
                     File.Delete(file);
@@ -31,9 +35,10 @@ namespace ProceduralCityGenerator.Tests
         public void SaveMinimapToPNG_CreatesDirectoryIfNotExists()
         {
             // Arrange
-            if (Directory.Exists(TestDirectoryPath))
+            string dir = TestDirectoryPath;
+            if (Directory.Exists(dir))
             {
-                Directory.Delete(TestDirectoryPath, true);
+                Directory.Delete(dir, true);
             }
 
             Bounds bounds = new Bounds(Vector3.zero, new Vector3(100, 0, 100));
@@ -44,7 +49,7 @@ namespace ProceduralCityGenerator.Tests
             generator.SaveMinimapToPNG(minimap, 12345);
 
             // Assert
-            Assert.IsTrue(Directory.Exists(TestDirectoryPath), "디렉토리가 생성되어야 합니다.");
+            Assert.IsTrue(Directory.Exists(dir), "디렉토리가 생성되어야 합니다.");
 
             // Cleanup
             Object.DestroyImmediate(minimap);
@@ -83,7 +88,8 @@ namespace ProceduralCityGenerator.Tests
             generator.SaveMinimapToPNG(minimap, -1);
 
             // Assert
-            string[] files = Directory.GetFiles(TestDirectoryPath, "Minimap_*_256x256.png");
+            string dir = TestDirectoryPath;
+            string[] files = Directory.GetFiles(dir, "Minimap_*_256x256.png");
             Assert.IsTrue(files.Length > 0, "타임스탬프를 포함한 파일이 생성되어야 합니다.");
 
             // Cleanup
@@ -98,7 +104,8 @@ namespace ProceduralCityGenerator.Tests
             MinimapGenerator generator = new MinimapGenerator(256, bounds);
 
             // Act & Assert
-            // null 텍스처를 전달해도 예외가 발생하지 않아야 함
+            // null 텍스처 전달 시 내부에서 LogError가 발생하므로 예상 처리
+            LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex(".*null.*"));
             Assert.DoesNotThrow(() => generator.SaveMinimapToPNG(null, 12345));
         }
 
@@ -108,7 +115,7 @@ namespace ProceduralCityGenerator.Tests
             // Arrange
             Bounds bounds = new Bounds(Vector3.zero, new Vector3(100, 0, 100));
             MinimapGenerator generator = new MinimapGenerator(256, bounds);
-            
+
             // 간단한 테스트 텍스처 생성
             Texture2D minimap = new Texture2D(256, 256);
             Color[] pixels = new Color[256 * 256];
@@ -127,9 +134,9 @@ namespace ProceduralCityGenerator.Tests
             // Assert
             string expectedFilename = $"Minimap_Seed{seedValue}_256x256.png";
             string expectedPath = Path.Combine(TestDirectoryPath, expectedFilename);
-            
+
             Assert.IsTrue(File.Exists(expectedPath), "파일이 생성되어야 합니다.");
-            
+
             // 파일 크기 확인 (PNG 헤더가 있는지 확인)
             FileInfo fileInfo = new FileInfo(expectedPath);
             Assert.Greater(fileInfo.Length, 0, "파일 크기가 0보다 커야 합니다.");
