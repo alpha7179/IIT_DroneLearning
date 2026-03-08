@@ -183,6 +183,9 @@ namespace ProceduralCityGenerator
                 // 미니맵 생성 (탑뷰 이미지 자동 생성 및 PNG 저장)
                 result.minimap = GenerateMinimap();
 
+                // 그래프 데이터 내보내기 (JSON + CSV) — 도망자 드론 오프라인 지형 분석용
+                ExportGraphData();
+
                 // 생성 성공
                 result.success = true;
 
@@ -315,6 +318,30 @@ namespace ProceduralCityGenerator
 
             Debug.Log($"CityGenerator.GenerateMinimap: {resolutionInt}x{resolutionInt} 미니맵 생성 완료 (Seed: {usedRandomSeed})");
             return minimap;
+        }
+
+        /// <summary>
+        /// 도시 그래프 데이터를 JSON 및 CSV 파일로 내보냅니다.
+        /// Assets/CityData/ 폴더에 저장되며, 도망자 드론의 오프라인 지형 분석에 활용됩니다.
+        /// </summary>
+        private void ExportGraphData()
+        {
+            if (cityGraph == null)
+            {
+                Debug.LogWarning("CityGenerator.ExportGraphData: cityGraph가 null입니다.");
+                return;
+            }
+
+            // 도시 경계 계산 (GenerateMinimap과 동일한 방식)
+            Bounds cityBounds = new Bounds(Vector3.zero, Vector3.zero);
+            if (buildings != null && buildings.Count > 0)
+            {
+                cityBounds = new Bounds(buildings[0].position, Vector3.zero);
+                foreach (Building b in buildings)
+                    cityBounds.Encapsulate(new Bounds(b.position, b.size));
+            }
+
+            CityGraphExporter.ExportAll(cityGraph, strategicLocations, usedRandomSeed, cityBounds);
         }
 
         /// <summary>

@@ -314,8 +314,13 @@ namespace ProceduralCityGenerator
                 return;
             }
 
-            // Assets/CityMaps 디렉토리 경로
-            string directoryPath = "Assets/CityMaps";
+            // Unity 에셋 상대 경로 → 절대 파일시스템 경로로 변환
+            // Application.dataPath = ".../Assets" 이므로 "Assets" 접두사를 제거하고 결합
+            string assetRelPath = GetProceduralCityFolder() + "/CityMaps";
+            string directoryPath = Application.dataPath + assetRelPath.Substring("Assets".Length);
+            directoryPath = directoryPath.Replace('\\', '/');
+
+            Debug.Log($"SaveMinimapToPNG: CityMaps 절대 경로 = {directoryPath}");
 
             // 디렉토리가 존재하지 않으면 생성
             if (!System.IO.Directory.Exists(directoryPath))
@@ -359,6 +364,38 @@ namespace ProceduralCityGenerator
             // Unity Editor에서 에셋 데이터베이스 새로고침
             UnityEditor.AssetDatabase.Refresh();
 #endif
+        }
+
+        /// <summary>
+        /// 이 스크립트(MinimapGenerator.cs)의 위치를 기준으로
+        /// ProceduralCityGenerator 폴더의 Unity Asset 경로를 반환합니다.
+        ///
+        /// 파일 구조 가정:
+        ///   {ProceduralCityGenerator}/Scripts/MinimapGenerator.cs
+        ///           ↑ 2단계 상위 = ProceduralCityGenerator 폴더
+        /// </summary>
+        private static string GetProceduralCityFolder()
+        {
+#if UNITY_EDITOR
+            // FindAssets는 파일명에 검색어가 포함된 모든 스크립트를 반환하므로
+            // (예: MinimapGeneratorTest.cs도 포함됨) 정확히 일치하는 파일만 사용
+            string[] guids = UnityEditor.AssetDatabase.FindAssets("MinimapGenerator t:Script");
+            foreach (string guid in guids)
+            {
+                string assetPath = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
+                if (System.IO.Path.GetFileName(assetPath) == "MinimapGenerator.cs")
+                {
+                    // "Assets/00. BMW/ProceduralCityGenerator/Scripts/MinimapGenerator.cs"
+                    string scriptsFolder = System.IO.Path.GetDirectoryName(assetPath);
+                    // "Assets/00. BMW/ProceduralCityGenerator/Scripts"
+                    string baseFolder = System.IO.Path.GetDirectoryName(scriptsFolder);
+                    // "Assets/00. BMW/ProceduralCityGenerator"
+                    return baseFolder.Replace('\\', '/');
+                }
+            }
+#endif
+            // Fallback: AssetDatabase를 사용할 수 없는 환경(런타임 빌드 등)
+            return "Assets";
         }
     }
 }
