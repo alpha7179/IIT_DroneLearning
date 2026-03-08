@@ -1,0 +1,22 @@
+[Licensing::Module] Trying to connect to existing licensing client channel...
+Built from '6000.0/respin/6000.0.58f2-44b8bf3a32' branch; Version is '6000.0.58f2 (92dee566b325) revision 9625317'; Using compiler version '193933523'; Build Type 'Release'
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-alpha" at "2026-03-08T12:03:06.7836561Z"
+OS: 'Windows 11  (10.0.26200) 64bit Education' Language: 'ko' Physical Memory: 31817 MB
+BatchMode: 1, IsHumanControllingUs: 0, StartBugReporterOnCrash: 0, Is64bit: 1
+Date: 2026-03-08T12:03:06Z
+
+COMMAND LINE ARGUMENTS:
+C:\Program Files\Unity\Hub\Editor\6000.0.58f2\Editor\Unity.exe
+-batchmode
+-nographics
+-projectPath
+C:\WorkSpace\Hub\IIT_DroneLearning
+-runTests
+-testPlatform
+EditMode
+-testResults
+TestResults.xml
+-logFile
+TestLog.txt
+Couldn't set project path to: C:/WorkSpace/Hub/IIT_DroneLearning/C:/WorkSpace/Hub/IIT_DroneLearning
+Exiting without the bug reporter. Application will terminate with return code 1

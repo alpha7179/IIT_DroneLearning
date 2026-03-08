@@ -68,6 +68,28 @@ namespace ProceduralCityGenerator
         [Tooltip("생성될 미니맵의 해상도")]
         public MinimapResolution minimapResolution = MinimapResolution.Resolution512;
 
+        [Header("Wall Settings")]
+        [Tooltip("도시 경계에 벽 생성 여부 (기본: 비활성)")]
+        public bool spawnWalls = false;
+
+        [Tooltip("벽의 높이 (단위_거리). maxBuildingHeight 대비 비율로 자동 스케일됩니다.")]
+        [Range(1f, 200f)]
+        public float wallHeight = 20f;
+
+        [Tooltip("벽의 두께 (단위_거리)")]
+        [Range(0.1f, 20f)]
+        public float wallThickness = 1f;
+
+        [Tooltip("벽에 사용할 머티리얼 (미설정 시 기본 흰색)")]
+        public Material wallMaterial;
+
+        [Header("Floor Settings")]
+        [Tooltip("도시 바닥(Plane) 생성 여부 (기본: 비활성)")]
+        public bool spawnFloor = false;
+
+        [Tooltip("바닥에 사용할 머티리얼 (미설정 시 기본 흰색)")]
+        public Material floorMaterial;
+
         [Header("Layout Mode")]
         [Tooltip("도시 레이아웃 방식 선택 (PureGrid=완전격자, Hybrid=격자+오프셋, PureRandom=유기적 도로망)")]
         public CityLayoutMode layoutMode = CityLayoutMode.PureGrid;
@@ -100,6 +122,8 @@ namespace ProceduralCityGenerator
         private int actualCityDepth;
         private int usedRandomSeed;
         private bool[,] roadMask;   // true = 도로 셀 (건물 배치 불가)
+        private GameObject wallsRoot;
+        private GameObject floorObject;
 
         #endregion
 
@@ -127,6 +151,19 @@ namespace ProceduralCityGenerator
         {
             // 필요한 경우 여기서 추가 초기화를 수행할 수 있습니다.
             Debug.Log("CityGenerator.Start: 초기화 완료");
+        }
+
+        /// <summary>
+        /// Inspector 값이 변경될 때 호출됩니다 (Editor 전용).
+        /// spawnWalls / spawnFloor 토글 시 도시가 이미 생성된 경우 즉시 반영합니다.
+        /// </summary>
+        private void OnValidate()
+        {
+            // 도시가 아직 생성되지 않았으면 무시
+            if (cityRoot == null) return;
+
+            ApplyWallsState();
+            ApplyFloorState();
         }
 
         #endregion
@@ -199,6 +236,10 @@ namespace ProceduralCityGenerator
                 result.edgeCount = cityGraph.EdgeCount;
                 result.graph = cityGraph;
 
+                // 벽 / 바닥 생성 (OnValidate와 동일한 경로로 상태 적용)
+                ApplyWallsState();
+                ApplyFloorState();
+
                 // 미니맵 생성 (탑뷰 이미지 자동 생성 및 PNG 저장)
                 result.minimap = GenerateMinimap();
 
@@ -257,6 +298,22 @@ namespace ProceduralCityGenerator
                 
                 cityRoot = null;
                 Debug.Log("CityGenerator.ClearCity: 도시 루트 GameObject 제거 완료");
+            }
+
+            // 벽 제거
+            if (wallsRoot != null)
+            {
+                if (Application.isPlaying) Destroy(wallsRoot);
+                else DestroyImmediate(wallsRoot);
+                wallsRoot = null;
+            }
+
+            // 바닥 제거
+            if (floorObject != null)
+            {
+                if (Application.isPlaying) Destroy(floorObject);
+                else DestroyImmediate(floorObject);
+                floorObject = null;
             }
 
             // BuildingFactory 풀 초기화
@@ -362,6 +419,186 @@ namespace ProceduralCityGenerator
             }
 
             CityGraphExporter.ExportAll(cityGraph, strategicLocations, usedRandomSeed, cityBounds, layoutMode.ToString());
+        }
+
+        /// <summary>
+        /// spawnWalls 상태에 맞춰 벽을 생성하거나 제거합니다.
+        /// </summary>
+        private void ApplyWallsState()
+        {
+            if (spawnWalls)
+            {
+                if (wallsRoot == null)
+                    SpawnWalls();
+            }
+            else
+            {
+                if (wallsRoot != null)
+                {
+                    if (Application.isPlaying) Destroy(wallsRoot);
+                    else DestroyImmediate(wallsRoot);
+                    wallsRoot = null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// spawnFloor 상태에 맞춰 바닥을 생성하거나 제거합니다.
+        /// </summary>
+        private void ApplyFloorState()
+        {
+            if (spawnFloor)
+            {
+                if (floorObject == null)
+                    SpawnFloor();
+            }
+            else
+            {
+                if (floorObject != null)
+                {
+                    if (Application.isPlaying) Destroy(floorObject);
+                    else DestroyImmediate(floorObject);
+                    floorObject = null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 도시 경계 4면에 벽을 생성합니다. 벽 크기는 도시 크기에 비례하며,
+        /// 경계 건물과 절대 겹치지 않도록 최대 건물 반폭·오프셋을 계산해 배치합니다.
+        /// </summary>
+        private void SpawnWalls()
+        {
+            // 셀 크기 계산
+            float cellW = (buildingWidth + buildingSpacing) * unitDistance;
+            float cellD = (buildingDepth + buildingSpacing) * unitDistance;
+            float cityWorldWidth = actualCityWidth * cellW;
+            float cityWorldDepth = actualCityDepth * cellD;
+
+            // ── 건물 최대 반폭 계산 ──────────────────────────────────────────────
+            // 건물은 셀 원점(코너)에 중심이 배치됩니다.
+            //   x=0: 중심이 -cityWorldWidth/2 → 서쪽으로 buildingHalfW만큼 돌출
+            // Hybrid/PureRandom은 추가로 크기 변동(widthVar) + 위치 오프셋이 있습니다.
+            float maxSizeVar = layoutMode == CityLayoutMode.PureRandom ? 1.5f
+                             : layoutMode == CityLayoutMode.Hybrid     ? 1.25f
+                             : 1.0f;
+
+            float maxBuildingHalfW = buildingWidth  * maxSizeVar * unitDistance / 2f;
+            float maxBuildingHalfD = buildingDepth  * maxSizeVar * unitDistance / 2f;
+
+            // 위치 오프셋 최댓값 (PureGrid는 0)
+            float maxOffX = layoutMode != CityLayoutMode.PureGrid
+                          ? cellW * randomOffsetStrength * 0.45f : 0f;
+            float maxOffZ = layoutMode != CityLayoutMode.PureGrid
+                          ? cellD * randomOffsetStrength * 0.45f : 0f;
+
+            // 벽 내면이 위치해야 할 최소 거리 (도시 중심 기준)
+            // x=0 건물의 서쪽 최대 돌출 = cityWorldWidth/2 + maxBuildingHalfW + maxOffX
+            float halfW = cityWorldWidth / 2f + maxBuildingHalfW + maxOffX;
+            float halfD = cityWorldDepth / 2f + maxBuildingHalfD + maxOffZ;
+            // ────────────────────────────────────────────────────────────────────
+
+            float wh = wallHeight;
+            float wt = wallThickness;
+
+            Vector3 center = transform.position;
+            wallsRoot = new GameObject("CityWalls");
+            wallsRoot.transform.position = center;
+
+            Material mat = wallMaterial;
+
+            // North (+Z): 내면이 +halfD, 중심이 +halfD + wt/2
+            CreateWallPanel(wallsRoot.transform, "Wall_North",
+                new Vector3(0f, wh / 2f, halfD + wt / 2f),
+                new Vector3(halfW * 2f + wt * 2f, wh, wt),
+                mat);
+
+            // South (-Z)
+            CreateWallPanel(wallsRoot.transform, "Wall_South",
+                new Vector3(0f, wh / 2f, -halfD - wt / 2f),
+                new Vector3(halfW * 2f + wt * 2f, wh, wt),
+                mat);
+
+            // East (+X): 내면이 +halfW, 중심이 +halfW + wt/2
+            CreateWallPanel(wallsRoot.transform, "Wall_East",
+                new Vector3(halfW + wt / 2f, wh / 2f, 0f),
+                new Vector3(wt, wh, halfD * 2f),
+                mat);
+
+            // West (-X)
+            CreateWallPanel(wallsRoot.transform, "Wall_West",
+                new Vector3(-halfW - wt / 2f, wh / 2f, 0f),
+                new Vector3(wt, wh, halfD * 2f),
+                mat);
+
+            Debug.Log($"CityGenerator.SpawnWalls: 벽 생성 완료 " +
+                      $"(도시: {cityWorldWidth:F1}x{cityWorldDepth:F1}, " +
+                      $"벽 범위: {halfW * 2f:F1}x{halfD * 2f:F1}, 높이: {wh:F1})");
+        }
+
+        /// <summary>
+        /// 단일 벽 패널을 Cube Primitive로 생성합니다.
+        /// </summary>
+        private void CreateWallPanel(Transform parent, string name, Vector3 localPosition, Vector3 size, Material mat)
+        {
+            GameObject wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            wall.name = name;
+            wall.transform.SetParent(parent, false);
+            wall.transform.localPosition = localPosition;
+            wall.transform.localScale = size;
+
+            if (mat != null)
+            {
+                var renderer = wall.GetComponent<MeshRenderer>();
+                if (renderer != null)
+                    renderer.sharedMaterial = mat;
+            }
+        }
+
+        /// <summary>
+        /// 도시 바닥을 Plane Primitive로 생성합니다.
+        /// 크기는 SpawnWalls와 동일한 halfW/halfD 기준으로 벽 내부 면적과 일치합니다.
+        /// </summary>
+        private void SpawnFloor()
+        {
+            // SpawnWalls와 동일한 halfW / halfD 계산
+            float cellW = (buildingWidth + buildingSpacing) * unitDistance;
+            float cellD = (buildingDepth + buildingSpacing) * unitDistance;
+            float cityWorldWidth = actualCityWidth * cellW;
+            float cityWorldDepth = actualCityDepth * cellD;
+
+            float maxSizeVar = layoutMode == CityLayoutMode.PureRandom ? 1.5f
+                             : layoutMode == CityLayoutMode.Hybrid     ? 1.25f
+                             : 1.0f;
+
+            float maxBuildingHalfW = buildingWidth  * maxSizeVar * unitDistance / 2f;
+            float maxBuildingHalfD = buildingDepth  * maxSizeVar * unitDistance / 2f;
+
+            float maxOffX = layoutMode != CityLayoutMode.PureGrid
+                          ? cellW * randomOffsetStrength * 0.45f : 0f;
+            float maxOffZ = layoutMode != CityLayoutMode.PureGrid
+                          ? cellD * randomOffsetStrength * 0.45f : 0f;
+
+            float halfW = cityWorldWidth / 2f + maxBuildingHalfW + maxOffX;
+            float halfD = cityWorldDepth / 2f + maxBuildingHalfD + maxOffZ;
+
+            // Unity Plane 기본 크기는 10x10 유닛 → 벽 내부 전체 넓이(halfW*2 × halfD*2)로 스케일
+            float scaleX = halfW * 2f / 10f;
+            float scaleZ = halfD * 2f / 10f;
+
+            floorObject = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            floorObject.name = "CityFloor";
+            floorObject.transform.position = new Vector3(transform.position.x, 0f, transform.position.z);
+            floorObject.transform.localScale = new Vector3(scaleX, 1f, scaleZ);
+
+            if (floorMaterial != null)
+            {
+                var renderer = floorObject.GetComponent<MeshRenderer>();
+                if (renderer != null)
+                    renderer.sharedMaterial = floorMaterial;
+            }
+
+            Debug.Log($"CityGenerator.SpawnFloor: 바닥 생성 완료 (크기: {halfW * 2f:F1}x{halfD * 2f:F1}, 스케일: {scaleX:F2}x{scaleZ:F2})");
         }
 
         /// <summary>

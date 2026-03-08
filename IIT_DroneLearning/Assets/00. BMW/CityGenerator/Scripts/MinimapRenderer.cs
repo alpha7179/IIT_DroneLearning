@@ -9,7 +9,6 @@ namespace ProceduralCityGenerator
     /// 기본 미니맵 텍스처와 동적 레이어를 관리하여 드론 위치 등을 실시간으로 표시
     /// Requirements: 19.6
     /// </summary>
-    [RequireComponent(typeof(RawImage))]
     public class MinimapRenderer : MonoBehaviour
     {
         /// <summary>
@@ -91,6 +90,8 @@ namespace ProceduralCityGenerator
                 return;
             }
 
+            if (minimapImage == null)
+                minimapImage = GetComponent<UnityEngine.UI.RawImage>();
             if (minimapImage == null)
             {
                 Debug.LogError("MinimapRenderer.Initialize: RawImage 컴포넌트가 null입니다.");

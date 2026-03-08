@@ -1,5 +1,6 @@
 using UnityEditor;
 using UnityEngine;
+using System.IO;
 
 namespace ProceduralCityGenerator
 {
@@ -10,6 +11,46 @@ namespace ProceduralCityGenerator
     [CustomEditor(typeof(CityGenerator))]
     public class CityGeneratorEditor : UnityEditor.Editor
     {
+        /// <summary>
+        /// 이 스크립트가 위치한 CityGenerator 루트 폴더의 Assets 상대 경로를 반환합니다.
+        /// 예: "Assets/00. BMW/CityGenerator"
+        /// </summary>
+        private string GetCityGeneratorRootPath()
+        {
+            var script = MonoScript.FromMonoBehaviour((CityGenerator)target);
+            string scriptPath = AssetDatabase.GetAssetPath(script);
+            // scriptPath: "Assets/00. BMW/CityGenerator/Scripts/CityGenerator.cs"
+            string scriptsDir = Path.GetDirectoryName(scriptPath);   // .../Scripts
+            string rootDir    = Path.GetDirectoryName(scriptsDir);   // .../CityGenerator
+            return rootDir.Replace('\\', '/');
+        }
+
+        /// <summary>
+        /// Assets 상대 경로 폴더 안의 모든 파일을 삭제합니다 (하위 폴더는 유지).
+        /// </summary>
+        private void ClearFolderContents(string assetFolderPath)
+        {
+            // Assets/... → 프로젝트 루트 기준 절대 경로
+            string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+            string fullPath    = Path.GetFullPath(Path.Combine(projectRoot, assetFolderPath));
+
+            if (!Directory.Exists(fullPath))
+            {
+                Debug.LogWarning($"[CityGenerator] 폴더가 없습니다: {assetFolderPath}");
+                return;
+            }
+
+            string[] files = Directory.GetFiles(fullPath, "*", SearchOption.TopDirectoryOnly);
+            int count = 0;
+            foreach (string file in files)
+            {
+                File.Delete(file);
+                count++;
+            }
+
+            AssetDatabase.Refresh();
+            Debug.Log($"[CityGenerator] {assetFolderPath} — {count}개 파일 삭제 완료.");
+        }
         /// <summary>
         /// Inspector GUI를 그립니다.
         /// </summary>
@@ -135,6 +176,50 @@ namespace ProceduralCityGenerator
             cityGenerator.minimapResolution = (MinimapResolution)EditorGUILayout.EnumPopup(
                 new GUIContent("Minimap Resolution", "생성될 미니맵의 해상도. 지원: 256x256, 512x512, 1024x1024"),
                 cityGenerator.minimapResolution);
+
+            // === Wall Settings 섹션 ===
+            EditorGUILayout.Space(10);
+            EditorGUILayout.LabelField("Wall Settings", EditorStyles.boldLabel);
+            EditorGUILayout.Space(3);
+
+            cityGenerator.spawnWalls = EditorGUILayout.Toggle(
+                new GUIContent("Spawn Walls", "도시 경계에 4면 벽을 생성합니다. (기본: 비활성)"),
+                cityGenerator.spawnWalls);
+
+            if (cityGenerator.spawnWalls)
+            {
+                EditorGUI.indentLevel++;
+                cityGenerator.wallHeight = EditorGUILayout.Slider(
+                    new GUIContent("Wall Height", "벽의 높이 (단위_거리). 범위: 1 ~ 200"),
+                    cityGenerator.wallHeight, 1f, 200f);
+
+                cityGenerator.wallThickness = EditorGUILayout.Slider(
+                    new GUIContent("Wall Thickness", "벽의 두께 (단위_거리). 범위: 0.1 ~ 20"),
+                    cityGenerator.wallThickness, 0.1f, 20f);
+
+                cityGenerator.wallMaterial = (Material)EditorGUILayout.ObjectField(
+                    new GUIContent("Wall Material", "벽에 사용할 머티리얼 (미설정 시 기본 흰색)"),
+                    cityGenerator.wallMaterial, typeof(Material), false);
+                EditorGUI.indentLevel--;
+            }
+
+            // === Floor Settings 섹션 ===
+            EditorGUILayout.Space(10);
+            EditorGUILayout.LabelField("Floor Settings", EditorStyles.boldLabel);
+            EditorGUILayout.Space(3);
+
+            cityGenerator.spawnFloor = EditorGUILayout.Toggle(
+                new GUIContent("Spawn Floor", "도시 바닥(Plane)을 생성합니다. 도시 크기에 자동으로 맞춰집니다. (기본: 비활성)"),
+                cityGenerator.spawnFloor);
+
+            if (cityGenerator.spawnFloor)
+            {
+                EditorGUI.indentLevel++;
+                cityGenerator.floorMaterial = (Material)EditorGUILayout.ObjectField(
+                    new GUIContent("Floor Material", "바닥에 사용할 머티리얼 (미설정 시 기본 흰색)"),
+                    cityGenerator.floorMaterial, typeof(Material), false);
+                EditorGUI.indentLevel--;
+            }
 
             // === Layout Mode 섹션 ===
             EditorGUILayout.Space(10);
@@ -276,7 +361,54 @@ namespace ProceduralCityGenerator
                     }
                 }
             }
+
+            // === 데이터 관리 섹션 ===
+            EditorGUILayout.Space(10);
+            EditorGUILayout.LabelField("데이터 관리", EditorStyles.boldLabel);
+            EditorGUILayout.Space(3);
+
+            string rootPath = GetCityGeneratorRootPath();
+
+            EditorGUILayout.BeginHorizontal();
+
+            // CityData 비우기
+            GUI.backgroundColor = new Color(1f, 0.6f, 0.3f); // 주황
+            if (GUILayout.Button("CityData 비우기", GUILayout.Height(28)))
+            {
+                string folderPath = rootPath + "/CityData";
+                if (EditorUtility.DisplayDialog(
+                    "CityData 비우기",
+                    $"폴더 안의 모든 파일을 삭제합니다.\n{folderPath}\n\n계속하시겠습니까?",
+                    "삭제", "취소"))
+                {
+                    ClearFolderContents(folderPath);
+                }
+            }
+
+            // CityMaps 비우기
+            GUI.backgroundColor = new Color(1f, 0.6f, 0.3f); // 주황
+            if (GUILayout.Button("CityMaps 비우기", GUILayout.Height(28)))
+            {
+                string folderPath = rootPath + "/CityMaps";
+                if (EditorUtility.DisplayDialog(
+                    "CityMaps 비우기",
+                    $"폴더 안의 모든 파일을 삭제합니다.\n{folderPath}\n\n계속하시겠습니까?",
+                    "삭제", "취소"))
+                {
+                    ClearFolderContents(folderPath);
+                }
+            }
+
+            GUI.backgroundColor = Color.white;
+            EditorGUILayout.EndHorizontal();
+
+            // 경로 표시 (읽기전용 참고용)
+            EditorGUILayout.Space(3);
+            EditorGUI.BeginDisabledGroup(true);
+            EditorGUILayout.TextField("루트 경로", rootPath);
+            EditorGUI.EndDisabledGroup();
         }
+
         /// <summary>
         /// 레이아웃 모드 선택용 토글 버튼을 그립니다.
         /// 현재 선택된 모드는 강조(진한 배경)로 표시됩니다.

@@ -42,9 +42,16 @@ namespace ProceduralCityGenerator.Tests
         public void Teardown()
         {
             // 테스트 후 정리
+            if (cityGenerator != null)
+                cityGenerator.ClearCity();
             if (testGameObject != null)
-            {
                 Object.DestroyImmediate(testGameObject);
+            // 이전 테스트에서 남은 stray "City" 오브젝트 정리
+            GameObject cityObj = GameObject.Find("City");
+            while (cityObj != null)
+            {
+                Object.DestroyImmediate(cityObj);
+                cityObj = GameObject.Find("City");
             }
         }
 

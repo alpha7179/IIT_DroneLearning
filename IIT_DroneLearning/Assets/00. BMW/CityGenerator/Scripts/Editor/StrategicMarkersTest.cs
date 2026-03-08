@@ -124,19 +124,19 @@ namespace ProceduralCityGenerator.Tests
                 },
                 new StrategicLocation
                 {
-                    position = new Vector3(50, 0, 50),
+                    position = new Vector3(-10, 0, -10),
                     locationType = StrategyType.DeadEnd,
                     connectedNodes = new List<int> { 3 }
                 },
                 new StrategicLocation
                 {
-                    position = new Vector3(70, 0, 70),
+                    position = new Vector3(-30, 0, -30),
                     locationType = StrategyType.OpenArea,
                     connectedNodes = new List<int> { 4 }
                 },
                 new StrategicLocation
                 {
-                    position = new Vector3(90, 0, 90),
+                    position = new Vector3(0, 0, 0),
                     locationType = StrategyType.DetourPath,
                     connectedNodes = new List<int> { 5 }
                 }
@@ -167,7 +167,10 @@ namespace ProceduralCityGenerator.Tests
             Assert.AreEqual(Color.blue, color1, "CoverPoint should be blue");
             Assert.AreEqual(Color.yellow, color2, "Intersection should be yellow");
             Assert.AreEqual(Color.red, color3, "DeadEnd should be red");
-            Assert.AreEqual(new Color(1f, 0.5f, 0f), color4, "OpenArea should be orange");
+            // RGBA32 텍스처 저장 시 0.5f → 128/255 ≈ 0.502로 양자화되므로 근사값 비교
+            Assert.AreEqual(1f, color4.r, 0.01f, "OpenArea red channel should be ~1");
+            Assert.AreEqual(0.5f, color4.g, 0.01f, "OpenArea green channel should be ~0.5");
+            Assert.AreEqual(0f, color4.b, 0.01f, "OpenArea blue channel should be ~0");
             Assert.AreEqual(Color.green, color5, "DetourPath should be green");
         }
 
