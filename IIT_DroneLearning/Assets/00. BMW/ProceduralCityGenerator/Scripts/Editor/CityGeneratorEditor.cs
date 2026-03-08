@@ -136,6 +136,49 @@ namespace ProceduralCityGenerator
                 new GUIContent("Minimap Resolution", "생성될 미니맵의 해상도. 지원: 256x256, 512x512, 1024x1024"),
                 cityGenerator.minimapResolution);
 
+            // === Layout Mode 섹션 ===
+            EditorGUILayout.Space(10);
+            EditorGUILayout.LabelField("Layout Mode", EditorStyles.boldLabel);
+            EditorGUILayout.Space(3);
+
+            // 3개 토글 버튼으로 레이아웃 모드 선택
+            EditorGUILayout.BeginHorizontal();
+            DrawLayoutModeButton(cityGenerator, CityLayoutMode.PureGrid,    "Pure Grid",    "완전 격자 — 균일한 블록 간격");
+            DrawLayoutModeButton(cityGenerator, CityLayoutMode.Hybrid,      "Hybrid",       "격자 + 랜덤 오프셋 — 불규칙 블록·크기");
+            DrawLayoutModeButton(cityGenerator, CityLayoutMode.PureRandom,  "Pure Random",  "유기적 도로망 — 가장 현실적인 도시 모양");
+            EditorGUILayout.EndHorizontal();
+
+            // Hybrid / PureRandom 전용 파라미터 (PureGrid일 때 숨김)
+            if (cityGenerator.layoutMode != CityLayoutMode.PureGrid)
+            {
+                EditorGUILayout.Space(5);
+
+                cityGenerator.randomOffsetStrength = EditorGUILayout.Slider(
+                    new GUIContent("Offset Strength",
+                        "건물 위치 랜덤 오프셋 세기.\n0 = 격자 위치 고정 / 1 = 최대 불규칙"),
+                    cityGenerator.randomOffsetStrength, 0f, 1f);
+
+                EditorGUILayout.Space(3);
+
+                cityGenerator.minBlockSize = EditorGUILayout.IntSlider(
+                    new GUIContent("Min Block Size",
+                        "블록(도로 간격) 최소 크기 (격자 단위). 작을수록 골목이 촘촘해집니다."),
+                    cityGenerator.minBlockSize, 2, 8);
+
+                cityGenerator.maxBlockSize = EditorGUILayout.IntSlider(
+                    new GUIContent("Max Block Size",
+                        "블록(도로 간격) 최대 크기 (격자 단위). 클수록 큰 블록이 생성됩니다."),
+                    cityGenerator.maxBlockSize, 3, 12);
+
+                // min > max 경고
+                if (cityGenerator.minBlockSize > cityGenerator.maxBlockSize)
+                {
+                    EditorGUILayout.HelpBox(
+                        "Min Block Size가 Max Block Size보다 큽니다. 값을 조정하세요.",
+                        MessageType.Warning);
+                }
+            }
+
             // 변경 사항이 있으면 저장
             if (EditorGUI.EndChangeCheck())
             {
@@ -233,6 +276,31 @@ namespace ProceduralCityGenerator
                     }
                 }
             }
+        }
+        /// <summary>
+        /// 레이아웃 모드 선택용 토글 버튼을 그립니다.
+        /// 현재 선택된 모드는 강조(진한 배경)로 표시됩니다.
+        /// </summary>
+        private void DrawLayoutModeButton(
+            CityGenerator gen, CityLayoutMode mode, string label, string tooltip)
+        {
+            bool selected = gen.layoutMode == mode;
+
+            // 선택된 버튼은 밝은 하늘색 배경으로 강조
+            GUI.backgroundColor = selected
+                ? new Color(0.4f, 0.8f, 1.0f)   // 선택 = 하늘색
+                : new Color(0.85f, 0.85f, 0.85f); // 미선택 = 회색
+
+            GUIStyle style = new GUIStyle(GUI.skin.button)
+            {
+                fontStyle = selected ? FontStyle.Bold : FontStyle.Normal,
+                fixedHeight = 28
+            };
+
+            if (GUILayout.Button(new GUIContent(label, tooltip), style))
+                gen.layoutMode = mode;
+
+            GUI.backgroundColor = Color.white; // 색상 초기화
         }
     }
 }

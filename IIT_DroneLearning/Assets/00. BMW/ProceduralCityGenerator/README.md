@@ -8,9 +8,13 @@
 
 - **파라미터 기반 도시 생성**: Inspector를 통한 직관적인 도시 환경 설정
 - **재현 가능한 생성**: 랜덤 시드를 통한 동일 환경 재생성
+- **3가지 레이아웃 모드**: PureGrid(완전 격자) · Hybrid(불규칙 블록) · PureRandom(유기적 도로망) 선택 가능
+- **길 연결성 보장**: BFS 기반 알고리즘으로 Hybrid/PureRandom에서 막힌 구간 자동 해소
+- **CityGenerator 중심 생성**: 컴포넌트가 붙은 GameObject 위치를 도시 중심으로 자동 정렬
 - **AI 친화적 데이터 구조**: 경로 계획과 전략 수립을 위한 그래프 및 공간 분할 자료구조
 - **전략적 위치 분석**: 은폐 지점, 교차로, 막다른 골목 등 자동 식별
-- **등고선 스타일 미니맵**: 건물 높이를 시각적으로 표현한 2D 미니맵 생성
+- **탑뷰 미니맵 자동 저장**: 도시 생성 시 등고선 스타일 PNG를 CityMaps/ 폴더에 자동 저장
+- **그래프 JSON·CSV 자동 내보내기**: 도시 그래프를 CityData/ 폴더에 자동 저장 (도망자 드론 오프라인 분석용)
 - **런타임 쿼리 API**: 실시간 도시 정보 조회를 위한 최적화된 API
 - **프리셋 시스템**: 자주 사용하는 파라미터 조합 저장 및 로드
 - **성능 최적화**: 대규모 도시 생성 시에도 5초 이내 완료
@@ -32,21 +36,24 @@
 ```
 IIT_DroneLearning/Assets/00. BMW/ProceduralCityGenerator/
 ├── Scripts/
-│   ├── CityGenerator.cs          # 도시 생성 핵심 컴포넌트
-│   ├── CityParameters.cs         # 파라미터 프리셋 ScriptableObject
-│   ├── CityGraph.cs              # 그래프 자료구조
-│   ├── SpatialIndex.cs           # Quadtree 공간 인덱스
-│   ├── BuildingFactory.cs        # 건물 생성 및 오브젝트 풀링
+│   ├── CityGenerator.cs              # 도시 생성 핵심 컴포넌트 (레이아웃 모드 포함)
+│   ├── CityParameters.cs             # 파라미터 프리셋 ScriptableObject
+│   ├── CityGraph.cs                  # 그래프 자료구조
+│   ├── CityGraphExporter.cs          # 그래프 JSON·CSV 내보내기
+│   ├── SpatialIndex.cs               # Quadtree 공간 인덱스
+│   ├── BuildingFactory.cs            # 건물 생성 및 오브젝트 풀링
 │   ├── StrategicLocationAnalyzer.cs  # 전략적 위치 분석
-│   ├── MinimapGenerator.cs       # 미니맵 생성
-│   ├── MinimapRenderer.cs        # 미니맵 UI 렌더링
-│   ├── CityDataAPI.cs            # 런타임 쿼리 API
-│   ├── DataStructures.cs         # 공통 데이터 구조체
+│   ├── MinimapGenerator.cs           # 미니맵 생성 및 PNG 저장
+│   ├── MinimapRenderer.cs            # 미니맵 UI 렌더링
+│   ├── CityDataAPI.cs                # 런타임 쿼리 API
+│   ├── DataStructures.cs             # 공통 데이터 구조체 (CityLayoutMode 포함)
 │   └── Editor/
-│       └── CityGeneratorEditor.cs  # Custom Inspector
-├── Presets/                      # 저장된 파라미터 프리셋
-├── Maps/                         # 생성된 미니맵 이미지
-└── Materials/                    # 건물 머티리얼
+│       └── CityGeneratorEditor.cs    # Custom Inspector (레이아웃 모드 버튼 포함)
+├── Presets/                          # 저장된 파라미터 프리셋
+├── Materials/                        # 건물 머티리얼
+└── (런타임 생성 폴더 — git 제외)
+    ├── CityData/                     # 자동 생성: 그래프 JSON·CSV 파일
+    └── CityMaps/                     # 자동 생성: 미니맵 PNG 파일
 ```
 
 ### 2. 기본 설정
@@ -152,46 +159,98 @@ IIT_DroneLearning/Assets/00. BMW/ProceduralCityGenerator/
   - 균형: 512x512
   - 고품질: 1024x1024
 
+### Layout Mode (레이아웃 모드)
+
+Inspector에서 3개의 버튼 중 하나를 선택합니다. 선택된 버튼은 하늘색으로 강조됩니다.
+
+#### layoutMode
+- **기본값**: `PureGrid`
+- **옵션**:
+  | 모드 | 설명 |
+  |------|------|
+  | `PureGrid` | 완전 격자 — 균일한 블록 간격, 건물이 정렬된 그리드에 배치됨 |
+  | `Hybrid` | 격자 + 랜덤 오프셋 — 불규칙한 블록 간격과 건물 위치·크기 변화 |
+  | `PureRandom` | 유기적 도로망 — 구불구불한 주간선 도로와 자유 배치, 가장 현실적인 도시 형태 |
+
+#### Offset Strength (오프셋 세기) — Hybrid / PureRandom 전용
+- **설명**: 격자 위치에서 건물이 얼마나 벗어날 수 있는지의 세기
+- **기본값**: 0.5
+- **범위**: 0.0 ~ 1.0
+- **비고**: 내부적으로 `cellSize × offsetStrength × 0.45`로 제한되어 도로와 시각적 겹침 방지
+
+#### Min Block Size (최소 블록 크기) — Hybrid / PureRandom 전용
+- **설명**: 도로 사이 블록의 최소 크기 (격자 단위)
+- **기본값**: 3
+- **범위**: 2 ~ 8
+- **비고**: 값이 작을수록 골목이 촘촘하게 생성됨
+
+#### Max Block Size (최대 블록 크기) — Hybrid / PureRandom 전용
+- **설명**: 도로 사이 블록의 최대 크기 (격자 단위)
+- **기본값**: 6
+- **범위**: 3 ~ 12
+- **비고**: Min Block Size보다 커야 함 (Inspector에서 경고 표시)
+
+### 길 연결성 보장 (EnsureRoadConnectivity)
+
+Hybrid 및 PureRandom 모드에서는 건물 배치 후 BFS 기반 연결성 검사가 자동으로 실행됩니다.
+
+- **방식**: 빈 셀(도로/공간)의 연결 컴포넌트를 BFS로 분석 → 고립된 컴포넌트와 주 컴포넌트의 경계에서 가장 낮은(작은) 건물을 자동 제거
+- **최대 반복**: `min(건물수/5 + 1, 50)` 회
+- **PureGrid**: 항상 연결됨 → 실행 건너뜀
+
 
 ## Inspector UI 사용 방법
 
-### 1. 도시 생성
+### 1. 레이아웃 모드 선택
+
+Inspector의 **Layout Mode** 섹션에 3개의 토글 버튼이 표시됩니다:
+
+```
+[ Pure Grid ]  [ Hybrid ]  [ Pure Random ]
+```
+
+- 선택된 버튼은 **하늘색(Sky Blue)** 배경 + **볼드** 텍스트로 강조됩니다
+- 미선택 버튼은 회색 배경으로 표시됩니다
+- `Hybrid` 또는 `Pure Random` 선택 시 **Offset Strength**, **Min/Max Block Size** 슬라이더가 추가로 표시됩니다
+- `Min Block Size > Max Block Size`일 경우 노란색 경고 박스가 표시됩니다
+
+### 2. 도시 생성
 
 1. Unity Editor에서 `CityGenerator` 컴포넌트가 부착된 GameObject를 선택합니다
 2. Inspector에서 원하는 파라미터를 설정합니다
-3. **"도시 생성"** 버튼을 클릭합니다
-4. 진행률 표시줄이 나타나며 생성 과정을 확인할 수 있습니다
+3. **Layout Mode** 버튼에서 원하는 레이아웃을 선택합니다 (기본: Pure Grid)
+4. **"도시 생성 (Generate City)"** 버튼을 클릭합니다
 5. 생성이 완료되면 Console에 결과가 출력됩니다
+6. `Assets/CityMaps/` 폴더에 미니맵 PNG가, `Assets/CityData/` 폴더에 그래프 JSON·CSV가 자동 저장됩니다
 
-**생성 결과 예시:**
+**생성 결과 예시 (Hybrid 모드, Seed 42):**
 ```
-CityGenerator.GenerateCity: 도시 생성 완료! 
-건물: 245개, 노드: 512개, 엣지: 1024개, 
-생성 시간: 2.34초, 사용된 시드: 12345
+[CityGenerator] Hybrid 도로 마스크 완료. 도로 셀: 87 / 400
+[CityGenerator] 연결성 보장: 건물 3개 제거 → 모든 빈 셀 연결됨
+[MinimapGenerator] 미니맵 저장 완료: Assets/CityMaps/Minimap_Seed42_Hybrid_512x512.png
+[CityGraphExporter] 그래프 내보내기 완료: Assets/CityData/City_Seed42_Hybrid.json
+[CityGraphExporter] CSV 내보내기 완료: Assets/CityData/City_Seed42_Hybrid_nodes.csv
+[CityGenerator] 도시 생성 완료! 건물: 218개, 노드: 441개, 엣지: 1560개, 시드: 42
 ```
 
-### 2. 도시 초기화
+### 3. 도시 초기화
 
-- **"도시 초기화"** 버튼을 클릭하면 생성된 모든 건물이 제거됩니다
+- **"도시 초기화 (Clear City)"** 버튼을 클릭하면 확인 다이얼로그 후 생성된 모든 건물이 제거됩니다
 - 새로운 도시를 생성하기 전에 자동으로 이전 도시가 제거됩니다
 
-### 3. 프리셋 저장
+### 4. 프리셋 저장
 
 1. 원하는 파라미터를 설정합니다
-2. **"프리셋 저장"** 버튼을 클릭합니다
+2. **"프리셋 저장 (Save Preset)"** 버튼을 클릭합니다
 3. 프리셋 이름을 입력합니다 (예: "DenseCity", "OpenArea")
 4. 프리셋이 `Assets/CityPresets/` 디렉토리에 저장됩니다
 
-### 4. 프리셋 로드
+### 5. 프리셋 로드
 
-1. **"프리셋 로드"** 버튼을 클릭합니다
+1. **"프리셋 로드 (Load Preset)"** 버튼을 클릭합니다
 2. `Assets/CityPresets/` 디렉토리에서 원하는 프리셋을 선택합니다
 3. 선택한 프리셋의 파라미터가 자동으로 적용됩니다
-
-### 5. 생성 취소
-
-- 도시 생성 중 진행률 표시줄의 **"Cancel"** 버튼을 클릭하면 생성이 중단됩니다
-- 부분적으로 생성된 건물은 자동으로 정리됩니다
+4. 프리셋에는 `layoutMode`를 포함한 모든 파라미터가 저장됩니다
 
 
 ## API 사용 예제
@@ -271,7 +330,7 @@ if (pathNodeIds.Count > 0)
 int currentNodeId = nearestNode.nodeId;
 List<GraphNode> neighbors = CityDataAPI.Instance.GetNeighborNodes(currentNodeId);
 
-Debug.Log($"노드 {currentNodeId}는 {neighbors.Count}개의 인접 노드를 가지고 있습니다");
+ProceduralCityGeneratorDebug.Log($"노드 {currentNodeId}는 {neighbors.Count}개의 인접 노드를 가지고 있습니다");
 
 foreach (GraphNode neighbor in neighbors)
 {
@@ -758,7 +817,16 @@ Building Height: 20 ~ 100
 - 건물 간격을 늘려서 이동 가능한 공간을 확보합니다
 - Console에서 경고 메시지 확인
 
-#### 7. 메모리 부족 오류
+#### 7. Hybrid/PureRandom 모드에서 건물이 너무 적게 생성됨
+
+**증상**: PureGrid 대비 건물 수가 현저히 적음
+
+**해결 방법**:
+- 이는 정상 동작입니다 — 도로 마스크가 도로 공간을 예약하므로 건물 셀이 줄어듭니다
+- 건물 밀도를 높이거나 (`buildingDensity` ↑) `minBlockSize`를 늘려 도로 비율을 줄이세요
+- `EnsureRoadConnectivity`가 추가로 일부 건물을 제거할 수 있습니다 (Console 메시지 확인)
+
+#### 8. 메모리 부족 오류
 
 **증상**: 대규모 도시 생성 시 OutOfMemoryException 발생
 
@@ -774,18 +842,39 @@ Building Height: 20 ~ 100
 
 시스템은 다양한 로그 메시지를 출력합니다:
 
+**PureGrid 모드 (Seed 12345):**
 ```
-[Log] CityGenerator.GenerateCity: 도시 생성 시작
-[Log] CityGenerator.InitializeRandomSeed: 랜덤 시드 초기화 완료. 사용된 시드: 12345
-[Log] CityGenerator.CreateGridLayout: 도시 크기 결정 완료. 가로: 20, 세로: 20
-[Log] CityGenerator.PlaceBuildingsOnGrid: 건물 배치 완료. 총 280개의 건물 생성
-[Log] CityGenerator.BuildCityGraph: 그래프 구축 완료. 노드: 441, 엣지: 1680
-[Log] CityGenerator.GenerateCity: 도시 생성 완료!
+[CityGenerator] 도시 생성 시작
+[CityGenerator] 랜덤 시드 초기화 완료. 사용된 시드: 12345
+[CityGenerator] 도시 크기 결정 완료. 가로: 20, 세로: 20
+[CityGenerator] 건물 배치 완료. 총 280개의 건물 생성
+[CityGenerator] 그래프 구축 완료. 노드: 441, 엣지: 1680
+[MinimapGenerator] 미니맵 저장 완료: Assets/CityMaps/Minimap_Seed12345_PureGrid_512x512.png
+[CityGraphExporter] 그래프 내보내기 완료: Assets/CityData/City_Seed12345_PureGrid.json
+[CityGenerator] 도시 생성 완료! 건물: 280개, 노드: 441개, 엣지: 1680개, 시드: 12345
+```
+
+**Hybrid 모드 (Seed 42):**
+```
+[CityGenerator] Hybrid 도로 마스크 완료. 도로 셀: 87 / 400
+[CityGenerator] 건물 배치 완료. 총 218개의 건물 생성
+[CityGenerator] 연결성 보장: 건물 3개 제거 → 모든 빈 셀 연결됨
+[MinimapGenerator] 미니맵 저장 완료: Assets/CityMaps/Minimap_Seed42_Hybrid_512x512.png
+[CityGraphExporter] 그래프 내보내기 완료: Assets/CityData/City_Seed42_Hybrid.json
+```
+
+**PureRandom 모드 (Seed 7):**
+```
+[CityGenerator] PureRandom 도로 마스크 완료. 도로 셀: 124 / 400
+[CityGenerator] 건물 배치 완료. 총 183개의 건물 생성
+[CityGenerator] 연결성 보장: 건물 5개 제거 → 모든 빈 셀 연결됨
+[MinimapGenerator] 미니맵 저장 완료: Assets/CityMaps/Minimap_Seed7_PureRandom_512x512.png
+[CityGraphExporter] 그래프 내보내기 완료: Assets/CityData/City_Seed7_PureRandom.json
 ```
 
 #### Scene View에서 확인
 
-- Hierarchy에서 "생성된_도시" GameObject를 찾습니다
+- Hierarchy에서 `CityGenerator` 컴포넌트가 붙은 GameObject의 하위 건물 오브젝트를 찾습니다
 - 각 건물은 "Building_X_Z" 형식으로 이름이 지정됩니다
 - Scene View에서 도시 구조를 시각적으로 확인합니다
 
@@ -835,7 +924,7 @@ public class CustomBuildingMaterializer : MonoBehaviour
     
     void ApplyCustomMaterials()
     {
-        GameObject cityRoot = GameObject.Find("생성된_도시");
+        GameObject cityRoot = cityGenerator.gameObject; // CityGenerator가 붙은 오브젝트
         if (cityRoot == null) return;
         
         foreach (Transform building in cityRoot.transform)
@@ -933,10 +1022,10 @@ public class MultiLayerCityGenerator : MonoBehaviour
             cityGenerator.GenerateCity();
             
             // 생성된 도시를 위로 이동
-            GameObject cityRoot = GameObject.Find("생성된_도시");
+            GameObject cityRoot = cityGenerator.gameObject; // CityGenerator가 붙은 오브젝트
             if (cityRoot != null)
             {
-                cityRoot.name = $"생성된_도시_Layer{layer}";
+                cityRoot.name = $"City_Layer{layer}";
                 cityRoot.transform.position = new Vector3(0, layer * layerHeight, 0);
             }
         }
@@ -1119,6 +1208,36 @@ Building Density: 0.95
 용도: 복잡한 경로 계획, 좁은 통로, 최고 난이도
 ```
 
+### Organic City — Hybrid (유기적 혼합 도시)
+```
+Layout Mode: Hybrid
+Unit Distance: 1.5
+Grid Size: 25x25 ~ 35x35
+Building Width/Depth: 1.2
+Building Height: 8 ~ 40
+Building Spacing: 1.0
+Building Density: 0.75
+Offset Strength: 0.6
+Min Block Size: 3 / Max Block Size: 6
+
+용도: 불규칙한 블록과 골목, 현실적 도시 느낌, 중간 난이도
+```
+
+### Organic City — Pure Random (완전 유기적 도시)
+```
+Layout Mode: PureRandom
+Unit Distance: 1.5
+Grid Size: 30x30 ~ 40x40
+Building Width/Depth: 1.0
+Building Height: 5 ~ 50
+Building Spacing: 0.8
+Building Density: 0.80
+Offset Strength: 0.8
+Min Block Size: 4 / Max Block Size: 8
+
+용도: 가장 현실적인 도시 형태, LOS 차단 최다, RL 고난이도 훈련
+```
+
 ## 시스템 아키텍처
 
 ### 컴포넌트 관계도
@@ -1126,6 +1245,9 @@ Building Density: 0.95
 ```
 CityGenerator (중심 컴포넌트)
     ├── CityParameters (파라미터 저장)
+    ├── [CityLayoutMode 결정]
+    │   ├── roadMask (bool[,]) — Hybrid/PureRandom 도로 마스크
+    │   └── EnsureRoadConnectivity() — BFS 연결성 보장
     ├── BuildingFactory (건물 생성)
     │   └── Object Pool (성능 최적화)
     ├── CityGraph (그래프 자료구조)
@@ -1136,6 +1258,10 @@ CityGenerator (중심 컴포넌트)
     ├── StrategicLocationAnalyzer (전략 분석)
     │   └── StrategicLocation (전략적 위치)
     ├── MinimapGenerator (미니맵 생성)
+    │   └── → Assets/CityMaps/Minimap_Seed{N}_{Mode}_{Res}.png
+    ├── CityGraphExporter (그래프 내보내기)
+    │   ├── → Assets/CityData/City_Seed{N}_{Mode}.json
+    │   └── → Assets/CityData/City_Seed{N}_{Mode}_nodes.csv
     └── CityDataAPI (런타임 API)
         └── Singleton Instance
 ```
@@ -1143,14 +1269,17 @@ CityGenerator (중심 컴포넌트)
 ### 데이터 흐름
 
 1. **생성 단계**:
-   - 사용자가 Inspector에서 파라미터 설정
+   - 사용자가 Inspector에서 파라미터 및 레이아웃 모드 설정
    - CityGenerator가 파라미터 검증
-   - 격자 레이아웃 생성
-   - BuildingFactory를 통한 건물 배치
+   - 격자 레이아웃 생성 (`CreateGridLayout`)
+   - Hybrid/PureRandom: 도로 마스크(`roadMask`) 생성
+   - BuildingFactory를 통한 건물 배치 (도로 마스크 셀은 건물 제외)
+   - Hybrid/PureRandom: BFS 연결성 보장 (`EnsureRoadConnectivity`)
    - CityGraph 구축 및 노드/엣지 생성
    - StrategicLocationAnalyzer로 전략적 위치 분석
    - SpatialIndex 구축 (Quadtree)
-   - MinimapGenerator로 미니맵 생성
+   - MinimapGenerator로 미니맵 생성 → `CityMaps/Minimap_Seed{N}_{Mode}_{Res}.png` 저장
+   - CityGraphExporter로 JSON·CSV 내보내기 → `CityData/City_Seed{N}_{Mode}.*` 저장
    - CityDataAPI 초기화
 
 2. **런타임 단계**:
@@ -1164,21 +1293,24 @@ CityGenerator (중심 컴포넌트)
 ### 현재 구현된 기능
 - ✅ 기본 Box 형태 건물 생성
 - ✅ 격자 기반 배치 시스템
+- ✅ **3가지 레이아웃 모드** (PureGrid / Hybrid / PureRandom)
+- ✅ **BFS 기반 길 연결성 보장** (Hybrid, PureRandom 모드)
+- ✅ **Inspector 레이아웃 버튼 UI** (강조 토글 버튼)
 - ✅ 그래프 자료구조 (노드-엣지)
 - ✅ Quadtree 공간 인덱스
-- ✅ 전략적 위치 분석
-- ✅ 런타임 쿼리 API
+- ✅ 전략적 위치 분석 (위험도/가시성 점수 포함)
+- ✅ 런타임 쿼리 API (O(1) GetNodeById 포함)
 - ✅ 프리셋 시스템
 - ✅ 오브젝트 풀링
-- ✅ 배치 처리 및 진행률 표시
+- ✅ **탑뷰 미니맵 생성 및 PNG 자동 저장** (CityMaps/ 폴더)
+- ✅ **그래프 JSON·CSV 자동 내보내기** (CityData/ 폴더)
+- ✅ **레이아웃 모드별 파일명 자동 구분** (Seed + LayoutMode 포함)
+- ✅ 미니맵 실시간 렌더링 (MinimapRenderer)
 
 ### 향후 확장 가능 기능
-- ✅ 미니맵 생성 및 실시간 렌더링
-- ✅ 전략적 위치 위험도/가시성 점수 전파 (dangerScore, visibilityScore)
-- ⬜ 등고선 스타일 미니맵
+- ⬜ 등고선 스타일 미니맵 (고도 가시화)
 - ⬜ 다양한 건물 형태 (L자형, T자형 등)
 - ⬜ 텍스처 및 머티리얼 변형
-- ⬜ 도로 및 골목 생성
 - ⬜ 랜드마크 건물 배치
 - ⬜ 지형 고도 변화
 - ⬜ 동적 장애물 추가
@@ -1193,7 +1325,7 @@ CityGenerator (중심 컴포넌트)
 
 ### Q1: 생성된 도시를 씬에 영구적으로 저장할 수 있나요?
 
-**A**: 네, 가능합니다. 도시 생성 후 Hierarchy에서 "생성된_도시" GameObject를 선택하고 Prefab으로 저장하면 됩니다. 단, 그래프 데이터는 별도로 저장해야 합니다.
+**A**: 네, 가능합니다. 도시 생성 후 Hierarchy에서 `CityGenerator`가 붙은 GameObject를 선택하고 Prefab으로 저장하면 됩니다. 그래프 데이터는 `Assets/CityData/` 폴더에 자동으로 JSON·CSV로 저장됩니다.
 
 ```csharp
 // 그래프 데이터 저장 예제
@@ -1208,7 +1340,7 @@ System.IO.File.WriteAllText("city_graph.json", json);
 
 ### Q3: 여러 개의 도시를 동시에 생성할 수 있나요?
 
-**A**: 네, 여러 개의 `CityGenerator` 컴포넌트를 다른 GameObject에 부착하면 됩니다. 각 생성기는 독립적으로 작동하며, 생성된 도시는 "생성된_도시" 이름으로 각 생성기의 자식으로 생성됩니다.
+**A**: 네, 여러 개의 `CityGenerator` 컴포넌트를 다른 GameObject에 부착하면 됩니다. 각 생성기는 독립적으로 작동하며, 건물은 각 생성기 GameObject의 자식으로 생성됩니다.
 
 ### Q4: 특정 위치에 건물을 배치하지 않으려면?
 
@@ -1247,7 +1379,7 @@ System.IO.File.WriteAllText("city_graph.json", json);
 
 ### 개발 정보
 - **프로젝트**: Procedural City Generator for Drone Reinforcement Learning
-- **버전**: 1.0.1
+- **버전**: 1.2.0
 - **개발 환경**: Unity 6000.0.69f1 LTS
 - **언어**: C# (.NET Standard 2.1)
 
@@ -1255,10 +1387,13 @@ System.IO.File.WriteAllText("city_graph.json", json);
 - Unity Engine
 - C# Programming Language
 - Dijkstra's Algorithm (경로 탐색)
+- BFS Connected Component Analysis (길 연결성 보장)
 - Quadtree Data Structure (공간 분할)
+- Procedural Road Mask Generation (Hybrid/PureRandom 도로 마스크)
 - Object Pooling Pattern (성능 최적화)
 - Singleton Pattern (API 접근)
 - ScriptableObject (데이터 저장)
+- JSON / CSV Serialization (그래프 내보내기)
 
 ## 지원 및 문의
 
@@ -1277,7 +1412,36 @@ System.IO.File.WriteAllText("city_graph.json", json);
 
 ## 버전 히스토리
 
-### v1.0.1 (현재)
+### v1.2.0 (현재)
+
+레이아웃 다양성 및 데이터 내보내기 릴리즈.
+
+**신규 기능:**
+- `CityLayoutMode` 열거형 추가 (`PureGrid` / `Hybrid` / `PureRandom`) — `DataStructures.cs`
+- `CityGenerator`: 3가지 레이아웃 모드 구현
+  - `PureGrid`: 기존 균일 격자 (변경 없음)
+  - `Hybrid`: 불규칙 블록 간격 + 건물 위치 ±45% 오프셋 + 건물 크기 ±25% 변화
+  - `PureRandom`: 유기적 구불 도로(2~4 주간선 × 2방향) + 건물 위치 ±45% + 크기 ±50%
+- 도로 마스크(`bool[,] roadMask`): 건물 배치 전 도로 셀 예약
+- `EnsureRoadConnectivity()`: BFS 연결 컴포넌트 분석 → 고립 셀 해소 (최대 50회 반복)
+- `RemoveBuildingAtCell(int x, int z)`: 격자 좌표 기반 건물 제거
+- `BuildWanderPoints(int length)`: PureRandom 도로 굴곡 위치 사전 계산
+- `GenerateHybridRoadMask()` / `GeneratePureRandomRoadMask()`: 모드별 도로 마스크 생성
+- **Inspector 레이아웃 버튼 UI**: `CityGeneratorEditor`에 3-버튼 토글 (선택 = 하늘색 강조)
+  - Hybrid/PureRandom 선택 시 `Offset Strength`, `Min/Max Block Size` 슬라이더 노출
+  - `Min > Max` 경고 HelpBox 자동 표시
+- `MinimapGenerator.SaveMinimapToPNG()`: 파일명에 `layoutTag` 포함 (`Minimap_Seed{N}_{Mode}_{Res}x{Res}.png`)
+- `CityGraphExporter.ExportAll()` / `ExportJson()`: `layoutTag` 파라미터 추가
+  - 파일명: `City_Seed{N}_{Mode}.json` / `City_Seed{N}_{Mode}_nodes.csv`
+  - JSON 메타데이터에 `"layoutMode"` 필드 추가
+
+**Inspector 파라미터 추가:**
+- `layoutMode` (CityLayoutMode): 레이아웃 모드 선택
+- `randomOffsetStrength` (float 0~1): 건물 위치 오프셋 세기
+- `minBlockSize` (int 2~8): 블록 최소 크기
+- `maxBlockSize` (int 3~12): 블록 최대 크기
+
+### v1.0.1
 
 버그 수정 릴리즈. 컴파일 오류 해소 및 런타임 정확도 개선.
 
@@ -1306,8 +1470,8 @@ System.IO.File.WriteAllText("city_graph.json", json);
 - ✅ 성능 최적화 (오브젝트 풀링, 배치 처리)
 
 ### 향후 계획
-- v1.1.0: 다양한 건물 형태 지원
-- v1.2.0: 도로 및 골목 생성
+- v1.3.0: 다양한 건물 형태 지원 (L자형, T자형 등)
+- v1.4.0: 랜드마크·지형 고도 변화
 - v2.0.0: 동적 환경 변화 및 실시간 그래프 업데이트
 
 ---
@@ -1320,9 +1484,12 @@ System.IO.File.WriteAllText("city_graph.json", json);
 - [ ] `CityGenerator` 컴포넌트 추가
 - [ ] (선택사항) `Default Building Material` 설정
 - [ ] 파라미터 조정 (기본값으로도 작동)
-- [ ] "도시 생성" 버튼 클릭
-- [ ] Console에서 생성 결과 확인
-- [ ] Hierarchy에서 "생성된_도시" 확인
+- [ ] **Layout Mode** 버튼에서 원하는 모드 선택 (기본: Pure Grid)
+- [ ] (Hybrid/PureRandom) Offset Strength, Block Size 조정
+- [ ] **"도시 생성 (Generate City)"** 버튼 클릭
+- [ ] Console에서 생성 결과 및 저장 경로 확인
+- [ ] `Assets/CityMaps/` 에서 미니맵 PNG 확인
+- [ ] `Assets/CityData/` 에서 그래프 JSON·CSV 확인
 - [ ] Scene View에서 도시 구조 확인
 - [ ] (선택사항) 프리셋으로 저장
 - [ ] 스크립트에서 `CityDataAPI` 사용 시작

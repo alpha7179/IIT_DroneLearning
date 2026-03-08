@@ -306,7 +306,7 @@ namespace ProceduralCityGenerator
         /// </summary>
         /// <param name="minimap">저장할 미니맵 텍스처</param>
         /// <param name="seedValue">파일명에 포함할 시드 값 (선택적, -1이면 타임스탬프 사용)</param>
-        public void SaveMinimapToPNG(Texture2D minimap, int seedValue = -1)
+        public void SaveMinimapToPNG(Texture2D minimap, int seedValue = -1, string layoutTag = "")
         {
             if (minimap == null)
             {
@@ -329,18 +329,19 @@ namespace ProceduralCityGenerator
                 Debug.Log($"SaveMinimapToPNG: 디렉토리 생성됨 - {directoryPath}");
             }
 
-            // 파일명 생성 (타임스탬프 또는 시드 값 포함)
+            // 레이아웃 태그 처리 (비어 있으면 빈 문자열, 있으면 "_" 접두어 붙임)
+            string tag = string.IsNullOrEmpty(layoutTag) ? "" : $"_{layoutTag}";
+
+            // 파일명 생성: Minimap_Seed{N}_{LayoutMode}_{res}x{res}.png
             string filename;
             if (seedValue >= 0)
             {
-                // 시드 값을 파일명에 포함
-                filename = $"Minimap_Seed{seedValue}_{resolution}x{resolution}.png";
+                filename = $"Minimap_Seed{seedValue}{tag}_{resolution}x{resolution}.png";
             }
             else
             {
-                // 타임스탬프를 파일명에 포함
                 string timestamp = System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                filename = $"Minimap_{timestamp}_{resolution}x{resolution}.png";
+                filename = $"Minimap_{timestamp}{tag}_{resolution}x{resolution}.png";
             }
 
             // 전체 파일 경로

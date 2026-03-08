@@ -72,7 +72,8 @@ namespace ProceduralCityGenerator
             CityGraph graph,
             List<StrategicLocation> strategicLocations,
             int seed,
-            Bounds cityBounds)
+            Bounds cityBounds,
+            string layoutTag = "")
         {
             if (graph == null)
             {
@@ -91,9 +92,11 @@ namespace ProceduralCityGenerator
             if (!Directory.Exists(outputDir))
                 Directory.CreateDirectory(outputDir);
 
-            string baseName = $"City_Seed{seed}";
+            // 파일명: City_Seed{N}_{LayoutMode}  (태그 없으면 시드만)
+            string tag      = string.IsNullOrEmpty(layoutTag) ? "" : $"_{layoutTag}";
+            string baseName = $"City_Seed{seed}{tag}";
 
-            ExportJson(graph, strategicLocations, seed, cityBounds,
+            ExportJson(graph, strategicLocations, seed, cityBounds, layoutTag,
                        Path.Combine(outputDir, baseName + ".json"));
 
             ExportNodesCSV(graph, strategicLocations,
@@ -122,6 +125,7 @@ namespace ProceduralCityGenerator
             List<StrategicLocation> strategicLocations,
             int seed,
             Bounds bounds,
+            string layoutTag,
             string filePath)
         {
             var sb = new StringBuilder();
@@ -130,6 +134,7 @@ namespace ProceduralCityGenerator
             // ── 메타데이터 ──────────────────────────────────────────
             sb.AppendLine("  \"metadata\": {");
             sb.AppendLine($"    \"seed\": {seed},");
+            sb.AppendLine($"    \"layoutMode\": \"{layoutTag}\",");
             sb.AppendLine($"    \"nodeCount\": {graph.NodeCount},");
             sb.AppendLine($"    \"edgeCount\": {graph.EdgeCount},");
             sb.AppendLine($"    \"strategicLocationCount\": {(strategicLocations?.Count ?? 0)},");

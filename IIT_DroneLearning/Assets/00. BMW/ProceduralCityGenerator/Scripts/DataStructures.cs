@@ -41,6 +41,17 @@ namespace ProceduralCityGenerator
     }
 
     /// <summary>
+    /// 도시 레이아웃 생성 방식을 정의하는 열거형
+    /// </summary>
+    [Serializable]
+    public enum CityLayoutMode
+    {
+        PureGrid,    // 완전 격자 — 균일한 블록 간격
+        Hybrid,      // 격자 + 랜덤 오프셋 — 불규칙 블록, 건물 위치·크기 변화
+        PureRandom   // 유기적 도로망 + 블록 내 자유 배치
+    }
+
+    /// <summary>
     /// 미니맵에 표시되는 동적 마커의 타입을 정의하는 열거형
     /// </summary>
     [Serializable]

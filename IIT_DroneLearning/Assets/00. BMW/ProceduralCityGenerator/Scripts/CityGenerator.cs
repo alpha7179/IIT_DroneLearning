@@ -68,6 +68,22 @@ namespace ProceduralCityGenerator
         [Tooltip("생성될 미니맵의 해상도")]
         public MinimapResolution minimapResolution = MinimapResolution.Resolution512;
 
+        [Header("Layout Mode")]
+        [Tooltip("도시 레이아웃 방식 선택 (PureGrid=완전격자, Hybrid=격자+오프셋, PureRandom=유기적 도로망)")]
+        public CityLayoutMode layoutMode = CityLayoutMode.PureGrid;
+
+        [Tooltip("Hybrid/PureRandom: 건물 위치 랜덤 오프셋 세기 (0=격자 고정, 1=최대 불규칙)")]
+        [Range(0f, 1f)]
+        public float randomOffsetStrength = 0.5f;
+
+        [Tooltip("Hybrid/PureRandom: 블록 최소 크기 (격자 단위)")]
+        [Range(2, 8)]
+        public int minBlockSize = 3;
+
+        [Tooltip("Hybrid/PureRandom: 블록 최대 크기 (격자 단위)")]
+        [Range(3, 12)]
+        public int maxBlockSize = 6;
+
         #endregion
 
         #region Internal State
@@ -83,6 +99,7 @@ namespace ProceduralCityGenerator
         private int actualCityWidth;
         private int actualCityDepth;
         private int usedRandomSeed;
+        private bool[,] roadMask;   // true = 도로 셀 (건물 배치 불가)
 
         #endregion
 
@@ -172,6 +189,8 @@ namespace ProceduralCityGenerator
                     return result;
                 }
                 
+                // 연결성 보장: Hybrid/PureRandom에서 막힌 길 해소
+                EnsureRoadConnectivity();
                 result.buildingCount = buildings.Count;
 
                 // 그래프 구축
@@ -267,8 +286,9 @@ namespace ProceduralCityGenerator
                 spatialIndex = null;
             }
 
-            // 격자 초기화
+            // 격자 및 도로 마스크 초기화
             grid = null;
+            roadMask = null;
 
             Debug.Log("CityGenerator.ClearCity: 도시 제거 완료");
         }
@@ -313,8 +333,8 @@ namespace ProceduralCityGenerator
                 strategicLocations
             );
 
-            // Assets/CityMaps/ 폴더에 PNG 자동 저장
-            minimapGenerator.SaveMinimapToPNG(minimap, usedRandomSeed);
+            // Assets/CityMaps/ 폴더에 PNG 자동 저장 (파일명에 레이아웃 모드 포함)
+            minimapGenerator.SaveMinimapToPNG(minimap, usedRandomSeed, layoutMode.ToString());
 
             Debug.Log($"CityGenerator.GenerateMinimap: {resolutionInt}x{resolutionInt} 미니맵 생성 완료 (Seed: {usedRandomSeed})");
             return minimap;
@@ -341,7 +361,7 @@ namespace ProceduralCityGenerator
                     cityBounds.Encapsulate(new Bounds(b.position, b.size));
             }
 
-            CityGraphExporter.ExportAll(cityGraph, strategicLocations, usedRandomSeed, cityBounds);
+            CityGraphExporter.ExportAll(cityGraph, strategicLocations, usedRandomSeed, cityBounds, layoutMode.ToString());
         }
 
         /// <summary>
@@ -592,6 +612,13 @@ namespace ProceduralCityGenerator
             }
 
             Debug.Log($"CityGenerator.CreateGridLayout: 격자 레이아웃 생성 완료. 총 {actualCityWidth * actualCityDepth}개의 셀 생성");
+
+            // 레이아웃 모드에 따른 도로 마스크 생성 (모드 불문 항상 초기화)
+            roadMask = new bool[actualCityWidth, actualCityDepth];
+            if (layoutMode == CityLayoutMode.Hybrid)
+                GenerateHybridRoadMask();
+            else if (layoutMode == CityLayoutMode.PureRandom)
+                GeneratePureRandomRoadMask();
         }
 
         /// <summary>
@@ -642,27 +669,52 @@ namespace ProceduralCityGenerator
                     processedCells++;
                     cellsInCurrentBatch++;
 
+                    // 도로 셀은 건물 배치 불가 (Hybrid / PureRandom)
+                    if (roadMask[x, z]) continue;
+
                     // Requirement 10.3: 건물_밀도와 동일한 확률로 각 격자 셀에 건물을 배치
                     float randomValue = Random.value;
-                    
+
                     // Requirement 10.5: 건물_밀도가 0.0일 때 건물을 생성하지 않음
                     if (randomValue <= buildingDensity)
                     {
                         // Requirement 9.4: 건물 높이를 랜덤으로 결정 (minBuildingHeight~maxBuildingHeight)
-                        // Requirement 5.3: 건물을 생성할 때, 최소_건물높이와 최대_건물높이 사이의 높이를 할당
                         float buildingHeight = Random.Range(minBuildingHeight, maxBuildingHeight);
 
-                        // Requirement 7.2: 건물 위치 계산 공식 적용
+                        // 레이아웃 모드별 위치 오프셋 (PureGrid는 격자 위치 그대로)
                         Vector3 position = grid[x, z].worldPosition;
-                        
+                        if (layoutMode != CityLayoutMode.PureGrid)
+                        {
+                            float cellW = (buildingWidth + buildingSpacing) * unitDistance;
+                            float cellD = (buildingDepth + buildingSpacing) * unitDistance;
+                            // 도로와 겹치지 않도록 최대 45% 오프셋으로 제한
+                            float maxOX = cellW * randomOffsetStrength * 0.45f;
+                            float maxOZ = cellD * randomOffsetStrength * 0.45f;
+                            position.x += Random.Range(-maxOX, maxOX);
+                            position.z += Random.Range(-maxOZ, maxOZ);
+                        }
+
                         // 건물의 중심이 위치에 오도록 Y 좌표 조정
                         position.y = (buildingHeight * unitDistance) / 2f;
 
+                        // 레이아웃 모드별 건물 가로·세로 크기 변동
+                        float widthVar = 1f, depthVar = 1f;
+                        if (layoutMode == CityLayoutMode.Hybrid)
+                        {
+                            widthVar = Random.Range(0.75f, 1.25f);
+                            depthVar = Random.Range(0.75f, 1.25f);
+                        }
+                        else if (layoutMode == CityLayoutMode.PureRandom)
+                        {
+                            widthVar = Random.Range(0.5f, 1.5f);
+                            depthVar = Random.Range(0.5f, 1.5f);
+                        }
+
                         // Requirement 8.3, 8.4: 건물 크기 설정
                         Vector3 scale = new Vector3(
-                            buildingWidth * unitDistance,
+                            buildingWidth * widthVar * unitDistance,
                             buildingHeight * unitDistance,
-                            buildingDepth * unitDistance
+                            buildingDepth * depthVar * unitDistance
                         );
 
                         // 건물 이름 설정 (격자 좌표 기반)
@@ -818,6 +870,273 @@ namespace ProceduralCityGenerator
             {
                 Debug.LogWarning("CityGenerator.BuildCityGraph: CityDataAPI 인스턴스를 찾을 수 없습니다. 런타임 쿼리 API를 사용하려면 씬에 CityDataAPI 컴포넌트를 추가하세요.");
             }
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        // 도로 마스크 생성
+        // ─────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Hybrid 모드용 도로 마스크를 생성합니다.
+        /// 불규칙한 간격의 수평·수직 도로선이 교차하는 격자망을 만듭니다.
+        /// </summary>
+        private void GenerateHybridRoadMask()
+        {
+            // 수직 도로 (X축 방향 열) — 불규칙 간격
+            int cursor = 0;
+            while (cursor < actualCityWidth - 1)
+            {
+                cursor += Random.Range(minBlockSize, maxBlockSize + 1);
+                if (cursor < actualCityWidth)
+                    for (int z = 0; z < actualCityDepth; z++)
+                        roadMask[cursor, z] = true;
+            }
+
+            // 수평 도로 (Z축 방향 행) — 불규칙 간격
+            cursor = 0;
+            while (cursor < actualCityDepth - 1)
+            {
+                cursor += Random.Range(minBlockSize, maxBlockSize + 1);
+                if (cursor < actualCityDepth)
+                    for (int x = 0; x < actualCityWidth; x++)
+                        roadMask[x, cursor] = true;
+            }
+
+            int roadCellCount = CountRoadCells();
+            Debug.Log($"[CityGenerator] Hybrid 도로 마스크 완료: {roadCellCount}개 도로 셀");
+        }
+
+        /// <summary>
+        /// PureRandom 모드용 도로 마스크를 생성합니다.
+        /// 완만하게 굴곡진 주 간선도로 + 40% 확률의 지선도로로 유기적 블록을 만듭니다.
+        /// 연속성 보장: 완만히 굴곡진 도로는 L자 연결로 4방향 연결성을 유지합니다.
+        /// </summary>
+        private void GeneratePureRandomRoadMask()
+        {
+            // ── 수평 주 간선도로 (2~4개) ────────────────────────────────
+            int numH = Random.Range(2, 5);
+            for (int i = 1; i <= numH; i++)
+            {
+                int baseZ = Mathf.RoundToInt((float)i / (numH + 1) * actualCityDepth);
+                int jitter = Random.Range(-actualCityDepth / 8, actualCityDepth / 8 + 1);
+                int startZ = Mathf.Clamp(baseZ + jitter, 1, actualCityDepth - 2);
+
+                // 완만한 굴곡: 4~8셀마다 ±1 이동 (L자 연결로 4-연결성 유지)
+                List<int> wanderX = BuildWanderPoints(actualCityWidth);
+                int currentZ = startZ;
+                for (int x = 0; x < actualCityWidth; x++)
+                {
+                    if (wanderX.Contains(x) && x < actualCityWidth - 1)
+                    {
+                        int newZ = Mathf.Clamp(currentZ + Random.Range(-1, 2), 1, actualCityDepth - 2);
+                        if (newZ != currentZ)
+                        {
+                            roadMask[x, currentZ] = true; // 이전 행
+                            roadMask[x, newZ]     = true; // 새 행 (L자 연결)
+                            currentZ = newZ;
+                        }
+                    }
+                    roadMask[x, currentZ] = true;
+                }
+            }
+
+            // ── 수직 주 간선도로 (2~4개) ────────────────────────────────
+            int numV = Random.Range(2, 5);
+            for (int i = 1; i <= numV; i++)
+            {
+                int baseX = Mathf.RoundToInt((float)i / (numV + 1) * actualCityWidth);
+                int jitter = Random.Range(-actualCityWidth / 8, actualCityWidth / 8 + 1);
+                int startX = Mathf.Clamp(baseX + jitter, 1, actualCityWidth - 2);
+
+                List<int> wanderZ = BuildWanderPoints(actualCityDepth);
+                int currentX = startX;
+                for (int z = 0; z < actualCityDepth; z++)
+                {
+                    if (wanderZ.Contains(z) && z < actualCityDepth - 1)
+                    {
+                        int newX = Mathf.Clamp(currentX + Random.Range(-1, 2), 1, actualCityWidth - 2);
+                        if (newX != currentX)
+                        {
+                            roadMask[currentX, z] = true;
+                            roadMask[newX, z]     = true;
+                            currentX = newX;
+                        }
+                    }
+                    roadMask[currentX, z] = true;
+                }
+            }
+
+            // ── 지선도로 (40% 확률) ─────────────────────────────────────
+            int sideInterval = Random.Range(minBlockSize, maxBlockSize + 1);
+            for (int x = sideInterval; x < actualCityWidth - 1; x += sideInterval + Random.Range(0, 3))
+                if (Random.value < 0.4f)
+                    for (int z = 0; z < actualCityDepth; z++)
+                        roadMask[x, z] = true;
+
+            for (int z = sideInterval; z < actualCityDepth - 1; z += sideInterval + Random.Range(0, 3))
+                if (Random.value < 0.4f)
+                    for (int x = 0; x < actualCityWidth; x++)
+                        roadMask[x, z] = true;
+
+            int roadCellCount = CountRoadCells();
+            Debug.Log($"[CityGenerator] PureRandom 도로 마스크 완료: {roadCellCount}개 도로 셀");
+        }
+
+        /// <summary>
+        /// 도로 굴곡용 랜덤 이동 지점 목록을 생성합니다.
+        /// 4~8셀 간격으로 분포하는 인덱스 집합을 반환합니다.
+        /// </summary>
+        private List<int> BuildWanderPoints(int length)
+        {
+            var points = new List<int>();
+            int p = Random.Range(4, 8);
+            while (p < length - 1)
+            {
+                points.Add(p);
+                p += Random.Range(4, 8);
+            }
+            return points;
+        }
+
+        /// <summary>도로 셀 수를 반환합니다.</summary>
+        private int CountRoadCells()
+        {
+            int count = 0;
+            for (int x = 0; x < actualCityWidth; x++)
+                for (int z = 0; z < actualCityDepth; z++)
+                    if (roadMask[x, z]) count++;
+            return count;
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        // 연결성 보장
+        // ─────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// BFS로 빈 셀(건물 없는 셀)의 연결 성분을 검사하고,
+        /// 고립된 영역을 해소할 때까지 경계에 있는 최소 높이 건물을 제거합니다.
+        /// PureGrid는 격자 구조가 연결성을 보장하므로 스킵합니다.
+        /// </summary>
+        private void EnsureRoadConnectivity()
+        {
+            if (layoutMode == CityLayoutMode.PureGrid) return;
+
+            int maxIterations = Mathf.Min(buildings.Count / 5 + 1, 50);
+            int removedCount  = 0;
+
+            for (int iter = 0; iter < maxIterations; iter++)
+            {
+                // ── Step 1: BFS — 빈 셀 연결 성분 계산 ─────────────────
+                // label: -1=건물, 0=미방문 빈셀, >0=성분 ID
+                int[,] label = new int[actualCityWidth, actualCityDepth];
+                for (int x = 0; x < actualCityWidth; x++)
+                    for (int z = 0; z < actualCityDepth; z++)
+                        label[x, z] = grid[x, z].hasBuilding ? -1 : 0;
+
+                var componentCells = new Dictionary<int, List<(int x, int z)>>();
+                int compId = 0;
+
+                for (int sx = 0; sx < actualCityWidth; sx++)
+                {
+                    for (int sz = 0; sz < actualCityDepth; sz++)
+                    {
+                        if (label[sx, sz] != 0) continue;
+
+                        compId++;
+                        var cells = new List<(int, int)>();
+                        var queue = new Queue<(int, int)>();
+                        queue.Enqueue((sx, sz));
+                        label[sx, sz] = compId;
+
+                        while (queue.Count > 0)
+                        {
+                            var (cx, cz) = queue.Dequeue();
+                            cells.Add((cx, cz));
+
+                            // 4방향 연결 탐색
+                            (int dx, int dz)[] dirs = { (-1,0),(1,0),(0,-1),(0,1) };
+                            foreach (var (dx, dz) in dirs)
+                            {
+                                int nx = cx + dx, nz = cz + dz;
+                                if (nx < 0 || nx >= actualCityWidth ||
+                                    nz < 0 || nz >= actualCityDepth) continue;
+                                if (label[nx, nz] != 0) continue;
+                                label[nx, nz] = compId;
+                                queue.Enqueue((nx, nz));
+                            }
+                        }
+                        componentCells[compId] = cells;
+                    }
+                }
+
+                if (componentCells.Count <= 1) break; // 모두 연결됨
+
+                // ── Step 2: 가장 큰 성분(메인 공간) 찾기 ───────────────
+                int mainId = -1, maxSize = 0;
+                foreach (var kvp in componentCells)
+                    if (kvp.Value.Count > maxSize) { maxSize = kvp.Value.Count; mainId = kvp.Key; }
+
+                // ── Step 3: 고립 성분 경계의 최소 높이 건물 탐색 ────────
+                (int bx, int bz) best = (-1, -1);
+                float minH = float.MaxValue;
+
+                foreach (var kvp in componentCells)
+                {
+                    if (kvp.Key == mainId) continue;
+                    foreach (var (cx, cz) in kvp.Value)
+                    {
+                        (int dx, int dz)[] dirs = { (-1,0),(1,0),(0,-1),(0,1) };
+                        foreach (var (dx, dz) in dirs)
+                        {
+                            int nx = cx + dx, nz = cz + dz;
+                            if (nx < 0 || nx >= actualCityWidth ||
+                                nz < 0 || nz >= actualCityDepth) continue;
+                            if (label[nx, nz] != -1) continue; // 건물 셀만 대상
+                            float h = grid[nx, nz].buildingHeight;
+                            if (h < minH) { minH = h; best = (nx, nz); }
+                        }
+                    }
+                }
+
+                if (best.bx == -1) break; // 제거 가능한 건물 없음
+
+                // ── Step 4: 해당 건물 제거 ──────────────────────────────
+                RemoveBuildingAtCell(best.bx, best.bz);
+                removedCount++;
+            }
+
+            if (removedCount > 0)
+                Debug.Log($"[CityGenerator] 연결성 보장 완료: {removedCount}개 건물 제거");
+        }
+
+        /// <summary>
+        /// 지정한 격자 셀의 건물을 제거하고 그리드 상태를 갱신합니다.
+        /// </summary>
+        private void RemoveBuildingAtCell(int x, int z)
+        {
+            Building target = null;
+            foreach (var b in buildings)
+            {
+                if (b.gridCell.x == x && b.gridCell.z == z)
+                {
+                    target = b;
+                    break;
+                }
+            }
+
+            if (target != null)
+            {
+                if (Application.isPlaying)
+                    Object.Destroy(target.gameObject);
+                else
+                    Object.DestroyImmediate(target.gameObject);
+                buildings.Remove(target);
+            }
+
+            GridCell cell = grid[x, z];
+            cell.hasBuilding  = false;
+            cell.buildingHeight = 0f;
+            grid[x, z] = cell;
         }
 
         #endregion
