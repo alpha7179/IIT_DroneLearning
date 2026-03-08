@@ -645,6 +645,14 @@ namespace ProceduralCityGenerator
                 buildings = new List<Building>();
             buildings.Clear();
 
+            // Hybrid/PureRandom은 도로 마스크가 이미 셀을 소모하므로
+            // 건물 가능 셀 내 체감 밀도를 보정해 PureGrid와 비슷한 건물 수를 유지한다.
+            float effectiveDensity = buildingDensity;
+            if (layoutMode == CityLayoutMode.Hybrid)
+                effectiveDensity = Mathf.Min(1f, buildingDensity * 1.4f);
+            else if (layoutMode == CityLayoutMode.PureRandom)
+                effectiveDensity = Mathf.Min(1f, buildingDensity * 1.7f);
+
             int buildingsPlaced = 0;
             int totalCells = actualCityWidth * actualCityDepth;
             int processedCells = 0;
@@ -676,7 +684,7 @@ namespace ProceduralCityGenerator
                     float randomValue = Random.value;
 
                     // Requirement 10.5: 건물_밀도가 0.0일 때 건물을 생성하지 않음
-                    if (randomValue <= buildingDensity)
+                    if (randomValue <= effectiveDensity)
                     {
                         // Requirement 9.4: 건물 높이를 랜덤으로 결정 (minBuildingHeight~maxBuildingHeight)
                         float buildingHeight = Random.Range(minBuildingHeight, maxBuildingHeight);
@@ -777,7 +785,7 @@ namespace ProceduralCityGenerator
             }
 #endif
 
-            Debug.Log($"CityGenerator.PlaceBuildingsOnGrid: 건물 배치 완료. 총 {buildingsPlaced}개의 건물 생성 (밀도: {buildingDensity:P0})");
+            Debug.Log($"CityGenerator.PlaceBuildingsOnGrid: 건물 배치 완료. 총 {buildingsPlaced}개의 건물 생성 (설정 밀도: {buildingDensity:P0}, 적용 밀도: {effectiveDensity:P0})");
             return true;
         }
 
