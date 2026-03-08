@@ -1,0 +1,67 @@
+site_name: IIT DroneLearning
+docs_dir: Docs
+site_description: 도심 Occlusion 환경 드론 추격-회피 MARL 시스템 — 아주대 2026-1 파란학기
+site_author: 이재왕
+site_url: https://zaeee-wang.github.io/IIT_DroneLearning/
+repo_url: https://github.com/alpha7179/IIT_DroneLearning
+repo_name: alpha7179/IIT_DroneLearning
+edit_uri: ""
+
+theme:
+  name: material
+  language: ko
+  palette:
+    scheme: slate
+    primary: custom
+    accent: custom
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  font: false
+  icon:
+    repo: fontawesome/brands/github
+
+extra_css:
+  - stylesheets/extra.css
+
+plugins:
+  - search:
+      lang: ko
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - tables
+  - attr_list
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/zaeee-wang
+
+nav:
+  - Home: index.md
+  - System Overview: system.md
+  - Algorithm Analysis: analysis.md
+  - Evader Design: evader.md
+  - Roadmap: roadmap.md
+  - Team: team.md
