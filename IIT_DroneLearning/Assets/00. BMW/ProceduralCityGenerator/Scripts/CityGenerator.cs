@@ -180,9 +180,8 @@ namespace ProceduralCityGenerator
                 result.edgeCount = cityGraph.EdgeCount;
                 result.graph = cityGraph;
 
-                // 미니맵 생성 (향후 구현 예정)
-                // GenerateMinimap();
-                // result.minimap = minimapTexture;
+                // 미니맵 생성 (탑뷰 이미지 자동 생성 및 PNG 저장)
+                result.minimap = GenerateMinimap();
 
                 // 생성 성공
                 result.success = true;
@@ -280,6 +279,43 @@ namespace ProceduralCityGenerator
         /// 분석된 전략적 위치 리스트를 반환합니다.
         /// </summary>
         public List<StrategicLocation> GetStrategicLocations() => strategicLocations;
+
+        /// <summary>
+        /// 현재 도시를 탑뷰(위에서 내려다본) 미니맵 이미지로 생성하고 PNG로 저장합니다.
+        /// </summary>
+        /// <returns>생성된 미니맵 Texture2D, 실패 시 null</returns>
+        private Texture2D GenerateMinimap()
+        {
+            if (buildings == null || buildings.Count == 0)
+            {
+                Debug.LogWarning("CityGenerator.GenerateMinimap: 건물 데이터가 없어 미니맵을 생성할 수 없습니다.");
+                return null;
+            }
+
+            // 도시 경계(Bounds) 계산 — 모든 건물을 포함하는 최소 직육면체
+            Bounds cityBounds = new Bounds(buildings[0].position, Vector3.zero);
+            foreach (Building b in buildings)
+            {
+                cityBounds.Encapsulate(new Bounds(b.position, b.size));
+            }
+
+            // MinimapGenerator 생성 (Inspector에서 설정한 해상도 사용)
+            int resolutionInt = (int)minimapResolution;
+            minimapGenerator = new MinimapGenerator(resolutionInt, cityBounds);
+
+            // 탑뷰 이미지 생성 (건물 높이별 등고선 색상 + 전략적 위치 마커)
+            Texture2D minimap = minimapGenerator.GenerateMinimap(
+                buildings.ToArray(),
+                cityGraph,
+                strategicLocations
+            );
+
+            // Assets/CityMaps/ 폴더에 PNG 자동 저장
+            minimapGenerator.SaveMinimapToPNG(minimap, usedRandomSeed);
+
+            Debug.Log($"CityGenerator.GenerateMinimap: {resolutionInt}x{resolutionInt} 미니맵 생성 완료 (Seed: {usedRandomSeed})");
+            return minimap;
+        }
 
         /// <summary>
         /// 현재 파라미터를 프리셋으로 저장합니다.
