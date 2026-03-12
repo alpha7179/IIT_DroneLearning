@@ -5,39 +5,70 @@ using Unity.MLAgents.Actuators;
 using BMW.DroneSensor;
 
 /// <summary>
-/// 드론 에이전트 기본 클래스
-/// Tracker/Evader 공통 구조
-/// 액션 공간: Discrete 13가지 (이동 7 + 회전 6)
-/// 상태 공간: 38차원 (기존 12차원 + 센서 26차원)
+/// 드론 에이전트 기본 클래스 (Tracker / Evader 공통)
+///
+/// ────────────────────────────────────────
+/// 액션 공간: Continuous 4개
+///   action[0] = thrust  ∈ [-1, 1]  고도 목표 변화
+///   action[1] = roll    ∈ [-1, 1]  Roll 목표 각도
+///   action[2] = pitch   ∈ [-1, 1]  Pitch 목표 각도
+///   action[3] = yaw     ∈ [-1, 1]  Yaw 직접 토크
+///
+/// ────────────────────────────────────────
+/// 상태 공간: 44차원
+///   [0-2]   자신의 위치 (로컬)          (3)
+///   [3-5]   자신의 선속도               (3)
+///   [6-8]   자신의 로컬 각속도          (3)
+///   [9-11]  자신의 회전 (정규화 Euler)  (3)
+///   [12-14] 타겟까지 상대 위치          (3)
+///   [15-17] 타겟과의 상대 속도          (3)
+///   [18-43] Ray 센서 거리값 (26개)      (26)
+///   합계: 44
+///
+/// ────────────────────────────────────────
+/// Heuristic 키 매핑:
+///   E / Q : Thrust (상승 / 하강)
+///   A / D : Roll   (좌 / 우 기울기)
+///   W / S : Pitch  (전진 / 후진 기울기)
+///   J / L : Yaw    (좌 / 우 회전)
 /// </summary>
 public class DroneAgent : Agent
 {
-    [Header("컴포넌트")]
-    private DronePhysics _dronePhysics;
-    private DroneSensorSystem _sensorSystem;
-
+    // ──────────────────────────────────────────
+    // Inspector
+    // ──────────────────────────────────────────
     [Header("참조 오브젝트")]
-    public Transform TargetTransform;
-    public Transform GoalTransform;
+    public Transform TargetTransform;   // Tracker → Evader, Evader → Tracker
+    public Transform GoalTransform;     // Evader 전용 목표 지점
 
     [Header("에피소드 설정")]
     public float SpawnRangeX = 8f;
     public float SpawnRangeZ = 8f;
-    public float SpawnHeight = 3f;
+    public float SpawnHeight = 8f;      // 충분히 높게 → Altitude PID Ki 누적 시간 확보
 
     [Header("보상 파라미터")]
-    public float CatchDistance = 2f;
-    public float StepPenalty = -0.001f;
+    public float CatchDistance = 2f;    // Tracker 성공 판정 거리
+    public float StepPenalty   = -0.001f;
 
+    // ──────────────────────────────────────────
+    // 컴포넌트 참조
+    // ──────────────────────────────────────────
+    private DronePhysics      _dronePhysics;
+    private DroneSensorSystem _sensorSystem;
+
+    // ──────────────────────────────────────────
+    // 초기화
+    // ──────────────────────────────────────────
     protected override void Awake()
     {
-        base.Awake(); // 부모 Agent.Awake() 먼저 실행
+        base.Awake();
         _dronePhysics = GetComponent<DronePhysics>();
         _sensorSystem = GetComponent<DroneSensorSystem>();
     }
-    /// <summary>
-    /// 에피소드 시작 시 초기화
-    /// </summary>
+
+    // ──────────────────────────────────────────
+    // 에피소드 시작
+    // ──────────────────────────────────────────
     public override void OnEpisodeBegin()
     {
         _dronePhysics.ResetPhysics();
@@ -49,112 +80,113 @@ public class DroneAgent : Agent
         );
     }
 
-    /// <summary>
-    /// 상태 공간 정의 (총 38차원: 기존 12차원 + 센서 26차원)
-    /// </summary>
+    // ──────────────────────────────────────────
+    // 상태 공간 수집 (44차원)
+    // ──────────────────────────────────────────
     public override void CollectObservations(VectorSensor sensor)
     {
-        // 자신의 위치 (3)
+        // [0-2] 자신의 로컬 위치 (3)
         sensor.AddObservation(transform.localPosition);
 
-        // 자신의 속도 (3)
+        // [3-5] 자신의 선속도 (3)
         sensor.AddObservation(_dronePhysics.GetVelocity());
 
-        // 자신의 회전 (Pitch, Yaw, Roll) 정규화 (3)
-        Vector3 rot = _dronePhysics.GetRotation();
-        sensor.AddObservation(rot.x / 180f); // Pitch
-        sensor.AddObservation(rot.y / 180f); // Yaw
-        sensor.AddObservation(rot.z / 180f); // Roll
+        // [6-8] 자신의 로컬 각속도 (3)
+        sensor.AddObservation(_dronePhysics.GetLocalAngularVelocity());
 
-        // 타겟 상대 위치 (3)
+        // [9-11] 자신의 회전 정규화 (3)
+        Vector3 euler = _dronePhysics.GetRotationEuler();
+        sensor.AddObservation(WrapAngle(euler.x) / 180f);
+        sensor.AddObservation(WrapAngle(euler.y) / 180f);
+        sensor.AddObservation(WrapAngle(euler.z) / 180f);
+
+        // [12-14] 타겟 상대 위치 (3)
         if (TargetTransform != null)
             sensor.AddObservation(TargetTransform.localPosition - transform.localPosition);
         else
             sensor.AddObservation(Vector3.zero);
 
-        // 센서 데이터 추가 (26개 거리 값)
-        if (_sensorSystem != null)
+        // [15-17] 타겟 상대 속도 (3)
+        if (TargetTransform != null)
         {
-            float[] distances = _sensorSystem.GetAllNormalizedDistances();
-            foreach (float distance in distances)
-            {
-                sensor.AddObservation(distance);
-            }
+            Rigidbody targetRb = TargetTransform.GetComponent<Rigidbody>();
+            if (targetRb != null)
+                sensor.AddObservation(targetRb.linearVelocity - _dronePhysics.GetVelocity());
+            else
+                sensor.AddObservation(Vector3.zero);
         }
         else
         {
-            // 센서 시스템이 없으면 0으로 채움
+            sensor.AddObservation(Vector3.zero);
+        }
+
+        // [18-43] Ray 센서 거리값 (26)
+        if (_sensorSystem != null)
+        {
+            foreach (float d in _sensorSystem.GetAllNormalizedDistances())
+                sensor.AddObservation(d);
+        }
+        else
+        {
             for (int i = 0; i < 26; i++)
-            {
                 sensor.AddObservation(0f);
-            }
         }
     }
 
-    /// <summary>
-    /// 액션 수신 및 처리
-    /// 0: 정지
-    /// 1: +X (우)      2: -X (좌)
-    /// 3: +Z (전진)    4: -Z (후진)
-    /// 5: +Y (상승)    6: -Y (하강)
-    /// 7: Yaw+         8: Yaw-
-    /// 9: Pitch+       10: Pitch-
-    /// 11: Roll+       12: Roll-
-    /// </summary>
+    // ──────────────────────────────────────────
+    // 액션 수신
+    // ──────────────────────────────────────────
     public override void OnActionReceived(ActionBuffers actions)
     {
-        int action = actions.DiscreteActions[0];
+        float thrust = actions.ContinuousActions[0];
+        float roll   = actions.ContinuousActions[1];
+        float pitch  = actions.ContinuousActions[2];
+        float yaw    = actions.ContinuousActions[3];
 
-        float x = 0f, y = 0f, z = 0f;
-        float yaw = 0f, pitch = 0f, roll = 0f;
+        // DronePhysics에 고수준 명령 전달
+        _dronePhysics.SetCommand(thrust, roll, pitch, yaw);
 
-        switch (action)
-        {
-            case 0:  break;
-            case 1:  x = +1f;     break;
-            case 2:  x = -1f;     break;
-            case 3:  z = +1f;     break;
-            case 4:  z = -1f;     break;
-            case 5:  y = +1f;     break;
-            case 6:  y = -1f;     break;
-            case 7:  yaw = +1f;   break;
-            case 8:  yaw = -1f;   break;
-            case 9:  pitch = +1f; break;
-            case 10: pitch = -1f; break;
-            case 11: roll = +1f;  break;
-            case 12: roll = -1f;  break;
-        }
-
-        _dronePhysics.ApplyMovement(x, y, z);
-
-        if (yaw != 0f)   _dronePhysics.ApplyYaw(yaw);
-        if (pitch != 0f) _dronePhysics.ApplyPitch(pitch);
-        if (roll != 0f)  _dronePhysics.ApplyRoll(roll);
-
+        // 스텝 패널티 (생존 보상 역할)
         AddReward(StepPenalty);
     }
 
-    /// <summary>
-    /// 키보드 수동 조작 (테스트용)
-    /// W/S: 전후, A/D: 좌우, E/Q: 상하
-    /// J/L: Yaw, I/K: Pitch, U/O: Roll
-    /// </summary>
+    // ──────────────────────────────────────────
+    // Heuristic (수동 테스트)
+    //
+    // E / Q : 상승 / 하강  (Thrust)
+    // A / D : 좌 / 우 기울기 (Roll)
+    // W / S : 전진 / 후진 기울기 (Pitch)
+    // J / L : 좌 / 우 회전 (Yaw)
+    // ──────────────────────────────────────────
     public override void Heuristic(in ActionBuffers actionsOut)
     {
-        var discrete = actionsOut.DiscreteActions;
+        var ca = actionsOut.ContinuousActions;
 
-        if (Input.GetKey(KeyCode.D))      discrete[0] = 1;
-        else if (Input.GetKey(KeyCode.A)) discrete[0] = 2;
-        else if (Input.GetKey(KeyCode.W)) discrete[0] = 3;
-        else if (Input.GetKey(KeyCode.S)) discrete[0] = 4;
-        else if (Input.GetKey(KeyCode.E)) discrete[0] = 5;
-        else if (Input.GetKey(KeyCode.Q)) discrete[0] = 6;
-        else if (Input.GetKey(KeyCode.L)) discrete[0] = 7;
-        else if (Input.GetKey(KeyCode.J)) discrete[0] = 8;
-        else if (Input.GetKey(KeyCode.I)) discrete[0] = 9;
-        else if (Input.GetKey(KeyCode.K)) discrete[0] = 10;
-        else if (Input.GetKey(KeyCode.O)) discrete[0] = 11;
-        else if (Input.GetKey(KeyCode.U)) discrete[0] = 12;
-        else                              discrete[0] = 0;
+        const float str = 0.5f;
+
+        // Thrust: E(상승) / Q(하강)
+        ca[0] = Input.GetKey(KeyCode.E) ?  str :
+                Input.GetKey(KeyCode.Q) ? -str : 0f;
+
+        // Roll: D(우 기울기) / A(좌 기울기)
+        ca[1] = Input.GetKey(KeyCode.D) ?  str :
+                Input.GetKey(KeyCode.A) ? -str : 0f;
+
+        // Pitch: W(전진) / S(후진)
+        ca[2] = Input.GetKey(KeyCode.W) ?  str :
+                Input.GetKey(KeyCode.S) ? -str : 0f;
+
+        // Yaw: L(우 회전) / J(좌 회전)
+        ca[3] = Input.GetKey(KeyCode.L) ?  str :
+                Input.GetKey(KeyCode.J) ? -str : 0f;
+    }
+
+    // ──────────────────────────────────────────
+    // 유틸
+    // ──────────────────────────────────────────
+    private float WrapAngle(float angle)
+    {
+        if (angle > 180f) angle -= 360f;
+        return angle;
     }
 }
