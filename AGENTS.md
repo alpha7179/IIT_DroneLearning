@@ -1,6 +1,6 @@
-# CLAUDE.md — Evader RL Owner (이강민) 작업 기준서
+# AGENTS.md — Drone Physics Owner (이강민) 작업 기준서
 
-> Claude Code가 이 레포에서 작업할 때 **항상 이 파일을 먼저 읽고** 아래 규칙을 준수한다.
+> Codex가 이 레포에서 작업할 때 **항상 이 파일을 먼저 읽고** 아래 규칙을 준수한다.
 > 세부 설계 원칙은 [AGENT.md](AGENT.md) 를 함께 참조한다.
 
 ---
@@ -31,7 +31,6 @@
 ## 3. Git 규칙 (Hard Constraint)
 
 - **작업 브랜치는 `work/physics` 단 하나**만 사용한다.
-- 기능 단위 작업은 `feature/evader-{기능명}` 브랜치에서 개발 후 `work/physics`로 PR 병합.
 - 작업 시작 시 반드시 현재 브랜치 확인: `git branch --show-current`
 - main / work/pursuer 브랜치는 **절대 직접 수정하지 않는다**.
 - main과 동기화가 필요하면, 커맨드를 제안하고 **사용자가 직접 실행**하도록 한다.
@@ -53,10 +52,10 @@
 
 ## 4. 파일 범위 제한 (Scope)
 
-Claude Code가 **기본적으로 건드릴 수 있는 파일**:
+Codex가 **기본적으로 건드릴 수 있는 파일**:
 ```
 AGENT.md
-CLAUDE.md
+AGENTS.md
 python/config/evader_*.yaml
 python/scripts/
 python/utils/
@@ -80,8 +79,8 @@ Docs/IMPLEMENTATION_BLUEPRINT.md    ← 공통 운영 기준
 
 ```
 IIT_DroneLearning/                  ← 저장소 루트
-├── CLAUDE.md                       ← 이 파일 (Claude Code 기준)
-├── AGENT.md                        ← Evader RL Owner 상세 설계
+├── AGENTS.md                       ← 이 파일 (Codex 기준)
+├── AGENT.md                        ← Drone Physics Owner 상세 설계
 ├── README.md                       ← 프로젝트 개요
 ├── requirements.txt                ← Python 의존성
 ├── .gitignore
@@ -101,7 +100,7 @@ IIT_DroneLearning/                  ← 저장소 루트
 │   └── results/                    ← 실험 로그 (대용량 git 제외)
 └── IIT_DroneLearning/              ← Unity 6 프로젝트
     └── Assets/
-        └── Ljw/                    ← 이재왕 개인 작업 폴더
+        └── LGM/                    ← 이강민 개인 작업 폴더
             ├── Scripts/
             ├── Scenes/
             ├── Prefabs/
