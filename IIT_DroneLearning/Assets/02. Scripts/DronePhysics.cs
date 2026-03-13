@@ -1,296 +1,356 @@
 using UnityEngine;
 
+/// <summary>
+/// 쿼드콥터 4모터 + PID 기반 드론 물리 제어기
+///
+/// 설계 근거:
+///   simeonradivoev/Quadcopter-Controller 및
+///   Habrador Unity PID 드론 구현을 참조하여
+///   검증된 구조로 통일
+///
+/// 핵심 원칙:
+///   1. Unity 중력 ON (useGravity = true)
+///      Altitude PID의 Ki 적분항이 중력을 자연스럽게 보상
+///   2. 4모터 AddForceAtPosition → Roll/Pitch 토크 물리적 자동 발생
+///      (τ = r × F, Unity PhysX가 자동 계산)
+///   3. Yaw Ki = 0 (모든 레퍼런스 공통 → 적분 폭주 방지)
+///   4. Yaw PID 제거 → AngularDrag 감쇠 + RL 직접 토크
+///
+/// 모터 배치 (탑뷰):
+///   M1(앞왼) ---- M2(앞오)
+///      |               |
+///   M3(뒤왼) ---- M4(뒤오)
+///
+/// RL 액션 (DroneAgent에서 SetCommand 호출):
+///   action[0] = thrust  ∈ [-1,1]  고도 목표 변화
+///   action[1] = roll    ∈ [-1,1]  Roll 목표 각도
+///   action[2] = pitch   ∈ [-1,1]  Pitch 목표 각도
+///   action[3] = yaw     ∈ [-1,1]  Yaw 직접 토크
+/// </summary>
 [RequireComponent(typeof(Rigidbody))]
 public class DronePhysics : MonoBehaviour
 {
-    [Header("Drone Body")]
-    public float Mass = 1f;
-    public float LinearDrag = 1.8f;
-    public float AngularDrag = 6f;
-    public bool UseGravity = true;
-    public bool ForceCenterOfMassZero = true;
+    // ──────────────────────────────────────────
+    // Inspector 파라미터
+    // ──────────────────────────────────────────
 
-    [Header("PID Gains (drone-simualator style)")]
-    [Tooltip("Pitch angle controller")]
-    public float PitchKp = 0.2f;
+    [Header("Rigidbody 설정")]
+    public float Mass        = 1.0f;
+    public float LinearDrag  = 1.0f;   // 레퍼런스 권장값: 1.0
+    public float AngularDrag = 5.0f;   // 높게 유지 → Yaw 진동 억제
 
-    [Tooltip("Pitch integral gain")]
-    public float PitchKi = 0.01f;
+    [Header("모터 설정")]
+    public float MaxMotorThrust = 6.0f;
+    // 4모터 합산 최대 24N > 중력 9.81N 이어야 hover 가능
+    public float ArmLength      = 0.25f;  // 모터~중심 거리 (m)
 
-    [Tooltip("Roll angle controller")]
-    public float RollKp = 0.2f;
+    [Header("고도 제한")]
+    public float MinAltitude = 0.5f;
+    public float MaxAltitude = 50.0f;
 
-    [Tooltip("Roll integral gain")]
-    public float RollKi = 0.01f;
+    [Header("속도 제한")]
+    public float MaxHorizontalSpeed = 8.0f;
+    public float MaxVerticalSpeed   = 5.0f;
 
-    [Tooltip("Yaw angle controller")]
-    public float YawKp = 0.2f;
+    [Header("목표값 범위")]
+    public float MaxAltitudeStep = 2.0f;   // 1회 명령당 고도 목표 변화량 (m)
+    public float MaxRollAngle    = 30.0f;  // 최대 Roll 목표 각도 (도)
+    public float MaxPitchAngle   = 30.0f;  // 최대 Pitch 목표 각도 (도)
+    public float YawTorqueScale  = 3.0f;   // Yaw 직접 토크 스케일
 
-    [Tooltip("Yaw integral gain")]
-    public float YawKi = 0.01f;
+    [Header("PID - Altitude")]
+    [Tooltip("Ki 적분항이 중력(9.81N)을 자동 보상 → hoverNorm 불필요")]
+    public float AltKp = 3.0f;
+    public float AltKi = 0.5f;
+    public float AltKd = 2.0f;
 
-    [Header("Command Response")]
-    [Tooltip("기울기 명령 반응 속도(도/sec)")]
-    public float AttitudeCommandDegPerSec = 35f;
+    [Header("PID - Roll")]
+    public float RollKp = 2.0f;
+    public float RollKi = 0.0f;  // 모든 레퍼런스 공통: Ki=0 (진동 방지)
+    public float RollKd = 0.5f;
 
-    [Tooltip("정지 입력에서 목표각 복귀 속도")]
-    public float AttitudeReturnDegPerSec = 8f;
+    [Header("PID - Pitch")]
+    public float PitchKp = 2.0f;
+    public float PitchKi = 0.0f; // 모든 레퍼런스 공통: Ki=0 (진동 방지)
+    public float PitchKd = 0.5f;
 
-    [Tooltip("최대 목표 롤/피치 각도(도)")]
-    public float MaxCommandAngle = 25f;
+    // Yaw PID 없음 → AngularDrag + RL 직접 토크로 처리
 
-    [Tooltip("상승/하강 반응 계수")]
-    public float VerticalCommandScale = 0.6f;
+    // ──────────────────────────────────────────
+    // 내부 상태
+    // ──────────────────────────────────────────
+    private Rigidbody     _rb;
+    private PIDController _altPID;
+    private PIDController _rollPID;
+    private PIDController _pitchPID;
 
-    [Tooltip("중력보상 토크/힘 계산 기반")]
-    public float MotorArmScale = 0.5f;
+    private float _targetAltitude;
+    private float _targetRoll  = 0f;
+    private float _targetPitch = 0f;
+    private float _yawTorque   = 0f;
 
-    [Tooltip("모터 출력 상한")]
-    public float MaxMotorForce = 12f;
+    private float[]   _motorThrust    = new float[4];
+    private Vector3[] _motorPositions;
 
-    private Rigidbody _rb;
-    private float _thrustCommand;
-    private float _rollCommand;
-    private float _pitchCommand;
-    private float _yawCommand;
-
-    private float _desiredPitch;
-    private float _desiredRoll;
-    private float _desiredYaw;
-
-    private float _integralPitch;
-    private float _integralRoll;
-    private float _integralYaw;
-
-    private float _collectiveThrottle;
-    private float _hoverMotorThrottle;
-    private float _maxCollectiveThrottle;
-
-    private Vector3[] _motorLocalPos = new Vector3[4];
-
+    // ──────────────────────────────────────────
+    // 초기화
+    // ──────────────────────────────────────────
     private void Awake()
     {
-        _rb = GetComponent<Rigidbody>();
-
-        _rb.mass = Mass;
-        _rb.useGravity = UseGravity;
-        _rb.linearDamping = LinearDrag;
+        _rb                = GetComponent<Rigidbody>();
+        _rb.mass           = Mass;
+        _rb.linearDamping  = LinearDrag;
         _rb.angularDamping = AngularDrag;
+        _rb.useGravity     = true;   // Unity 중력 ON
         _rb.freezeRotation = false;
-        _rb.maxAngularVelocity = 20f;
 
-        if (ForceCenterOfMassZero)
-            _rb.centerOfMass = Vector3.zero;
+        // 관성 텐서 명시 설정
+        // Collider 형태(큐브 등)에 의존하지 않고 실제 쿼드콥터 비율로 고정
+        // Ixx ≈ Iyy (Roll/Pitch 대칭) << Izz (Yaw)
+        _rb.inertiaTensor         = new Vector3(0.02f, 0.04f, 0.02f);
+        _rb.inertiaTensorRotation = Quaternion.identity;
 
-        BuildMotorLayoutFromCollider();
-        RecalculateHoverThrottle();
-        ResetControllers();
-    }
-
-    private void BuildMotorLayoutFromCollider()
-    {
-        float armX = MotorArmScale;
-        float armZ = MotorArmScale;
-
-        var col = GetComponent<Collider>();
-        if (col != null)
+        // 모터 위치 (로컬 좌표)
+        float a = ArmLength;
+        _motorPositions = new Vector3[]
         {
-            Vector3 ext = col.bounds.extents;
-            armX = Mathf.Max(ext.x, 0.2f);
-            armZ = Mathf.Max(ext.z, 0.2f);
-        }
+            new Vector3(-a, 0f,  a),  // M1: 앞왼
+            new Vector3( a, 0f,  a),  // M2: 앞오
+            new Vector3(-a, 0f, -a),  // M3: 뒤왼
+            new Vector3( a, 0f, -a),  // M4: 뒤오
+        };
 
-        _motorLocalPos[0] = new Vector3(-armX, 0f, +armZ);
-        _motorLocalPos[1] = new Vector3(+armX, 0f, +armZ);
-        _motorLocalPos[2] = new Vector3(-armX, 0f, -armZ);
-        _motorLocalPos[3] = new Vector3(+armX, 0f, -armZ);
+        _altPID   = new PIDController(AltKp,   AltKi,   AltKd);
+        _rollPID  = new PIDController(RollKp,  RollKi,  RollKd);
+        _pitchPID = new PIDController(PitchKp, PitchKi, PitchKd);
+
+        _targetAltitude = transform.position.y;
     }
 
-    private void RecalculateHoverThrottle()
-    {
-        if (_rb == null)
-            return;
-
-        // remote 기준 식: mass * 9.8 / 4
-        _hoverMotorThrottle = (_rb.mass * Mathf.Abs(Physics.gravity.y)) / 4f;
-        _maxCollectiveThrottle = Mathf.Max(_hoverMotorThrottle * 3f, MaxMotorForce);
-    }
-
-    private void ResetControllers()
-    {
-        _thrustCommand = 0f;
-        _rollCommand = 0f;
-        _pitchCommand = 0f;
-        _yawCommand = 0f;
-
-        _desiredPitch = 0f;
-        _desiredRoll = 0f;
-        _desiredYaw = 0f;
-
-        _integralPitch = 0f;
-        _integralRoll = 0f;
-        _integralYaw = 0f;
-
-        _collectiveThrottle = _hoverMotorThrottle;
-    }
-
+    // ──────────────────────────────────────────
+    // 물리 업데이트
+    // ──────────────────────────────────────────
     private void FixedUpdate()
     {
-        ApplyControl(Time.fixedDeltaTime);
+        float dt = Time.fixedDeltaTime;
+        ComputePID(dt);
+        ApplyMotorForces();
+        ClampAltitude();
+        ClampVelocity();
     }
 
-    public void SetCommand(float thrustDelta, float rollCmd, float pitchCmd, float yawCmd)
+    // ──────────────────────────────────────────
+    // RL 인터페이스
+    // ──────────────────────────────────────────
+
+    /// <summary>
+    /// 고수준 명령 (DroneAgent의 OnActionReceived에서 호출)
+    /// thrust : 고도 목표를 높이거나 낮춤       [-1, 1]
+    /// roll   : 목표 Roll 각도 설정             [-1, 1]
+    /// pitch  : 목표 Pitch 각도 설정            [-1, 1]
+    /// yaw    : Yaw 직접 토크 (PID 없음)        [-1, 1]
+    /// </summary>
+    public void SetCommand(float thrust, float roll, float pitch, float yaw)
     {
-        _thrustCommand = Mathf.Clamp(thrustDelta, -1f, 1f);
-        _rollCommand = Mathf.Clamp(rollCmd, -1f, 1f);
-        _pitchCommand = Mathf.Clamp(pitchCmd, -1f, 1f);
-        _yawCommand = Mathf.Clamp(yawCmd, -1f, 1f);
+        _targetAltitude = Mathf.Clamp(
+            _targetAltitude + thrust * MaxAltitudeStep,
+            MinAltitude,
+            MaxAltitude
+        );
+
+        _targetRoll  = roll  * MaxRollAngle;
+        _targetPitch = pitch * MaxPitchAngle;
+        _yawTorque   = yaw   * YawTorqueScale;
     }
 
-    private void ApplyControl(float dt)
-    {
-        Vector3 localOmega = transform.InverseTransformDirection(_rb.angularVelocity);
-        float currentRoll = GetCurrentRollDeg();
-        float currentPitch = GetCurrentPitchDeg();
-        float currentYaw = NormalizeAngle180(transform.localEulerAngles.y);
-
-        // simultaneous command input: both 방향 입력이 들어오면 덧셈되어 목표각이 함께 갱신됨
-        float commandPitch = -_pitchCommand * AttitudeCommandDegPerSec * dt;
-        float commandRoll = _rollCommand * AttitudeCommandDegPerSec * dt;
-        float commandYaw = _yawCommand * AttitudeCommandDegPerSec * dt;
-
-        _desiredPitch = Mathf.Clamp(_desiredPitch + commandPitch, -MaxCommandAngle, MaxCommandAngle);
-        _desiredRoll = Mathf.Clamp(_desiredRoll + commandRoll, -MaxCommandAngle, MaxCommandAngle);
-
-        if (Mathf.Abs(_yawCommand) > 0.01f)
-            _desiredYaw = Mathf.Clamp(_desiredYaw + commandYaw, -180f, 180f);
-        else
-            _desiredYaw = Mathf.Lerp(_desiredYaw, 0f, AttitudeReturnDegPerSec * dt / 180f);
-
-        if (Mathf.Abs(_rollCommand) < 0.001f)
-            _desiredRoll = Mathf.Lerp(_desiredRoll, 0f, AttitudeReturnDegPerSec * dt);
-
-        if (Mathf.Abs(_pitchCommand) < 0.001f)
-            _desiredPitch = Mathf.Lerp(_desiredPitch, 0f, AttitudeReturnDegPerSec * dt);
-
-        // keep thrust stable while level hovering
-        _collectiveThrottle = _hoverMotorThrottle + _thrustCommand * VerticalCommandScale;
-        if (_collectiveThrottle < 0f)
-            _collectiveThrottle = 0f;
-
-        float upProjection = Mathf.Max(Vector3.Dot(transform.up, Vector3.up), 0.2f);
-
-        float pitchError = _desiredPitch - currentPitch - localOmega.x * Mathf.Rad2Deg * dt;
-        float rollError = _desiredRoll - currentRoll - localOmega.z * Mathf.Rad2Deg * dt;
-        float yawError = _desiredYaw - currentYaw - localOmega.y * Mathf.Rad2Deg * dt;
-
-        _integralPitch += PitchKi * pitchError * dt;
-        _integralRoll += RollKi * rollError * dt;
-        _integralYaw += YawKi * yawError * dt;
-
-        _integralPitch = Mathf.Clamp(_integralPitch, -3f, 3f);
-        _integralRoll = Mathf.Clamp(_integralRoll, -3f, 3f);
-        _integralYaw = Mathf.Clamp(_integralYaw, -3f, 3f);
-
-        float dPitch = PitchKp * pitchError + _integralPitch;
-        float dRoll = RollKp * rollError + _integralRoll;
-        float dYaw = YawKp * yawError + _integralYaw;
-
-        float m1 = _collectiveThrottle - dPitch - dRoll + dYaw;
-        float m2 = _collectiveThrottle - dPitch + dRoll - dYaw;
-        float m3 = _collectiveThrottle + dPitch - dRoll - dYaw;
-        float m4 = _collectiveThrottle + dPitch + dRoll + dYaw;
-
-        float motorMax = _maxCollectiveThrottle / 4f;
-        float minMotor = 0f;
-        m1 = Mathf.Clamp(m1 / upProjection, minMotor, motorMax);
-        m2 = Mathf.Clamp(m2 / upProjection, minMotor, motorMax);
-        m3 = Mathf.Clamp(m3 / upProjection, minMotor, motorMax);
-        m4 = Mathf.Clamp(m4 / upProjection, minMotor, motorMax);
-
-        Vector3 f1 = m1 * Vector3.up;
-        Vector3 f2 = m2 * Vector3.up;
-        Vector3 f3 = m3 * Vector3.up;
-        Vector3 f4 = m4 * Vector3.up;
-
-        Vector3 totalForce = f1 + f2 + f3 + f4;
-        _rb.AddRelativeForce(totalForce, ForceMode.Force);
-
-        Vector3 torque =
-            Vector3.Cross(_motorLocalPos[0], f1) +
-            Vector3.Cross(_motorLocalPos[1], f2) +
-            Vector3.Cross(_motorLocalPos[2], f3) +
-            Vector3.Cross(_motorLocalPos[3], f4);
-
-        // yaw 방향 분리 항목은 기존 검증 스크립트의 모터 토크 항목을 사용
-        torque += m1 * Vector3.up + m2 * Vector3.down + m3 * Vector3.down + m4 * Vector3.up;
-        _rb.AddRelativeTorque(torque, ForceMode.Force);
-    }
-
-    public void ResetPhysicsState(Vector3 position, Quaternion rotation)
-    {
-        _rb.position = position;
-        _rb.rotation = rotation;
-        _rb.linearVelocity = Vector3.zero;
-        _rb.angularVelocity = Vector3.zero;
-
-        _thrustCommand = 0f;
-        _rollCommand = 0f;
-        _pitchCommand = 0f;
-        _yawCommand = 0f;
-
-        _desiredPitch = 0f;
-        _desiredRoll = 0f;
-        _desiredYaw = 0f;
-        _integralPitch = 0f;
-        _integralRoll = 0f;
-        _integralYaw = 0f;
-
-        _collectiveThrottle = _hoverMotorThrottle;
-    }
+    // ──────────────────────────────────────────
+    // 상태 조회 (DroneAgent의 CollectObservations에서 사용)
+    // ──────────────────────────────────────────
+    public Vector3 GetVelocity()             => _rb.linearVelocity;
+    public Vector3 GetLocalAngularVelocity() => transform.InverseTransformDirection(_rb.angularVelocity);
+    public Vector3 GetRotationEuler()        => transform.eulerAngles;
 
     public void ResetPhysics()
     {
-        ResetPhysicsState(transform.position, Quaternion.identity);
+        _rb.linearVelocity  = Vector3.zero;
+        _rb.angularVelocity = Vector3.zero;
+        transform.rotation  = Quaternion.identity;
+
+        _targetAltitude = transform.position.y;
+        _targetRoll     = 0f;
+        _targetPitch    = 0f;
+        _yawTorque      = 0f;
+
+        _altPID.Reset();
+        _rollPID.Reset();
+        _pitchPID.Reset();
+
+        for (int i = 0; i < 4; i++)
+            _motorThrust[i] = 0f;
     }
 
-    public Vector3 GetVelocity()
+    // ──────────────────────────────────────────
+    // 내부 물리 계산
+    // ──────────────────────────────────────────
+
+    /// <summary>
+    /// PID 계산 → 모터 믹싱
+    ///
+    /// [Altitude PID]
+    ///   오차 = 목표 고도 - 현재 고도
+    ///   Ki 적분항이 시간이 지남에 따라 중력(mg = 9.81N)을 자동 보상
+    ///   → 별도 hoverNorm 계산 불필요
+    ///   → 논문 수식: u_t = Kp*e_z + Ki*∫e_z dt + Kd*ė_z
+    ///
+    /// [Roll/Pitch PID]
+    ///   오차 = 목표 각도 - 현재 각도
+    ///   → 모터 불균형 r, p 결정
+    ///   → AddForceAtPosition이 τ = r × F 자동 계산
+    ///   → Ki = 0 (모든 레퍼런스 공통: 각도 진동 방지)
+    /// </summary>
+    private void ComputePID(float dt)
     {
-        return _rb.linearVelocity;
+        float currentAlt   = transform.position.y;
+        float currentRoll  = WrapAngle(transform.eulerAngles.z);
+        float currentPitch = WrapAngle(transform.eulerAngles.x);
+
+        float altError   = _targetAltitude - currentAlt;
+        float rollError  = _targetRoll     - currentRoll;
+        float pitchError = _targetPitch    - currentPitch;
+
+        float altOut   = _altPID.Update(altError,   dt);
+        float rollOut  = _rollPID.Update(rollError,  dt);
+        float pitchOut = _pitchPID.Update(pitchError, dt);
+
+        // 클램프: t ∈ [0,1], r/p ∈ [-0.3, 0.3]
+        float t = Mathf.Clamp(altOut,   0f,    1.0f);
+        float r = Mathf.Clamp(rollOut, -0.3f,  0.3f);
+        float p = Mathf.Clamp(pitchOut,-0.3f,  0.3f);
+
+        // 모터 믹싱
+        //           Thrust  Roll  Pitch
+        _motorThrust[0] = Mathf.Clamp01(t - r + p);  // M1 앞왼
+        _motorThrust[1] = Mathf.Clamp01(t + r + p);  // M2 앞오
+        _motorThrust[2] = Mathf.Clamp01(t - r - p);  // M3 뒤왼
+        _motorThrust[3] = Mathf.Clamp01(t + r - p);  // M4 뒤오
     }
 
-    public Vector3 GetLocalVelocity()
+    /// <summary>
+    /// 각 모터 위치에서 Force 적용
+    ///
+    /// AddForceAtPosition(F, r_world):
+    ///   Unity PhysX → τ = (r - r_cm) × F 자동 계산
+    ///   → Roll/Pitch 토크 물리적으로 발생
+    ///   → 별도 토크 계산 불필요
+    ///
+    /// Yaw:
+    ///   직접 AddTorque (PID 없음)
+    ///   AngularDrag가 감쇠 담당
+    /// </summary>
+    private void ApplyMotorForces()
     {
-        return transform.InverseTransformDirection(_rb.linearVelocity);
+        for (int i = 0; i < 4; i++)
+        {
+            float   thrustN  = _motorThrust[i] * MaxMotorThrust;
+            Vector3 worldPos = transform.TransformPoint(_motorPositions[i]);
+            Vector3 forceDir = transform.up * thrustN;
+
+            _rb.AddForceAtPosition(forceDir, worldPos, ForceMode.Force);
+        }
+
+        // Yaw 직접 토크
+        _rb.AddTorque(transform.up * _yawTorque, ForceMode.Force);
     }
 
-    public Vector3 GetLocalAngularVelocity()
+    private void ClampAltitude()
     {
-        return transform.InverseTransformDirection(_rb.angularVelocity);
+        Vector3 pos = transform.position;
+
+        if (pos.y < MinAltitude)
+        {
+            pos.y              = MinAltitude;
+            transform.position = pos;
+            Vector3 vel        = _rb.linearVelocity;
+            if (vel.y < 0f) { vel.y = 0f; _rb.linearVelocity = vel; }
+        }
+        else if (pos.y > MaxAltitude)
+        {
+            pos.y              = MaxAltitude;
+            transform.position = pos;
+            Vector3 vel        = _rb.linearVelocity;
+            if (vel.y > 0f) { vel.y = 0f; _rb.linearVelocity = vel; }
+        }
     }
 
-    public Rigidbody GetRigidbody()
+    private void ClampVelocity()
     {
-        return _rb;
+        Vector3 vel        = _rb.linearVelocity;
+        Vector3 horizontal = new Vector3(vel.x, 0f, vel.z);
+
+        if (horizontal.magnitude > MaxHorizontalSpeed)
+        {
+            horizontal = horizontal.normalized * MaxHorizontalSpeed;
+            vel.x      = horizontal.x;
+            vel.z      = horizontal.z;
+        }
+
+        vel.y              = Mathf.Clamp(vel.y, -MaxVerticalSpeed, MaxVerticalSpeed);
+        _rb.linearVelocity = vel;
     }
 
-    public float GetCurrentCollectiveThrust()
+    private float WrapAngle(float angle)
     {
-        return Mathf.InverseLerp(0f, _maxCollectiveThrottle, _collectiveThrottle);
+        if (angle > 180f) angle -= 360f;
+        return angle;
+    }
+}
+
+// ──────────────────────────────────────────────────────────────
+// 범용 PID 컨트롤러
+//
+// 이산화 공식 (FixedUpdate 기준):
+//   u[k] = Kp * e[k]
+//         + Ki * Σ(e[j] * Δt)   (적분, Anti-windup 클램프)
+//         + Kd * (e[k]-e[k-1]) / Δt  (미분)
+// ──────────────────────────────────────────────────────────────
+[System.Serializable]
+public class PIDController
+{
+    private float _kp, _ki, _kd;
+    private float _integral    = 0f;
+    private float _prevError   = 0f;
+    private bool  _firstUpdate = true;
+
+    private const float IntegralClamp = 10.0f;
+
+    public PIDController(float kp, float ki, float kd)
+    {
+        _kp = kp; _ki = ki; _kd = kd;
     }
 
-    public float GetCurrentRollDeg()
+    public float Update(float error, float dt)
     {
-        return NormalizeAngle180(transform.localEulerAngles.z);
+        if (_firstUpdate)
+        {
+            _prevError   = error;
+            _firstUpdate = false;
+        }
+
+        _integral = Mathf.Clamp(
+            _integral + error * dt,
+            -IntegralClamp, IntegralClamp
+        );
+
+        float derivative = (error - _prevError) / Mathf.Max(dt, 1e-5f);
+        _prevError = error;
+
+        return _kp * error + _ki * _integral + _kd * derivative;
     }
 
-    public float GetCurrentPitchDeg()
+    public void Reset()
     {
-        return NormalizeAngle180(transform.localEulerAngles.x);
-    }
-
-    private static float NormalizeAngle180(float angle)
-    {
-        return Mathf.Repeat(angle + 180f, 360f) - 180f;
+        _integral    = 0f;
+        _prevError   = 0f;
+        _firstUpdate = true;
     }
 }
