@@ -3,6 +3,8 @@
 *.prettierrc
 *.json
 /.kiro/
+AGENTS.md
+CLAUDE.md
 
 # Python
 __pycache__/
