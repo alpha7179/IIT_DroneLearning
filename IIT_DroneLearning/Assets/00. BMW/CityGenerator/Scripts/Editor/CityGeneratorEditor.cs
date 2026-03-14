@@ -264,6 +264,51 @@ namespace ProceduralCityGenerator
                 }
             }
 
+            // === Spawn Configuration 섹션 ===
+            EditorGUILayout.Space(10);
+            EditorGUILayout.LabelField("Spawn Configuration", EditorStyles.boldLabel);
+            EditorGUILayout.Space(3);
+
+            cityGenerator.autoGenerateSpawns = EditorGUILayout.Toggle(
+                new GUIContent("Auto Generate Spawns", "도시 생성 시 Evader 스폰, Pursuer 스폰, 타겟 포인트를 자동으로 배치합니다."),
+                cityGenerator.autoGenerateSpawns);
+
+            if (cityGenerator.autoGenerateSpawns)
+            {
+                EditorGUI.indentLevel++;
+                cityGenerator.minSpawnSeparation = EditorGUILayout.Slider(
+                    new GUIContent("Min Spawn Separation", "스폰 포인트 간 최소 거리 (월드 단위). 값이 너무 크면 자동으로 완화됩니다."),
+                    cityGenerator.minSpawnSeparation, 1f, 200f);
+
+                cityGenerator.minSpawnHeight = EditorGUILayout.Slider(
+                    new GUIContent("Min Spawn Height", "드론 스폰/타겟 포인트의 최저 비행 고도 (지면 기준, DronePhysics.MinAltitude=0.5 / DroneAgent.SpawnHeight=8 참고)."),
+                    cityGenerator.minSpawnHeight, 0.5f, 50f);
+
+                cityGenerator.maxSpawnHeight = EditorGUILayout.Slider(
+                    new GUIContent("Max Spawn Height", "드론 스폰/타겟 포인트의 최고 비행 고도 (지면 기준, DronePhysics.MaxAltitude=50 참고)."),
+                    cityGenerator.maxSpawnHeight, 0.5f, 50f);
+
+                // Min이 Max를 초과하지 않도록 보정
+                if (cityGenerator.minSpawnHeight > cityGenerator.maxSpawnHeight)
+                    cityGenerator.maxSpawnHeight = cityGenerator.minSpawnHeight;
+
+                EditorGUI.indentLevel--;
+
+                // 생성 결과 표시 (ReadOnly)
+                SpawnConfiguration sc = cityGenerator.GetSpawnConfiguration();
+                if (sc.isValid)
+                {
+                    EditorGUILayout.Space(5);
+                    EditorGUILayout.LabelField("— 생성 결과 (ReadOnly) —", EditorStyles.miniLabel);
+                    EditorGUI.BeginDisabledGroup(true);
+                    EditorGUILayout.Vector3Field(new GUIContent("Evader Spawn", "도망 드론 스폰 위치 (하늘색)"), sc.evaderSpawnPosition);
+                    EditorGUILayout.Vector3Field(new GUIContent("Pursuer Spawn", "추적 드론 스폰 위치 (빨간색)"), sc.pursuerSpawnPosition);
+                    EditorGUILayout.Vector3Field(new GUIContent("Target Point", "타겟 포인트 위치 (초록색)"), sc.targetPosition);
+                    EditorGUILayout.FloatField(new GUIContent("Min Sep Achieved", "실제 달성된 최소 분리 거리 (m)"), sc.achievedMinSeparation);
+                    EditorGUI.EndDisabledGroup();
+                }
+            }
+
             // 변경 사항이 있으면 저장
             if (EditorGUI.EndChangeCheck())
             {

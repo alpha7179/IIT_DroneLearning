@@ -15,6 +15,10 @@
 - **전략적 위치 분석**: 은폐 지점, 교차로, 막다른 골목 등 자동 식별
 - **탑뷰 미니맵 자동 저장**: 도시 생성 시 등고선 스타일 PNG를 CityMaps/ 폴더에 자동 저장
 - **그래프 JSON·CSV 자동 내보내기**: 도시 그래프를 CityData/ 폴더에 자동 저장 (도망자 드론 오프라인 분석용)
+- **스폰/타겟 포인트 자동 생성**: 도시 생성 시 Evader·Pursuer 스폰 위치와 타겟 포인트를 자동으로 결정. 고립 노드 제외 및 최소 분리 거리 보장
+- **최외각 스폰 제한**: `spawnPerimeterFraction`으로 드론 스폰 위치를 도시 가장자리 N% 이내 도로 노드로 제한
+- **도시 계층 그룹화**: 건물·벽·바닥이 `CityGroup_Seed{N}` 단일 GameObject 하위로 자동 묶임
+- **n×m 대량 배치 생성**: `CityBatchGenerator`로 도시를 격자 형태로 대량 생성 (ML 학습용)
 - **런타임 쿼리 API**: 실시간 도시 정보 조회를 위한 최적화된 API
 - **프리셋 시스템**: 자주 사용하는 파라미터 조합 저장 및 로드
 - **성능 최적화**: 대규모 도시 생성 시에도 5초 이내 완료
@@ -47,8 +51,10 @@ IIT_DroneLearning/Assets/00. BMW/ProceduralCityGenerator/
 │   ├── MinimapRenderer.cs            # 미니맵 UI 렌더링
 │   ├── CityDataAPI.cs                # 런타임 쿼리 API
 │   ├── DataStructures.cs             # 공통 데이터 구조체 (CityLayoutMode 포함)
+│   ├── CityBatchGenerator.cs         # n×m 대량 배치 생성 컴포넌트
 │   └── Editor/
-│       └── CityGeneratorEditor.cs    # Custom Inspector (레이아웃 모드 버튼 포함)
+│       ├── CityGeneratorEditor.cs    # Custom Inspector (레이아웃 모드 버튼 포함)
+│       └── CityBatchGeneratorEditor.cs  # 배치 생성 Custom Inspector
 ├── Presets/                          # 저장된 파라미터 프리셋
 ├── Materials/                        # 건물 머티리얼
 └── (런타임 생성 폴더 — git 제외)
@@ -190,6 +196,51 @@ Inspector에서 3개의 버튼 중 하나를 선택합니다. 선택된 버튼�
 - **범위**: 3 ~ 12
 - **비고**: Min Block Size보다 커야 함 (Inspector에서 경고 표시)
 
+### Spawn Configuration (스폰/타겟 포인트 설정)
+
+도시 생성 시 Evader 드론 스폰, Pursuer 드론 스폰, 타겟 포인트를 자동으로 결정합니다.
+
+#### Auto Generate Spawns
+- **설명**: 활성화 시 도시 생성 후 세 위치를 자동으로 계산합니다
+- **기본값**: `true`
+
+#### Min Spawn Separation (최소 분리 거리)
+- **설명**: 세 포인트(Evader, Pursuer, Target) 간 유지해야 할 최소 거리 (월드 단위)
+- **기본값**: 10.0
+- **범위**: 1.0 ~ 200.0
+- **비고**: 조건 미충족 시 거리를 50%씩 완화하여 최대 3회 재시도 후 강제 배치
+
+#### Min Spawn Height (최저 비행 고도)
+- **설명**: 드론 스폰/타겟 포인트의 최저 비행 고도. 지면(elevation)에서 이 값만큼 위에 배치됩니다
+- **기본값**: 5.0
+- **범위**: 0.5 ~ 50.0
+- **비고**: 건물 최대 높이와 비교하여 충분한 여유를 두는 것을 권장
+
+#### Spawn Perimeter Fraction (최외각 스폰 제한)
+- **설명**: 드론 스폰 위치(Evader·Pursuer)를 도시 bounding box 가장자리에서 이 비율 이내의 도로 노드로 제한합니다
+- **기본값**: 0.2 (도시 크기의 20% 이내 가장자리)
+- **범위**: 0.0 ~ 0.5
+- **비고**: 0.0으로 설정하면 전체 도시에서 선택 (기존 방식). 타겟 포인트는 이 제한에서 제외됩니다
+
+#### 선정 알고리즘
+1. `OpenSpace` 또는 `Intersection` 타입 노드만 수집 → `allCandidates`
+2. 그래프 엣지가 없는 **고립 노드** 제외 (도로망과 단절된 위치 방지)
+3. 건물 Bounds 내부인 노드 제외
+4. **최외각 필터** (`spawnPerimeterFraction > 0`): bounding box 가장자리 N% 이내 노드만 추출 → `candidates` (드론 스폰용)
+   - 최외각 후보 < 3개이면 `allCandidates` 전체로 폴백
+5. `usedRandomSeed` 기반 셔플 (재현 가능)
+6. Evader·Pursuer는 `candidates`(최외각), 타겟은 `allCandidates`(전체)에서 선택
+7. 삼중 루프로 모든 쌍 간 거리 ≥ `minSpawnSeparation`인 조합 탐색
+8. 실패 시 거리 기준을 50%씩 완화해 최대 3회 재시도
+9. 선정된 위치의 Y = `node.elevation + minSpawnHeight`
+
+#### Inspector 생성 결과 표시 (ReadOnly)
+도시 생성 완료 후 Inspector에 다음 정보가 자동 표시됩니다:
+- **Evader Spawn** — 도망 드론 스폰 위치 (하늘색)
+- **Pursuer Spawn** — 추적 드론 스폰 위치 (빨간색)
+- **Target Point** — 타겟 포인트 위치 (초록색)
+- **Min Sep Achieved** — 실제 달성된 최소 분리 거리 (m)
+
 ### 길 연결성 보장 (EnsureRoadConnectivity)
 
 Hybrid 및 PureRandom 모드에서는 건물 배치 후 BFS 기반 연결성 검사가 자동으로 실행됩니다.
@@ -219,9 +270,11 @@ Inspector의 **Layout Mode** 섹션에 3개의 토글 버튼이 표시됩니다:
 1. Unity Editor에서 `CityGenerator` 컴포넌트가 부착된 GameObject를 선택합니다
 2. Inspector에서 원하는 파라미터를 설정합니다
 3. **Layout Mode** 버튼에서 원하는 레이아웃을 선택합니다 (기본: Pure Grid)
-4. **"도시 생성 (Generate City)"** 버튼을 클릭합니다
-5. 생성이 완료되면 Console에 결과가 출력됩니다
-6. `Assets/CityMaps/` 폴더에 미니맵 PNG가, `Assets/CityData/` 폴더에 그래프 JSON·CSV가 자동 저장됩니다
+4. **Spawn Configuration** 섹션에서 `Auto Generate Spawns`를 활성화하고 `Min Spawn Separation`, `Min Spawn Height`를 조정합니다
+5. **"도시 생성 (Generate City)"** 버튼을 클릭합니다
+6. 생성이 완료되면 Console에 결과가 출력됩니다
+7. `Assets/CityMaps/` 폴더에 미니맵 PNG가 (스폰/타겟 마커 포함), `Assets/CityData/` 폴더에 그래프 JSON·CSV가 자동 저장됩니다
+8. Spawn Configuration 섹션 하단에 생성된 세 위치 좌표가 ReadOnly로 표시됩니다
 
 **생성 결과 예시 (Hybrid 모드, Seed 42):**
 ```
@@ -237,6 +290,44 @@ Inspector의 **Layout Mode** 섹션에 3개의 토글 버튼이 표시됩니다:
 
 - **"도시 초기화 (Clear City)"** 버튼을 클릭하면 확인 다이얼로그 후 생성된 모든 건물이 제거됩니다
 - 새로운 도시를 생성하기 전에 자동으로 이전 도시가 제거됩니다
+
+### 6. 대량 배치 생성 (CityBatchGenerator)
+
+ML-Agents 학습용으로 서로 다른 씨드의 도시를 n×m 격자로 한 번에 생성합니다.
+
+1. 씬에 빈 GameObject를 생성하고 `CityBatchGenerator` 컴포넌트를 추가합니다
+2. `City Template` 섹션에서 소스를 지정합니다 — 둘 중 하나만 설정하면 됩니다:
+   - **Template Object** (우선): `CityGenerator`가 붙은 **GameObject**를 드래그
+   - **Template Component** (폴백): `CityGenerator` **컴포넌트**를 직접 드래그
+   - 둘 다 설정 시 **Template Object가 우선** 적용됩니다
+3. `Batch Layout`에서 열 수(`Columns`)와 행 수(`Rows`)를 설정합니다
+4. `Spacing X` / `Spacing Z`로 도시 간 가로·세로 여백을 독립 조절합니다
+5. `Seed Mode`를 선택합니다:
+
+   | 모드 | 동작 | baseSeed |
+   |------|------|----------|
+   | `AllRandom` | 각 도시마다 고유 랜덤 씨드 | 비활성 |
+   | `AllSame` | 동일 씨드 → **1개만 생성** | 사용할 씨드 |
+   | `Sequential` | baseSeed, +1, +2, ... 순서대로 | 시작 씨드 |
+
+6. **[Generate Batch]** 버튼을 클릭합니다
+
+**생성 결과 씬 계층 구조 예시 (3×2, Sequential):**
+```
+CityBatch_3x2
+├── City_col0_row0  →  CityGroup_Seed100
+│                      ├── City_Buildings
+│                      ├── CityWalls
+│                      └── CityFloor
+├── City_col1_row0  →  CityGroup_Seed101
+├── City_col2_row0  →  CityGroup_Seed102
+├── City_col0_row1  →  CityGroup_Seed103
+├── City_col1_row1  →  CityGroup_Seed104
+└── City_col2_row1  →  CityGroup_Seed105
+```
+
+> **주의**: 대규모 배치(예: 10×10=100개)는 생성 시간이 길어질 수 있습니다.
+> AllSame 모드에서는 파일이 1개만 저장되며, Sequential/AllRandom 사용을 권장합니다.
 
 ### 4. 프리셋 저장
 
@@ -510,7 +601,55 @@ foreach (int nodeId in pathNodeIds)
 minimapRenderer.DrawPath(pathPositions, Color.green);
 ```
 
-### 7. 완전한 드론 AI 예제
+### 7. 스폰/타겟 포인트 조회
+
+도시 생성 후 `CityDataAPI`를 통해 드론 스폰 위치와 타겟 포인트를 조회할 수 있습니다.
+
+```csharp
+using ProceduralCityGenerator;
+using UnityEngine;
+
+public class DroneSpawnManager : MonoBehaviour
+{
+    void OnEpisodeBegin()
+    {
+        CityDataAPI api = CityDataAPI.Instance;
+
+        if (api == null || !api.HasSpawnConfiguration())
+        {
+            Debug.LogWarning("SpawnConfiguration이 준비되지 않았습니다.");
+            return;
+        }
+
+        // 각 드론/타겟 위치 조회
+        Vector3 evaderSpawn  = api.GetEvaderSpawnPosition();
+        Vector3 pursuerSpawn = api.GetPursuerSpawnPosition();
+        Vector3 targetPos    = api.GetTargetPosition();
+
+        // 드론 배치 예시
+        evaderDrone.transform.position  = evaderSpawn;
+        pursuerDrone.transform.position = pursuerSpawn;
+        targetObject.transform.position = targetPos;
+
+        Debug.Log($"Evader: {evaderSpawn}, Pursuer: {pursuerSpawn}, Target: {targetPos}");
+    }
+
+    void OnEpisodeBeginSafe()
+    {
+        // 전체 구성 한 번에 가져오기
+        SpawnConfiguration sc = CityDataAPI.Instance.GetSpawnConfiguration();
+        if (!sc.isValid) return;
+
+        // 가장 가까운 그래프 노드로 경로 계획
+        List<int> pathToTarget = CityDataAPI.Instance.GetShortestPath(
+            sc.evaderSpawnNodeId, sc.targetNodeId);
+
+        Debug.Log($"타겟까지 경로 노드 수: {pathToTarget.Count}, 최소 분리 거리: {sc.achievedMinSeparation:F1}m");
+    }
+}
+```
+
+### 8. 완전한 드론 AI 예제
 
 ```csharp
 using ProceduralCityGenerator;
@@ -1306,6 +1445,11 @@ CityGenerator (중심 컴포넌트)
 - ✅ **그래프 JSON·CSV 자동 내보내기** (CityData/ 폴더)
 - ✅ **레이아웃 모드별 파일명 자동 구분** (Seed + LayoutMode 포함)
 - ✅ 미니맵 실시간 렌더링 (MinimapRenderer)
+- ✅ **스폰/타겟 포인트 자동 생성** (`SpawnConfiguration` — 고립 노드 제외, 최소 분리 거리 보장)
+- ✅ **미니맵 스폰 마커 시각화** (Evader: 하늘색, Pursuer: 빨간색, Target: 초록색)
+- ✅ **CityDataAPI 스폰 쿼리** (`GetEvaderSpawnPosition`, `GetPursuerSpawnPosition`, `GetTargetPosition`)
+- ✅ **도시 계층 그룹화** (`CityGroup_Seed{N}` — City_Buildings · CityWalls · CityFloor 단일 부모로 통합)
+- ✅ **n×m 대량 배치 생성** (`CityBatchGenerator` — AllRandom / AllSame / Sequential 씨드 모드, 가로·세로 간격 독립 설정)
 
 ### 향후 확장 가능 기능
 - ⬜ 등고선 스타일 미니맵 (고도 가시화)
@@ -1412,7 +1556,103 @@ System.IO.File.WriteAllText("city_graph.json", json);
 
 ## 버전 히스토리
 
-### v1.2.0 (현재)
+### v1.5.0 (현재)
+
+대량 배치 생성 및 도시 그룹화 릴리즈.
+
+**신규 기능:**
+- `CityBatchGenerator` 컴포넌트 추가 — n×m 격자로 도시를 한 번에 대량 생성
+  - `columns` / `rows`: 가로 열·세로 행 수
+  - `spacingX` / `spacingZ`: 도시 간 가로·세로 여백(월드 단위), 독립 설정
+  - `seedMode` (`AllRandom` / `AllSame` / `Sequential`): 씨드 할당 방식
+    - `AllSame`: 결과가 동일하므로 1개만 생성 (columns/rows 무시)
+    - `Sequential`: `baseSeed`부터 순차 증가
+  - `cityTemplateObject` (GameObject): CityGenerator가 붙은 오브젝트를 드래그 — **우선 적용**
+  - `cityTemplate` (CityGenerator): 컴포넌트 직접 지정 — `cityTemplateObject` 미설정 시 폴백
+  - `GetResolvedTemplate()`: 두 필드 중 유효한 CityGenerator를 자동 반환하는 내부 헬퍼
+  - `GenerateBatch()` / `ClearBatch()` 공개 API
+- `CityBatchGeneratorEditor` — 전용 Inspector UI
+  - AllSame 선택 시 columns/rows/spacing 필드 자동 비활성화
+  - AllRandom 선택 시 baseSeed 필드 비활성화
+  - Template Object에 CityGenerator가 없으면 오류 HelpBox 표시
+  - 유효한 소스가 없으면 경고 HelpBox + Generate 버튼 비활성화
+  - `[Generate Batch]` / `[Clear Batch]` 버튼
+- `CityGenerator` 도시 계층 그룹화
+  - 기존에 씬 루트에 흩어져 있던 `City`(건물) · `CityWalls` · `CityFloor`를
+    `CityGroup_Seed{N}` 단일 부모 GameObject 하위로 통합
+  - `ClearCity()` 호출 시 `cityGroupRoot` 하나만 삭제하면 전체 정리
+
+**버그 수정:**
+- 격자 origin 오프셋 보정: `originX = transform.position.x - N*cellW/2 + cellW/2` 적용
+  → 도시 시각적 중심이 `transform.position`과 정확히 일치 (이전에는 `-cellW/2` 편향)
+- 미니맵 bounds 중심 동기화: `transform.position` 기준으로 통일
+- `SpawnWalls` / `SpawnFloor` halfW/halfD: `cellW/2` 보정 반영
+  → 도시 경계 벽·바닥이 건물 외곽과 정확히 맞닿음
+
+**생성 결과 씬 계층 구조:**
+```
+CityBatch_3x3
+├── City_col0_row0
+│   └── CityGroup_Seed12345
+│       ├── City_Buildings
+│       ├── CityWalls
+│       └── CityFloor
+├── City_col1_row0
+│   └── CityGroup_Seed12346
+│       └── ...
+└── ...
+```
+
+### v1.4.0
+
+최외각 스폰 제한 릴리즈.
+
+**신규 기능:**
+- `CityGenerator.spawnPerimeterFraction` (float 0~0.5): 드론 스폰 위치를 도시 가장자리 N% 이내 도로 노드로 제한
+  - 기본값 0.2 → 도시 bounding box 가장자리 20% 이내의 도로 위 노드에서만 스폰
+  - 0.0 설정 시 전체 도시에서 선택 (기존 방식)
+- `GenerateSpawnConfiguration()` 리팩터링:
+  - 전체 후보 (`allCandidates`) / 최외각 후보 (`candidates`) 분리
+  - Evader·Pursuer: `candidates` (최외각) 에서 선택
+  - 타겟: `allCandidates` (전체) 에서 선택 — 내부 배치 가능
+  - 최외각 후보 < 3개 시 `allCandidates` 폴백 (경고 로그 출력)
+
+**Inspector 파라미터 추가:**
+- `spawnPerimeterFraction` (float 0~0.5, Range 슬라이더): 최외각 스폰 제한 비율
+
+### v1.3.0
+
+스폰/타겟 포인트 자동 생성 릴리즈.
+
+**신규 기능:**
+- `SpawnConfiguration` 구조체 추가 (`DataStructures.cs`)
+  - `evaderSpawnPosition`, `pursuerSpawnPosition`, `targetPosition`
+  - `evaderSpawnNodeId`, `pursuerSpawnNodeId`, `targetNodeId` (가장 가까운 그래프 노드 ID)
+  - `achievedMinSeparation` (실제 달성 최소 분리 거리), `isValid`
+- `CityGenerator.GenerateSpawnConfiguration()`: 스폰 포인트 자동 선정
+  - `OpenSpace` / `Intersection` 노드 중 **고립 노드(엣지 0개) 및 건물 내부 노드 제외**
+  - `usedRandomSeed` 기반 재현 가능한 셔플
+  - 삼중 루프 + 거리 완화 재시도(최대 3회) 후 폴백 강제 선택
+- `CityGenerator.GetSpawnConfiguration()`: 외부에서 결과 조회
+- `MinimapGenerator.GenerateMinimap()`: `SpawnConfiguration?` 파라미터 추가
+  - `DrawSpawnMarkers()` / `DrawDroneMarker()`: 반경 5px 원형 + 흰 테두리 마커
+  - Evader: 하늘색 `(0, 0.8, 1)` / Pursuer: 빨간색 `(1, 0.15, 0.15)` / Target: 초록색 `(0.1, 0.9, 0.1)`
+- `CityDataAPI`:
+  - `SetSpawnConfiguration(SpawnConfiguration config)`: 생성 후 API에 등록
+  - `HasSpawnConfiguration()`: 유효성 확인
+  - `GetEvaderSpawnPosition()` / `GetPursuerSpawnPosition()` / `GetTargetPosition()`: 위치 쿼리
+  - `GetSpawnConfiguration()`: 전체 구성 반환
+
+**Inspector 파라미터 추가:**
+- `autoGenerateSpawns` (bool): 자동 생성 활성화
+- `minSpawnSeparation` (float 1~200): 포인트 간 최소 거리
+- `minSpawnHeight` (float 0.5~50): 드론 최저 비행 고도
+
+**Inspector UI 개선:**
+- Spawn Configuration 섹션 추가 (Layout Mode 아래)
+- 생성 후 ReadOnly 결과 표시 (3개 Vector3 + 최소 분리 거리)
+
+### v1.2.0
 
 레이아웃 다양성 및 데이터 내보내기 릴리즈.
 
@@ -1470,8 +1710,8 @@ System.IO.File.WriteAllText("city_graph.json", json);
 - ✅ 성능 최적화 (오브젝트 풀링, 배치 처리)
 
 ### 향후 계획
-- v1.3.0: 다양한 건물 형태 지원 (L자형, T자형 등)
-- v1.4.0: 랜드마크·지형 고도 변화
+- v1.4.0: 다양한 건물 형태 지원 (L자형, T자형 등)
+- v1.5.0: 랜드마크·지형 고도 변화
 - v2.0.0: 동적 환경 변화 및 실시간 그래프 업데이트
 
 ---
@@ -1493,8 +1733,6 @@ System.IO.File.WriteAllText("city_graph.json", json);
 - [ ] Scene View에서 도시 구조 확인
 - [ ] (선택사항) 프리셋으로 저장
 - [ ] 스크립트에서 `CityDataAPI` 사용 시작
-
-**축하합니다! 이제 Procedural City Generator를 사용할 준비가 되었습니다.** 🎉
 
 더 자세한 정보는 각 섹션을 참고하거나, API 사용 예제를 통해 실제 구현 방법을 확인하세요.
 

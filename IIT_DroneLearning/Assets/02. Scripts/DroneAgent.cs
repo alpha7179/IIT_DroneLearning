@@ -44,6 +44,19 @@ public class DroneAgent : Agent
 
         _dronePhysics.ResetPhysics();
 
+        /*
+        // CityGenerator 연동: CityDataAPI에서 추적 드론(Pursuer) 스폰 위치를 가져옵니다.
+        // 사용하려면 아래 주석을 해제하고 파일 상단에 using ProceduralCityGenerator; 를 추가하세요.
+        if (CityDataAPI.Instance != null && CityDataAPI.Instance.HasSpawnConfiguration())
+        {
+            transform.SetPositionAndRotation(
+                CityDataAPI.Instance.GetPursuerSpawnPosition(),
+                Quaternion.Euler(0f, Random.Range(-SpawnYawMaxDeg, SpawnYawMaxDeg), 0f)
+            );
+            return;
+        }
+        */
+
         transform.SetPositionAndRotation(
             new Vector3(
                 Random.Range(-SpawnRangeX, SpawnRangeX),

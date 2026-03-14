@@ -70,6 +70,19 @@ public class EvaderAgent : Agent
 
         // NOTE: 실제 위치/속도 초기화는 World(이강민) 담당 DroneController.Reset()에서 처리
         // _droneController?.ResetDrone();
+
+        // CityGenerator 연동: CityDataAPI에서 회피 드론(Evader) 스폰 위치 및 목표 지점을 가져옵니다.
+        // 사용하려면 아래 주석을 해제하고 파일 상단에 using ProceduralCityGenerator; 를 추가하세요.
+        // DroneController.Reset() 연계 방식은 World(이강민) 담당과 협의 후 통합하세요.
+        //
+        // if (CityDataAPI.Instance != null && CityDataAPI.Instance.HasSpawnConfiguration())
+        // {
+        //     Vector3 evaderSpawn = CityDataAPI.Instance.GetEvaderSpawnPosition();
+        //     Vector3 targetPos   = CityDataAPI.Instance.GetTargetPosition();
+        //     // _droneController?.ResetDrone(evaderSpawn);          // 스폰 위치 전달
+        //     // if (_goalTransform != null)
+        //     //     _goalTransform.position = targetPos;            // 목표 지점 이동
+        // }
     }
 
     // ───────── 관측 수집 ──────────────────────────────────────────────────

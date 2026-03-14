@@ -10,37 +10,38 @@ namespace ProceduralCityGenerator
     {
         private readonly int resolution;
         private readonly Bounds cityBounds;
-        private readonly float pixelsPerMeter;
+        private readonly float pixelsPerMeterX;  // X축 (월드 X → 텍스처 U)
+        private readonly float pixelsPerMeterZ;  // Z축 (월드 Z → 텍스처 V)
 
         /// <summary>
         /// MinimapGenerator 생성자
         /// </summary>
         /// <param name="resolution">미니맵 해상도 (픽셀 단위)</param>
-        /// <param name="bounds">도시 경계 (Bounds)</param>
+        /// <param name="bounds">도시 경계 (Bounds) — 전체 격자 면적 기준으로 전달해야 함</param>
         public MinimapGenerator(int resolution, Bounds bounds)
         {
             this.resolution = resolution;
             this.cityBounds = bounds;
 
-            // pixelsPerMeter 계산: 해상도를 도시의 최대 차원으로 나눔
-            float maxDimension = Mathf.Max(bounds.size.x, bounds.size.z);
-            this.pixelsPerMeter = resolution / maxDimension;
+            // X/Z 축에 독립적인 스케일 팩터: 도시가 정사각형이 아니어도 텍스처를 꽉 채움
+            this.pixelsPerMeterX = resolution / Mathf.Max(bounds.size.x, 0.001f);
+            this.pixelsPerMeterZ = resolution / Mathf.Max(bounds.size.z, 0.001f);
         }
 
-        /// <summary>
-        /// 미니맵 해상도를 반환
-        /// </summary>
+        /// <summary>미니맵 해상도를 반환</summary>
         public int Resolution => resolution;
 
-        /// <summary>
-        /// 도시 경계를 반환
-        /// </summary>
+        /// <summary>도시 경계를 반환</summary>
         public Bounds CityBounds => cityBounds;
 
-        /// <summary>
-        /// 픽셀당 미터 비율을 반환
-        /// </summary>
-        public float PixelsPerMeter => pixelsPerMeter;
+        /// <summary>X축 픽셀/미터 비율을 반환</summary>
+        public float PixelsPerMeterX => pixelsPerMeterX;
+
+        /// <summary>Z축 픽셀/미터 비율을 반환</summary>
+        public float PixelsPerMeterZ => pixelsPerMeterZ;
+
+        /// <summary>픽셀/미터 비율 (X/Z 평균) — 하위 호환용</summary>
+        public float PixelsPerMeter => (pixelsPerMeterX + pixelsPerMeterZ) * 0.5f;
 
         /// <summary>
         /// 건물 배열과 도시 그래프를 기반으로 등고선 스타일 미니맵을 생성
@@ -49,7 +50,7 @@ namespace ProceduralCityGenerator
         /// <param name="graph">도시 그래프 (선택적)</param>
         /// <param name="strategicLocations">전략적 위치 리스트 (선택적)</param>
         /// <returns>생성된 미니맵 Texture2D</returns>
-        public Texture2D GenerateMinimap(Building[] buildings, CityGraph graph = null, System.Collections.Generic.List<StrategicLocation> strategicLocations = null)
+        public Texture2D GenerateMinimap(Building[] buildings, CityGraph graph = null, System.Collections.Generic.List<StrategicLocation> strategicLocations = null, SpawnConfiguration? spawnConfig = null)
         {
             // Texture2D 생성 (지정된 해상도)
             Texture2D minimap = new Texture2D(resolution, resolution, TextureFormat.RGB24, false);
@@ -68,6 +69,8 @@ namespace ProceduralCityGenerator
             {
                 if (strategicLocations != null && strategicLocations.Count > 0)
                     DrawStrategicMarkers(minimap, strategicLocations);
+                if (spawnConfig.HasValue && spawnConfig.Value.isValid)
+                    DrawSpawnMarkers(minimap, spawnConfig.Value);
                 minimap.Apply();
                 return minimap;
             }
@@ -93,6 +96,12 @@ namespace ProceduralCityGenerator
                 DrawStrategicMarkers(minimap, strategicLocations);
             }
 
+            // 스폰/타겟 마커 그리기 (전략 마커 위에 덮어씌워 항상 잘 보이게)
+            if (spawnConfig.HasValue && spawnConfig.Value.isValid)
+            {
+                DrawSpawnMarkers(minimap, spawnConfig.Value);
+            }
+
             // 텍스처 적용
             minimap.Apply();
             return minimap;
@@ -110,9 +119,9 @@ namespace ProceduralCityGenerator
             // 건물의 월드 좌표를 픽셀 좌표로 변환
             Vector2Int centerPixel = WorldToMinimapPixel(building.position);
 
-            // 건물 크기를 픽셀 단위로 변환
-            int pixelWidth = Mathf.Max(1, Mathf.RoundToInt(building.size.x * pixelsPerMeter));
-            int pixelDepth = Mathf.Max(1, Mathf.RoundToInt(building.size.z * pixelsPerMeter));
+            // 건물 크기를 픽셀 단위로 변환 (X/Z 독립 스케일 적용)
+            int pixelWidth = Mathf.Max(1, Mathf.RoundToInt(building.size.x * pixelsPerMeterX));
+            int pixelDepth = Mathf.Max(1, Mathf.RoundToInt(building.size.z * pixelsPerMeterZ));
 
             // 건물 높이에 따른 등고선 스타일 색상 계산
             Color buildingColor = GetHeightColor(building.height, minHeight, maxHeight);
@@ -171,9 +180,9 @@ namespace ProceduralCityGenerator
             // 도시 경계의 최소 지점을 기준으로 상대 위치 계산
             Vector3 relativePosition = worldPosition - cityBounds.min;
 
-            // 픽셀 좌표로 변환
-            int pixelX = Mathf.RoundToInt(relativePosition.x * pixelsPerMeter);
-            int pixelY = Mathf.RoundToInt(relativePosition.z * pixelsPerMeter);
+            // X/Z 축 독립 스케일로 픽셀 좌표 변환 → 비정사각형 도시도 텍스처를 꽉 채움
+            int pixelX = Mathf.RoundToInt(relativePosition.x * pixelsPerMeterX);
+            int pixelY = Mathf.RoundToInt(relativePosition.z * pixelsPerMeterZ);
 
             // 경계 내로 제한
             pixelX = Mathf.Clamp(pixelX, 0, resolution - 1);
@@ -198,36 +207,27 @@ namespace ProceduralCityGenerator
             // 격자선 색상 (연한 회색, 반투명)
             Color gridLineColor = new Color(0.6f, 0.6f, 0.6f, 0.5f);
 
-            // 격자 간격을 픽셀 단위로 변환
-            int pixelSpacing = Mathf.Max(1, Mathf.RoundToInt(gridSpacing * pixelsPerMeter));
+            // 격자 간격을 픽셀 단위로 변환 (X/Z 독립 스케일 적용)
+            int pixelSpacingX = Mathf.Max(1, Mathf.RoundToInt(gridSpacing * pixelsPerMeterX));
+            int pixelSpacingZ = Mathf.Max(1, Mathf.RoundToInt(gridSpacing * pixelsPerMeterZ));
 
-            // 수직 격자선 그리기 (X축)
-            for (int x = 0; x < resolution; x += pixelSpacing)
+            // 수직 격자선 그리기 (X축 간격)
+            for (int x = 0; x < resolution; x += pixelSpacingX)
             {
                 for (int y = 0; y < resolution; y++)
                 {
-                    if (x >= 0 && x < resolution && y >= 0 && y < resolution)
-                    {
-                        // 기존 픽셀 색상과 블렌딩
-                        Color existingColor = minimap.GetPixel(x, y);
-                        Color blendedColor = Color.Lerp(existingColor, gridLineColor, 0.3f);
-                        minimap.SetPixel(x, y, blendedColor);
-                    }
+                    Color existingColor = minimap.GetPixel(x, y);
+                    minimap.SetPixel(x, y, Color.Lerp(existingColor, gridLineColor, 0.3f));
                 }
             }
 
-            // 수평 격자선 그리기 (Z축)
-            for (int y = 0; y < resolution; y += pixelSpacing)
+            // 수평 격자선 그리기 (Z축 간격)
+            for (int y = 0; y < resolution; y += pixelSpacingZ)
             {
                 for (int x = 0; x < resolution; x++)
                 {
-                    if (x >= 0 && x < resolution && y >= 0 && y < resolution)
-                    {
-                        // 기존 픽셀 색상과 블렌딩
-                        Color existingColor = minimap.GetPixel(x, y);
-                        Color blendedColor = Color.Lerp(existingColor, gridLineColor, 0.3f);
-                        minimap.SetPixel(x, y, blendedColor);
-                    }
+                    Color existingColor = minimap.GetPixel(x, y);
+                    minimap.SetPixel(x, y, Color.Lerp(existingColor, gridLineColor, 0.3f));
                 }
             }
         }
@@ -299,6 +299,51 @@ namespace ProceduralCityGenerator
                     return Color.green;       // 우회 경로: 초록색
                 default:
                     return Color.white;       // 기본값: 흰색
+            }
+        }
+
+        /// <summary>
+        /// 스폰/타겟 포인트를 미니맵에 표시합니다.
+        /// 전략 마커보다 크고 흰 테두리가 있는 원형 마커를 사용합니다.
+        /// </summary>
+        private void DrawSpawnMarkers(Texture2D minimap, SpawnConfiguration config)
+        {
+            // Evader: 하늘색 (cyan)
+            DrawDroneMarker(minimap, config.evaderSpawnPosition,
+                new Color(0f, 0.8f, 1f), Color.white, 5);
+
+            // Pursuer: 빨간색
+            DrawDroneMarker(minimap, config.pursuerSpawnPosition,
+                new Color(1f, 0.15f, 0.15f), Color.white, 5);
+
+            // Target: 초록색
+            DrawDroneMarker(minimap, config.targetPosition,
+                new Color(0.1f, 0.9f, 0.1f), Color.white, 5);
+        }
+
+        /// <summary>
+        /// 단일 드론/타겟 마커를 원형으로 그립니다 (채우기 색 + 흰 테두리 1px).
+        /// </summary>
+        private void DrawDroneMarker(Texture2D minimap, Vector3 worldPos, Color fillColor, Color borderColor, int radius)
+        {
+            Vector2Int center = WorldToMinimapPixel(worldPos);
+
+            for (int dx = -(radius + 1); dx <= radius + 1; dx++)
+            {
+                for (int dy = -(radius + 1); dy <= radius + 1; dy++)
+                {
+                    int x = center.x + dx;
+                    int y = center.y + dy;
+
+                    if (x < 0 || x >= resolution || y < 0 || y >= resolution)
+                        continue;
+
+                    float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                    if (dist <= radius)
+                        minimap.SetPixel(x, y, fillColor);
+                    else if (dist <= radius + 1f)
+                        minimap.SetPixel(x, y, borderColor);
+                }
             }
         }
 

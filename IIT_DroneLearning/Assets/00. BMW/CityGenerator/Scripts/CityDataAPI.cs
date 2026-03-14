@@ -53,6 +53,9 @@ namespace ProceduralCityGenerator
         // 전략적 위치 캐시 (타입별 인덱싱으로 O(k) 조회 지원)
         private Dictionary<StrategyType, List<StrategicLocation>> strategicLocationsByType;
 
+        // 스폰/타겟 포인트 구성
+        private SpawnConfiguration spawnConfiguration;
+
         /// <summary>
         /// Unity Awake 메서드
         /// 싱글톤 인스턴스를 설정합니다.
@@ -598,6 +601,39 @@ namespace ProceduralCityGenerator
                 connectedNodes = new List<int> { nearestNode.nodeId }
             };
         }
+
+        /// <summary>
+        /// 스폰/타겟 포인트 구성을 설정합니다. CityGenerator가 생성 후 호출합니다.
+        /// </summary>
+        public void SetSpawnConfiguration(SpawnConfiguration config)
+        {
+            spawnConfiguration = config;
+        }
+
+        /// <summary>
+        /// 스폰/타겟 포인트가 유효하게 설정되었는지 확인합니다.
+        /// </summary>
+        public bool HasSpawnConfiguration() => spawnConfiguration.isValid;
+
+        /// <summary>
+        /// 도망 드론의 스폰 위치를 반환합니다.
+        /// </summary>
+        public Vector3 GetEvaderSpawnPosition() => spawnConfiguration.evaderSpawnPosition;
+
+        /// <summary>
+        /// 추적 드론의 스폰 위치를 반환합니다.
+        /// </summary>
+        public Vector3 GetPursuerSpawnPosition() => spawnConfiguration.pursuerSpawnPosition;
+
+        /// <summary>
+        /// 타겟 포인트 위치를 반환합니다.
+        /// </summary>
+        public Vector3 GetTargetPosition() => spawnConfiguration.targetPosition;
+
+        /// <summary>
+        /// 스폰/타겟 포인트 전체 구성을 반환합니다.
+        /// </summary>
+        public SpawnConfiguration GetSpawnConfiguration() => spawnConfiguration;
 
         /// <summary>
         /// 두 위치 간의 가시성을 확인합니다.
