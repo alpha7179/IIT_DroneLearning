@@ -10,6 +10,8 @@ DroneSensorSystem은 드론 주변 360도 전방위 장애물 감지를 제공�
 
 - **26방향 레이캐스트**: 5개 레이어로 구성된 구형 센서 패턴
 - **정규화된 거리 값**: ML 학습에 최적화된 0.0~1.0 범위의 거리 데이터
+- **레이어별 활성화 제어**: 레이어 단위로 ON/OFF 및 방위 수(1·4·8방위) 실시간 제어
+- **Inspector 실시간 반영**: `OnValidate()` 통해 플레이 모드 중 Inspector 변경 즉시 적용
 - **설정 가능한 매개변수**: Unity Inspector에서 감지 거리, 고도각, 레이어 마스크 조정
 - **디버그 시각화**: Scene 뷰에서 실시간 레이 표시 (충돌 감지 시 빨간색, 충돌 없음 시 녹색)
 - **성능 최적화**: 레이 방향 벡터 캐싱, 배열 재사용으로 가비지 컬렉션 최소화
@@ -43,6 +45,31 @@ DroneSensorSystem은 드론 주변 360도 전방위 장애물 감지를 제공�
 - **Detection Layer Mask**: 감지 대상 레이어
   - 센서가 감지할 Unity 레이어 선택
   - 기본값: Everything (모든 레이어)
+
+#### 레이어 활성화 설정
+
+각 레이어를 독립적으로 켜거나 끌 수 있습니다. 기본값은 모두 활성화(26개 전체).
+
+| 속성 | 타입 | 기본값 | 설명 |
+|---|---|---|---|
+| **Enable Top** | bool | true | 상(Top) 레이어 ON/OFF |
+| **Top Middle Mode** | DiagonalLayerMode | All | 상-중 레이어 활성 방위 |
+| **Middle Mode** | MiddleLayerMode | All | 중 레이어 활성 방위 |
+| **Middle Bottom Mode** | DiagonalLayerMode | All | 중-하 레이어 활성 방위 |
+| **Enable Bottom** | bool | true | 하(Bottom) 레이어 ON/OFF |
+
+**DiagonalLayerMode** (상-중·중-하 공용):
+- `Off` — 레이어 전체 비활성 (0개)
+- `Cardinal` — 4방위: N, E, S, W (4개)
+- `All` — 8방위: N, NE, E, SE, S, SW, W, NW (8개)
+
+**MiddleLayerMode** (중 레이어 전용):
+- `Off` — 레이어 전체 비활성 (0개)
+- `Front` — 정면(N)만 (1개)
+- `Cardinal` — 4방위: N, E, S, W (4개)
+- `All` — 8방위: N, NE, E, SE, S, SW, W, NW (8개)
+
+> **실시간 반영**: 플레이 모드 중 Inspector에서 값을 변경하면 `OnValidate()`가 즉시 호출되어 다음 FixedUpdate부터 반영됩니다.
 
 #### 디버그 설정
 
@@ -132,6 +159,27 @@ _sensorSystem.SetRayEnabled(0, false);
 
 // 디버그 시각화 끄기 (성능 최적화)
 _sensorSystem.SetDebugVisualization(false);
+```
+
+### 레이어 활성화 런타임 제어
+
+```csharp
+// 상·하 레이어 토글
+_sensorSystem.SetTopEnabled(false);
+_sensorSystem.SetBottomEnabled(false);
+
+// 상-중 레이어를 4방위로 제한
+_sensorSystem.SetTopMiddleMode(DroneSensorSystem.DiagonalLayerMode.Cardinal);
+
+// 중 레이어를 정면만 활성화
+_sensorSystem.SetMiddleMode(DroneSensorSystem.MiddleLayerMode.Front);
+
+// 중-하 레이어 비활성화
+_sensorSystem.SetMiddleBottomMode(DroneSensorSystem.DiagonalLayerMode.Off);
+
+// 현재 활성 레이 수 확인
+int activeCount = _sensorSystem.GetActiveRayCount(); // 예: 6
+Debug.Log($"활성 레이: {activeCount}개");
 ```
 
 ### 카메라 정렬 (향후 통합용)
@@ -287,7 +335,38 @@ camera.transform.rotation = Quaternion.LookRotation(forwardDirection);
 #### `void SetDebugVisualization(bool enabled)`
 디버그 시각화를 활성화 또는 비활성화합니다.
 
+#### `void SetTopEnabled(bool enabled)`
+상(Top) 레이어(인덱스 0)를 켜거나 끕니다.
+
+#### `void SetTopMiddleMode(DiagonalLayerMode mode)`
+상-중(TopMiddle) 레이어의 활성 방위를 설정합니다. (Off / Cardinal / All)
+
+#### `void SetMiddleMode(MiddleLayerMode mode)`
+중(Middle) 레이어의 활성 방위를 설정합니다. (Off / Front / Cardinal / All)
+
+#### `void SetMiddleBottomMode(DiagonalLayerMode mode)`
+중-하(MiddleBottom) 레이어의 활성 방위를 설정합니다. (Off / Cardinal / All)
+
+#### `void SetBottomEnabled(bool enabled)`
+하(Bottom) 레이어(인덱스 25)를 켜거나 끕니다.
+
+#### `int GetActiveRayCount()`
+현재 활성화된 레이 개수를 반환합니다.
+
 ### 열거형
+
+#### `DiagonalLayerMode`
+상-중 / 중-하 레이어 전용:
+- `Off` = 0: 전체 비활성
+- `Cardinal` = 4: N, E, S, W (4방위)
+- `All` = 8: N, NE, E, SE, S, SW, W, NW (8방위)
+
+#### `MiddleLayerMode`
+중 레이어 전용:
+- `Off` = 0: 전체 비활성
+- `Front` = 1: 정면(N)만
+- `Cardinal` = 4: N, E, S, W (4방위)
+- `All` = 8: N, NE, E, SE, S, SW, W, NW (8방위)
 
 #### `SensorLayer`
 - `Top`: 수직 위 (1개)

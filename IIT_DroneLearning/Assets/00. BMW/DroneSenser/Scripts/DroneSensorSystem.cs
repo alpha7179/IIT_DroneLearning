@@ -88,7 +88,7 @@ namespace BMW.DroneSensor
     public class DroneSensorSystem : MonoBehaviour
 {
     #region 열거형 정의
-    
+
     /// <summary>
     /// 센서 레이어 정의
     /// </summary>
@@ -115,7 +115,28 @@ namespace BMW.DroneSensor
         W,   // 서 (좌측, 270°)
         NW   // 북서 (315°)
     }
-    
+
+    /// <summary>
+    /// 상-중 / 중-하 레이어의 활성 방위 수
+    /// </summary>
+    public enum DiagonalLayerMode
+    {
+        Off      = 0,  // 레이어 전체 비활성
+        Cardinal = 4,  // 4방위: N, E, S, W
+        All      = 8   // 8방위: N, NE, E, SE, S, SW, W, NW
+    }
+
+    /// <summary>
+    /// 중(Middle) 레이어의 활성 방위 수
+    /// </summary>
+    public enum MiddleLayerMode
+    {
+        Off      = 0,  // 레이어 전체 비활성
+        Front    = 1,  // 1방위: 정면(N)만
+        Cardinal = 4,  // 4방위: N, E, S, W
+        All      = 8   // 8방위: N, NE, E, SE, S, SW, W, NW
+    }
+
     #endregion
 
     #region Unity Inspector 노출 속성
@@ -134,6 +155,22 @@ namespace BMW.DroneSensor
     
     [Tooltip("감지 대상 레이어")]
     public LayerMask DetectionLayerMask = -1;
+
+    [Header("레이어 활성화 설정")]
+    [Tooltip("상(Top) 레이어 활성화")]
+    public bool EnableTop = true;
+
+    [Tooltip("상-중(TopMiddle) 레이어 활성 방위\nOff=비활성, Cardinal=4방위(N·E·S·W), All=8방위")]
+    public DiagonalLayerMode TopMiddleMode = DiagonalLayerMode.All;
+
+    [Tooltip("중(Middle) 레이어 활성 방위\nOff=비활성, Front=정면(N), Cardinal=4방위(N·E·S·W), All=8방위")]
+    public MiddleLayerMode MiddleMode = MiddleLayerMode.All;
+
+    [Tooltip("중-하(MiddleBottom) 레이어 활성 방위\nOff=비활성, Cardinal=4방위(N·E·S·W), All=8방위")]
+    public DiagonalLayerMode MiddleBottomMode = DiagonalLayerMode.All;
+
+    [Tooltip("하(Bottom) 레이어 활성화")]
+    public bool EnableBottom = true;
 
     [Header("디버그")]
     [Tooltip("Scene 뷰에서 레이 시각화")]
@@ -460,7 +497,54 @@ namespace BMW.DroneSensor
     {
         ShowDebugRays = enabled;
     }
-    
+
+    /// <summary>상(Top) 레이어를 켜거나 끕니다.</summary>
+    public void SetTopEnabled(bool enabled)
+    {
+        EnableTop = enabled;
+        ApplySensorConfiguration();
+    }
+
+    /// <summary>상-중(TopMiddle) 레이어의 활성 방위 모드를 설정합니다.</summary>
+    public void SetTopMiddleMode(DiagonalLayerMode mode)
+    {
+        TopMiddleMode = mode;
+        ApplySensorConfiguration();
+    }
+
+    /// <summary>중(Middle) 레이어의 활성 방위 모드를 설정합니다.</summary>
+    public void SetMiddleMode(MiddleLayerMode mode)
+    {
+        MiddleMode = mode;
+        ApplySensorConfiguration();
+    }
+
+    /// <summary>중-하(MiddleBottom) 레이어의 활성 방위 모드를 설정합니다.</summary>
+    public void SetMiddleBottomMode(DiagonalLayerMode mode)
+    {
+        MiddleBottomMode = mode;
+        ApplySensorConfiguration();
+    }
+
+    /// <summary>하(Bottom) 레이어를 켜거나 끕니다.</summary>
+    public void SetBottomEnabled(bool enabled)
+    {
+        EnableBottom = enabled;
+        ApplySensorConfiguration();
+    }
+
+    /// <summary>현재 활성화된 레이 개수를 반환합니다.</summary>
+    public int GetActiveRayCount()
+    {
+        if (!_isInitialized || _rayConfigs == null) return 0;
+        int count = 0;
+        for (int i = 0; i < 26; i++)
+        {
+            if (_rayConfigs[i] != null && _rayConfigs[i].IsEnabled) count++;
+        }
+        return count;
+    }
+
     #endregion
 
     #region Unity 생명주기 메서드
@@ -475,9 +559,22 @@ namespace BMW.DroneSensor
         // 순서가 역전되면 잘못된 각도로 캐시된 레이 방향이 수정되지 않는 버그가 발생합니다.
         ValidateConfiguration();
         InitializeRayConfigurations();
+        ApplySensorConfiguration();
         InitializeSensorData();
         _droneColliders = GetComponentsInChildren<Collider>();
         _isInitialized = true;
+    }
+
+    /// <summary>
+    /// Inspector 값이 변경될 때마다 호출됩니다 (에디터 및 플레이 모드 모두).
+    /// 레이어 활성화 설정을 실시간으로 반영합니다.
+    /// </summary>
+    private void OnValidate()
+    {
+        if (_isInitialized)
+        {
+            ApplySensorConfiguration();
+        }
     }
 
     /// <summary>
@@ -593,7 +690,65 @@ namespace BMW.DroneSensor
     #endregion
 
     #region 초기화 메서드
-    
+
+    /// <summary>
+    /// Inspector의 레이어 활성화 설정을 각 레이의 IsEnabled에 반영합니다.
+    /// Awake() 및 런타임 API 호출 시마다 실행됩니다.
+    /// </summary>
+    private void ApplySensorConfiguration()
+    {
+        if (_rayConfigs == null) return;
+
+        // 상(Top) — 인덱스 0
+        _rayConfigs[0].IsEnabled = EnableTop;
+
+        // 상-중(TopMiddle) — 인덱스 1~8
+        for (int i = 0; i < 8; i++)
+        {
+            _rayConfigs[1 + i].IsEnabled = IsDiagonalDirectionEnabled(TopMiddleMode, i);
+        }
+
+        // 중(Middle) — 인덱스 9~16
+        for (int i = 0; i < 8; i++)
+        {
+            _rayConfigs[9 + i].IsEnabled = IsMiddleDirectionEnabled(MiddleMode, i);
+        }
+
+        // 중-하(MiddleBottom) — 인덱스 17~24
+        for (int i = 0; i < 8; i++)
+        {
+            _rayConfigs[17 + i].IsEnabled = IsDiagonalDirectionEnabled(MiddleBottomMode, i);
+        }
+
+        // 하(Bottom) — 인덱스 25
+        _rayConfigs[25].IsEnabled = EnableBottom;
+    }
+
+    // 4방위(Cardinal): N(0), E(2), S(4), W(6) — 짝수 오프셋만 활성
+    private bool IsDiagonalDirectionEnabled(DiagonalLayerMode mode, int offset)
+    {
+        switch (mode)
+        {
+            case DiagonalLayerMode.Off:      return false;
+            case DiagonalLayerMode.Cardinal: return offset % 2 == 0;
+            case DiagonalLayerMode.All:      return true;
+            default:                         return false;
+        }
+    }
+
+    // 중 레이어: Front=N(offset 0)만, Cardinal=짝수, All=전부
+    private bool IsMiddleDirectionEnabled(MiddleLayerMode mode, int offset)
+    {
+        switch (mode)
+        {
+            case MiddleLayerMode.Off:      return false;
+            case MiddleLayerMode.Front:    return offset == 0;
+            case MiddleLayerMode.Cardinal: return offset % 2 == 0;
+            case MiddleLayerMode.All:      return true;
+            default:                       return false;
+        }
+    }
+
     /// <summary>
     /// 26개 레이의 방향 벡터를 사전 계산합니다.
     /// </summary>

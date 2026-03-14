@@ -3,6 +3,14 @@ using Unity.MLAgents;
 using Unity.MLAgents.Sensors;
 using Unity.MLAgents.Actuators;
 using BMW.DroneSensor;
+using ProceduralCityGenerator;
+
+/// <summary>드론 역할 — Inspector에서 선택</summary>
+public enum DroneRole
+{
+    Pursuer,  // 추격 드론 — GetPursuerSpawnPosition()
+    Evader,   // 도망 드론 — GetEvaderSpawnPosition()
+}
 
 /// <summary>
 /// RL Agent wrapper for drone physics.
@@ -14,6 +22,10 @@ public class DroneAgent : Agent
     [Header("References")]
     public Transform TargetTransform;
     public Transform GoalTransform;
+
+    [Header("Role")]
+    [Tooltip("Pursuer: 추격 드론 스폰 위치 사용\nEvader: 도망 드론 스폰 위치 사용")]
+    public DroneRole Role = DroneRole.Pursuer;
 
     [Header("Episode Spawn")]
     public float SpawnRangeX = 8f;
@@ -42,6 +54,23 @@ public class DroneAgent : Agent
         if (_dronePhysics == null)
             return;
 
+        _dronePhysics.ResetPhysics();
+
+        // CityGenerator 연동: Role에 따라 스폰 위치 자동 선택
+        if (CityDataAPI.Instance != null && CityDataAPI.Instance.HasSpawnConfiguration())
+        {
+            Vector3 spawnPos = Role == DroneRole.Evader
+                ? CityDataAPI.Instance.GetEvaderSpawnPosition()
+                : CityDataAPI.Instance.GetPursuerSpawnPosition();
+
+            transform.SetPositionAndRotation(
+                spawnPos,
+                Quaternion.Euler(0f, Random.Range(-SpawnYawMaxDeg, SpawnYawMaxDeg), 0f)
+            );
+            return;
+        }
+
+        // 폴백: CityDataAPI 없을 때 랜덤 스폰
         transform.SetPositionAndRotation(
             new Vector3(
                 Random.Range(-SpawnRangeX, SpawnRangeX),
@@ -50,8 +79,6 @@ public class DroneAgent : Agent
             ),
             Quaternion.Euler(0f, Random.Range(-SpawnYawMaxDeg, SpawnYawMaxDeg), 0f)
         );
-
-        _dronePhysics.ResetPhysics();
     }
 
     public override void CollectObservations(VectorSensor sensor)

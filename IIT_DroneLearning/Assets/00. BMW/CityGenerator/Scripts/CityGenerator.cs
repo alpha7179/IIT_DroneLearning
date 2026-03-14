@@ -14,11 +14,11 @@ namespace ProceduralCityGenerator
         [Header("Grid Settings")]
         [Tooltip("격자 시스템의 1 단위가 나타내는 실제 거리 (미터)")]
         [Range(0.1f, 100f)]
-        public float unitDistance = 1.0f;
+        public float unitDistance = 2.0f;
 
         [Tooltip("도시 최소 가로 길이 (격자 단위)")]
         [Range(1, 100)]
-        public int minWidth = 10;
+        public int minWidth = 20;
 
         [Tooltip("도시 최대 가로 길이 (격자 단위)")]
         [Range(1, 100)]
@@ -26,7 +26,7 @@ namespace ProceduralCityGenerator
 
         [Tooltip("도시 최소 세로 길이 (격자 단위)")]
         [Range(1, 100)]
-        public int minDepth = 10;
+        public int minDepth = 20;
 
         [Tooltip("도시 최대 세로 길이 (격자 단위)")]
         [Range(1, 100)]
@@ -35,11 +35,11 @@ namespace ProceduralCityGenerator
         [Header("Building Settings")]
         [Tooltip("건물 가로 크기 (단위_거리)")]
         [Range(0.5f, 50f)]
-        public float buildingWidth = 1.0f;
+        public float buildingWidth = 2.0f;
 
         [Tooltip("건물 세로 크기 (단위_거리)")]
         [Range(0.5f, 50f)]
-        public float buildingDepth = 1.0f;
+        public float buildingDepth = 2.0f;
 
         [Tooltip("건물 최소 높이 (단위_거리)")]
         [Range(1f, 500f)]
@@ -47,15 +47,15 @@ namespace ProceduralCityGenerator
 
         [Tooltip("건물 최대 높이 (단위_거리)")]
         [Range(1f, 500f)]
-        public float maxBuildingHeight = 20.0f;
+        public float maxBuildingHeight = 10.0f;
 
         [Tooltip("건물 사이의 간격 (단위_거리)")]
         [Range(0f, 50f)]
-        public float buildingSpacing = 1.0f;
+        public float buildingSpacing = 0.5f;
 
         [Tooltip("격자 셀에 건물이 배치될 확률 (0.0 ~ 1.0)")]
         [Range(0f, 1f)]
-        public float buildingDensity = 0.7f;
+        public float buildingDensity = 0.8f;
 
         [Header("Generation Settings")]
         [Tooltip("재현 가능한 도시 생성을 위한 시드값 (-1: 시간 기반 랜덤)")]
@@ -96,20 +96,41 @@ namespace ProceduralCityGenerator
 
         [Tooltip("Hybrid/PureRandom: 건물 위치 랜덤 오프셋 세기 (0=격자 고정, 1=최대 불규칙)")]
         [Range(0f, 1f)]
-        public float randomOffsetStrength = 0.5f;
+        public float randomOffsetStrength = 0.6f;
 
         [Tooltip("Hybrid/PureRandom: 블록 최소 크기 (격자 단위)")]
         [Range(2, 8)]
-        public int minBlockSize = 3;
+        public int minBlockSize = 5;
 
         [Tooltip("Hybrid/PureRandom: 블록 최대 크기 (격자 단위)")]
         [Range(3, 12)]
-        public int maxBlockSize = 6;
+        public int maxBlockSize = 5;
+
+        [Header("Spawn Configuration")]
+        [Tooltip("도시 생성 시 스폰/타겟 포인트를 자동으로 배치합니다.")]
+        public bool autoGenerateSpawns = true;
+
+        [Tooltip("스폰 포인트 간 최소 거리 (월드 단위)")]
+        [Range(1f, 200f)]
+        public float minSpawnSeparation = 10f;
+
+        [Tooltip("드론 스폰/타겟 포인트의 최저 비행 고도 (지면 기준, 월드 단위). DronePhysics.MinAltitude = 0.5f / DroneAgent.SpawnHeight = 8f 기준.")]
+        [Range(0.5f, 50f)]
+        public float minSpawnHeight = 8f;
+
+        [Tooltip("드론 스폰/타겟 포인트의 최고 비행 고도 (지면 기준, 월드 단위). DronePhysics.MaxAltitude = 50f 기준.")]
+        [Range(0.5f, 50f)]
+        public float maxSpawnHeight = 50f;
+
+        [Header("Export Settings")]
+        [Tooltip("true이면 미니맵 PNG 및 그래프 CSV/JSON 파일 저장을 건너뜁니다.\nCityBatchGenerator가 AllSame 모드로 중복 파일 저장을 막을 때 사용합니다.")]
+        public bool suppressFileExport = false;
 
         #endregion
 
         #region Internal State
 
+        private GameObject cityGroupRoot;  // 건물·벽·바닥을 묶는 최상위 그룹
         private GameObject cityRoot;
         private CityGraph cityGraph;
         private SpatialIndex spatialIndex;
@@ -124,6 +145,7 @@ namespace ProceduralCityGenerator
         private bool[,] roadMask;   // true = 도로 셀 (건물 배치 불가)
         private GameObject wallsRoot;
         private GameObject floorObject;
+        private SpawnConfiguration spawnConfiguration;
 
         #endregion
 
@@ -160,7 +182,7 @@ namespace ProceduralCityGenerator
         private void OnValidate()
         {
             // 도시가 아직 생성되지 않았으면 무시
-            if (cityRoot == null) return;
+            if (cityGroupRoot == null) return;
 
             ApplyWallsState();
             ApplyFloorState();
@@ -241,10 +263,13 @@ namespace ProceduralCityGenerator
                 ApplyFloorState();
 
                 // 미니맵 생성 (탑뷰 이미지 자동 생성 및 PNG 저장)
+                // suppressFileExport == true 이면 PNG 파일 저장 없이 텍스처만 생성
                 result.minimap = GenerateMinimap();
 
                 // 그래프 데이터 내보내기 (JSON + CSV) — 도망자 드론 오프라인 지형 분석용
-                ExportGraphData();
+                // suppressFileExport == true 이면 파일 저장을 건너뜁니다
+                if (!suppressFileExport)
+                    ExportGraphData();
 
                 // 생성 성공
                 result.success = true;
@@ -283,38 +308,33 @@ namespace ProceduralCityGenerator
         {
             Debug.Log("CityGenerator.ClearCity: 도시 제거 시작");
 
-            // Requirement 13.2: 새로운 도시를 생성할 때, 이전 "생성된_도시" GameObject를 파괴
+            // cityGroupRoot 하나를 제거하면 City_Buildings·CityWalls·CityFloor 전체 삭제
+            if (cityGroupRoot != null)
+            {
+                if (Application.isPlaying) Destroy(cityGroupRoot);
+                else DestroyImmediate(cityGroupRoot);
+                cityGroupRoot = null;
+                Debug.Log("CityGenerator.ClearCity: CityGroup GameObject 제거 완료");
+            }
+            // 그룹 없이 개별 생성된 경우 안전망
             if (cityRoot != null)
             {
-                // Editor 모드에서는 DestroyImmediate 사용
-                if (Application.isPlaying)
-                {
-                    Destroy(cityRoot);
-                }
-                else
-                {
-                    DestroyImmediate(cityRoot);
-                }
-                
-                cityRoot = null;
-                Debug.Log("CityGenerator.ClearCity: 도시 루트 GameObject 제거 완료");
+                if (Application.isPlaying) Destroy(cityRoot);
+                else DestroyImmediate(cityRoot);
             }
-
-            // 벽 제거
             if (wallsRoot != null)
             {
                 if (Application.isPlaying) Destroy(wallsRoot);
                 else DestroyImmediate(wallsRoot);
-                wallsRoot = null;
             }
-
-            // 바닥 제거
             if (floorObject != null)
             {
                 if (Application.isPlaying) Destroy(floorObject);
                 else DestroyImmediate(floorObject);
-                floorObject = null;
             }
+            cityRoot = null;
+            wallsRoot = null;
+            floorObject = null;
 
             // BuildingFactory 풀 초기화
             if (buildingFactory != null)
@@ -347,6 +367,9 @@ namespace ProceduralCityGenerator
             grid = null;
             roadMask = null;
 
+            // 스폰 구성 초기화
+            spawnConfiguration = new SpawnConfiguration();
+
             Debug.Log("CityGenerator.ClearCity: 도시 제거 완료");
         }
 
@@ -361,6 +384,11 @@ namespace ProceduralCityGenerator
         public List<StrategicLocation> GetStrategicLocations() => strategicLocations;
 
         /// <summary>
+        /// 자동 생성된 스폰/타겟 포인트 구성을 반환합니다.
+        /// </summary>
+        public SpawnConfiguration GetSpawnConfiguration() => spawnConfiguration;
+
+        /// <summary>
         /// 현재 도시를 탑뷰(위에서 내려다본) 미니맵 이미지로 생성하고 PNG로 저장합니다.
         /// </summary>
         /// <returns>생성된 미니맵 Texture2D, 실패 시 null</returns>
@@ -372,26 +400,31 @@ namespace ProceduralCityGenerator
                 return null;
             }
 
-            // 도시 경계(Bounds) 계산 — 모든 건물을 포함하는 최소 직육면체
-            Bounds cityBounds = new Bounds(buildings[0].position, Vector3.zero);
-            foreach (Building b in buildings)
-            {
-                cityBounds.Encapsulate(new Bounds(b.position, b.size));
-            }
+            // 도시 경계(Bounds) 계산 — 실제 격자 전체 면적 기준 (건물 유무에 관계없이 도로 포함)
+            // 격자 originX/Z에 cellW/2 보정이 적용되어 시각적 도시 중심 = transform.position
+            float cellW = (buildingWidth + buildingSpacing) * unitDistance;
+            float cellD = (buildingDepth + buildingSpacing) * unitDistance;
+            Bounds cityBounds = new Bounds(
+                new Vector3(transform.position.x, 0f, transform.position.z),
+                new Vector3(actualCityWidth * cellW, 1f, actualCityDepth * cellD)
+            );
 
             // MinimapGenerator 생성 (Inspector에서 설정한 해상도 사용)
             int resolutionInt = (int)minimapResolution;
             minimapGenerator = new MinimapGenerator(resolutionInt, cityBounds);
 
-            // 탑뷰 이미지 생성 (건물 높이별 등고선 색상 + 전략적 위치 마커)
+            // 탑뷰 이미지 생성 (건물 높이별 등고선 색상 + 전략적 위치 마커 + 스폰 마커)
             Texture2D minimap = minimapGenerator.GenerateMinimap(
                 buildings.ToArray(),
                 cityGraph,
-                strategicLocations
+                strategicLocations,
+                spawnConfiguration.isValid ? (SpawnConfiguration?)spawnConfiguration : null
             );
 
             // Assets/CityMaps/ 폴더에 PNG 자동 저장 (파일명에 레이아웃 모드 포함)
-            minimapGenerator.SaveMinimapToPNG(minimap, usedRandomSeed, layoutMode.ToString());
+            // suppressFileExport == true 이면 저장 건너뜀
+            if (!suppressFileExport)
+                minimapGenerator.SaveMinimapToPNG(minimap, usedRandomSeed, layoutMode.ToString());
 
             Debug.Log($"CityGenerator.GenerateMinimap: {resolutionInt}x{resolutionInt} 미니맵 생성 완료 (Seed: {usedRandomSeed})");
             return minimap;
@@ -493,9 +526,11 @@ namespace ProceduralCityGenerator
                           ? cellD * randomOffsetStrength * 0.45f : 0f;
 
             // 벽 내면이 위치해야 할 최소 거리 (도시 중심 기준)
-            // x=0 건물의 서쪽 최대 돌출 = cityWorldWidth/2 + maxBuildingHalfW + maxOffX
-            float halfW = cityWorldWidth / 2f + maxBuildingHalfW + maxOffX;
-            float halfD = cityWorldDepth / 2f + maxBuildingHalfD + maxOffZ;
+            // 격자 origin에 cellW/2 보정이 적용되어 바깥 셀 중심이 ±(N-1)*cellW/2에 위치하므로
+            // 바깥 건물 최대 돌출 = (N-1)*cellW/2 + maxBuildingHalfW + maxOffX
+            //                    = cityWorldWidth/2 - cellW/2 + maxBuildingHalfW + maxOffX
+            float halfW = cityWorldWidth / 2f - cellW * 0.5f + maxBuildingHalfW + maxOffX;
+            float halfD = cityWorldDepth / 2f - cellD * 0.5f + maxBuildingHalfD + maxOffZ;
             // ────────────────────────────────────────────────────────────────────
 
             float wh = wallHeight;
@@ -504,6 +539,8 @@ namespace ProceduralCityGenerator
             Vector3 center = transform.position;
             wallsRoot = new GameObject("CityWalls");
             wallsRoot.transform.position = center;
+            if (cityGroupRoot != null)
+                wallsRoot.transform.SetParent(cityGroupRoot.transform, true);
 
             Material mat = wallMaterial;
 
@@ -579,8 +616,9 @@ namespace ProceduralCityGenerator
             float maxOffZ = layoutMode != CityLayoutMode.PureGrid
                           ? cellD * randomOffsetStrength * 0.45f : 0f;
 
-            float halfW = cityWorldWidth / 2f + maxBuildingHalfW + maxOffX;
-            float halfD = cityWorldDepth / 2f + maxBuildingHalfD + maxOffZ;
+            // SpawnWalls와 동일한 보정 적용: 바깥 셀 중심이 ±(N-1)*cellW/2에 위치
+            float halfW = cityWorldWidth / 2f - cellW * 0.5f + maxBuildingHalfW + maxOffX;
+            float halfD = cityWorldDepth / 2f - cellD * 0.5f + maxBuildingHalfD + maxOffZ;
 
             // Unity Plane 기본 크기는 10x10 유닛 → 벽 내부 전체 넓이(halfW*2 × halfD*2)로 스케일
             float scaleX = halfW * 2f / 10f;
@@ -590,6 +628,8 @@ namespace ProceduralCityGenerator
             floorObject.name = "CityFloor";
             floorObject.transform.position = new Vector3(transform.position.x, 0f, transform.position.z);
             floorObject.transform.localScale = new Vector3(scaleX, 1f, scaleZ);
+            if (cityGroupRoot != null)
+                floorObject.transform.SetParent(cityGroupRoot.transform, true);
 
             if (floorMaterial != null)
             {
@@ -822,11 +862,13 @@ namespace ProceduralCityGenerator
             // Requirement 7.1: 2D 격자 구조 생성
             grid = new GridCell[actualCityWidth, actualCityDepth];
 
-            // 각 셀의 월드 좌표 계산 (CityGenerator 오브젝트 위치를 도시 중심으로 정렬)
+            // 각 셀의 월드 좌표 계산 (CityGenerator 오브젝트 위치를 도시 시각적 중심으로 정렬)
+            // 셀 worldPosition은 셀 중심 좌표이므로, 시각적 도시 중심이 transform.position과 일치하려면
+            // originX = transform.position.x - N*cellW/2 + cellW/2 (= 좌측 가장자리 기준)
             float cellW = (buildingWidth + buildingSpacing) * unitDistance;
             float cellD = (buildingDepth + buildingSpacing) * unitDistance;
-            float originX = transform.position.x - (actualCityWidth  * cellW) / 2f;
-            float originZ = transform.position.z - (actualCityDepth * cellD) / 2f;
+            float originX = transform.position.x - (actualCityWidth  * cellW) / 2f + cellW * 0.5f;
+            float originZ = transform.position.z - (actualCityDepth * cellD) / 2f + cellD * 0.5f;
 
             for (int x = 0; x < actualCityWidth; x++)
             {
@@ -868,10 +910,19 @@ namespace ProceduralCityGenerator
             // BuildingFactory 초기화
             if (buildingFactory == null)
             {
-                // cityRoot가 없으면 생성
+                // cityGroupRoot가 없으면 생성 (건물·벽·바닥을 묶는 최상위 그룹)
+                if (cityGroupRoot == null)
+                {
+                    cityGroupRoot = new GameObject($"CityGroup_Seed{usedRandomSeed}");
+                    cityGroupRoot.transform.SetParent(transform, false);
+                    cityGroupRoot.transform.SetPositionAndRotation(transform.position, Quaternion.identity);
+                }
+
+                // cityRoot가 없으면 생성 후 그룹 하위로 배치
                 if (cityRoot == null)
                 {
-                    cityRoot = new GameObject("City");
+                    cityRoot = new GameObject("City_Buildings");
+                    cityRoot.transform.SetParent(cityGroupRoot.transform, false);
                 }
 
                 buildingFactory = new BuildingFactory(defaultBuildingMaterial, cityRoot.transform);
@@ -1114,6 +1165,17 @@ namespace ProceduralCityGenerator
             else
             {
                 Debug.LogWarning("CityGenerator.BuildCityGraph: CityDataAPI 인스턴스를 찾을 수 없습니다. 런타임 쿼리 API를 사용하려면 씬에 CityDataAPI 컴포넌트를 추가하세요.");
+            }
+
+            // 스폰/타겟 포인트 자동 생성
+            if (autoGenerateSpawns)
+            {
+                GenerateSpawnConfiguration();
+                if (CityDataAPI.Instance != null)
+                {
+                    CityDataAPI.Instance.SetSpawnConfiguration(spawnConfiguration);
+                    Debug.Log("CityGenerator.BuildCityGraph: SpawnConfiguration CityDataAPI에 등록 완료");
+                }
             }
         }
 
@@ -1382,6 +1444,185 @@ namespace ProceduralCityGenerator
             cell.hasBuilding  = false;
             cell.buildingHeight = 0f;
             grid[x, z] = cell;
+        }
+
+        /// <summary>
+        /// 도망 드론 스폰, 추적 드론 스폰, 타겟 포인트를 자동으로 결정합니다.
+        /// OpenSpace/Intersection 노드 중 서로 minSpawnSeparation 이상 떨어진 3개를 선택합니다.
+        /// </summary>
+        private void GenerateSpawnConfiguration()
+        {
+            if (cityGraph == null)
+            {
+                Debug.LogWarning("CityGenerator.GenerateSpawnConfiguration: cityGraph가 null입니다.");
+                return;
+            }
+
+            // 전체 유효 후보 수집 (OpenSpace/Intersection, 엣지 있음, 건물 내부 아님)
+            List<GraphNode> allCandidates = new List<GraphNode>();
+            foreach (GraphNode node in cityGraph.GetAllNodes())
+            {
+                if (node.nodeType != NodeType.OpenSpace && node.nodeType != NodeType.Intersection)
+                    continue;
+
+                // 그래프에서 고립된 노드 제외 (엣지가 없으면 드론이 진입/이탈 불가)
+                List<GraphEdge> edges = cityGraph.GetEdges(node.nodeId);
+                if (edges == null || edges.Count == 0)
+                    continue;
+
+                // 건물 내부인 노드 제외
+                bool insideBuilding = false;
+                foreach (Building b in buildings)
+                {
+                    if (b.bounds.Contains(node.position))
+                    {
+                        insideBuilding = true;
+                        break;
+                    }
+                }
+                if (!insideBuilding)
+                    allCandidates.Add(node);
+            }
+
+            if (allCandidates.Count < 3)
+            {
+                Debug.LogWarning($"CityGenerator.GenerateSpawnConfiguration: 유효한 후보 노드가 {allCandidates.Count}개뿐입니다. 스폰 포인트 생성을 건너뜁니다.");
+                return;
+            }
+
+            // ── 최외각 경계 후보 추출 후 랜덤 배치 ──────────────────────────────────
+            // 1) 유효 후보 전체의 바운딩 박스(minX/maxX/minZ/maxZ) 계산
+            // 2) 각 노드의 "가장 가까운 경계까지의 거리" 산출
+            // 3) 거리 오름차순 정렬 → 상위 20%(최소 10개) = 경계 후보 풀
+            // 4) 풀을 시드 기반으로 셔플 → 앞 2개를 evader/pursuer로 선택
+            float bMinX = float.MaxValue, bMaxX = float.MinValue;
+            float bMinZ = float.MaxValue, bMaxZ = float.MinValue;
+            foreach (GraphNode n in allCandidates)
+            {
+                if (n.position.x < bMinX) bMinX = n.position.x;
+                if (n.position.x > bMaxX) bMaxX = n.position.x;
+                if (n.position.z < bMinZ) bMinZ = n.position.z;
+                if (n.position.z > bMaxZ) bMaxZ = n.position.z;
+            }
+
+            // 각 노드의 경계까지 최단 거리 (4방향 중 가장 가까운 쪽)
+            List<(GraphNode node, float dist)> byEdgeDist = new List<(GraphNode, float)>(allCandidates.Count);
+            foreach (GraphNode n in allCandidates)
+            {
+                float d = Mathf.Min(
+                    Mathf.Min(n.position.x - bMinX, bMaxX - n.position.x),
+                    Mathf.Min(n.position.z - bMinZ, bMaxZ - n.position.z)
+                );
+                byEdgeDist.Add((n, d));
+            }
+            byEdgeDist.Sort((a, b) => a.dist.CompareTo(b.dist));
+
+            // 상위 20%, 최소 10개를 경계 후보 풀로 구성
+            int perimCount = Mathf.Clamp(allCandidates.Count / 5, 10, allCandidates.Count);
+            List<GraphNode> perimCandidates = new List<GraphNode>(perimCount);
+            for (int i = 0; i < perimCount; i++)
+                perimCandidates.Add(byEdgeDist[i].node);
+
+            // 재현 가능한 셔플 (usedRandomSeed 기반)
+            System.Random rng = new System.Random(usedRandomSeed);
+            for (int i = perimCandidates.Count - 1; i > 0; i--)
+            {
+                int j = rng.Next(i + 1);
+                GraphNode tmp = perimCandidates[i];
+                perimCandidates[i] = perimCandidates[j];
+                perimCandidates[j] = tmp;
+            }
+
+            // 셔플된 경계 후보 앞 2개 = evader / pursuer
+            GraphNode evaderNode  = perimCandidates[0];
+            GraphNode pursuerNode = perimCandidates[1];
+
+            Debug.Log($"CityGenerator.GenerateSpawnConfiguration: 경계 후보 {perimCount}개 중 랜덤 배치 " +
+                      $"(경계 dist: Evader={byEdgeDist.Find(x => x.node.nodeId == evaderNode.nodeId).dist:F1}, " +
+                      $"Pursuer={byEdgeDist.Find(x => x.node.nodeId == pursuerNode.nodeId).dist:F1})");
+
+            // 타겟 선택용 allCandidates 셔플
+            List<GraphNode> shuffled = new List<GraphNode>(allCandidates);
+            for (int i = shuffled.Count - 1; i > 0; i--)
+            {
+                int j = rng.Next(i + 1);
+                GraphNode tmp = shuffled[i];
+                shuffled[i] = shuffled[j];
+                shuffled[j] = tmp;
+            }
+
+            // 타겟: evader/pursuer와 minSpawnSeparation 이상 떨어진 노드를 셔플된 목록에서 선택
+            // 실패 시 50%씩 완화하여 최대 3회 재시도
+            GraphNode targetNode = default;
+            bool targetFound = false;
+            float sep = minSpawnSeparation;
+
+            for (int attempt = 0; attempt <= 3 && !targetFound; attempt++)
+            {
+                if (attempt > 0)
+                {
+                    sep *= 0.5f;
+                    Debug.LogWarning($"CityGenerator.GenerateSpawnConfiguration: 타겟 분리 거리를 {sep:F1}로 완화합니다. (시도 {attempt}/3)");
+                }
+
+                foreach (GraphNode n in shuffled)
+                {
+                    if (n.nodeId == evaderNode.nodeId || n.nodeId == pursuerNode.nodeId) continue;
+                    float de = Vector3.Distance(n.position, evaderNode.position);
+                    float dp = Vector3.Distance(n.position, pursuerNode.position);
+                    if (de >= sep && dp >= sep)
+                    {
+                        targetNode  = n;
+                        targetFound = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!targetFound)
+            {
+                // 마지막 폴백: 다른 노드 중 첫 번째
+                Debug.LogWarning("CityGenerator.GenerateSpawnConfiguration: 타겟 분리 조건 미충족. 강제 선택합니다.");
+                foreach (GraphNode n in shuffled)
+                {
+                    if (n.nodeId != evaderNode.nodeId && n.nodeId != pursuerNode.nodeId)
+                    {
+                        targetNode = n;
+                        break;
+                    }
+                }
+            }
+
+            float achieved = Mathf.Min(
+                Vector3.Distance(evaderNode.position, pursuerNode.position),
+                Mathf.Min(
+                    Vector3.Distance(evaderNode.position, targetNode.position),
+                    Vector3.Distance(pursuerNode.position, targetNode.position)
+                )
+            );
+
+            float heightRange = Mathf.Max(0f, maxSpawnHeight - minSpawnHeight);
+            float evaderY  = evaderNode.elevation  + minSpawnHeight + (float)(rng.NextDouble() * heightRange);
+            float pursuerY = pursuerNode.elevation + minSpawnHeight + (float)(rng.NextDouble() * heightRange);
+            float targetY  = targetNode.elevation  + minSpawnHeight + (float)(rng.NextDouble() * heightRange);
+
+            spawnConfiguration = new SpawnConfiguration
+            {
+                evaderSpawnPosition  = new Vector3(evaderNode.position.x,  evaderY,  evaderNode.position.z),
+                pursuerSpawnPosition = new Vector3(pursuerNode.position.x, pursuerY, pursuerNode.position.z),
+                targetPosition       = new Vector3(targetNode.position.x,  targetY,  targetNode.position.z),
+                evaderSpawnNodeId    = evaderNode.nodeId,
+                pursuerSpawnNodeId   = pursuerNode.nodeId,
+                targetNodeId         = targetNode.nodeId,
+                achievedMinSeparation = achieved,
+                isValid              = true
+            };
+
+            Debug.Log($"CityGenerator.GenerateSpawnConfiguration: 스폰 포인트 생성 완료 " +
+                      $"(Evader: {spawnConfiguration.evaderSpawnPosition}, " +
+                      $"Pursuer: {spawnConfiguration.pursuerSpawnPosition}, " +
+                      $"Target: {spawnConfiguration.targetPosition}, " +
+                      $"최소분리거리: {achieved:F1})");
         }
 
         #endregion

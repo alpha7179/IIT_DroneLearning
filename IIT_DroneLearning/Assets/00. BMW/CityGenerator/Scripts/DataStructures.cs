@@ -179,6 +179,24 @@ namespace ProceduralCityGenerator
     }
 
     /// <summary>
+    /// 스폰/타겟 포인트 구성 정보를 저장하는 구조체
+    /// </summary>
+    [Serializable]
+    public struct SpawnConfiguration
+    {
+        public Vector3 evaderSpawnPosition;   // 도망 드론 스폰 위치
+        public Vector3 pursuerSpawnPosition;  // 추적 드론 스폰 위치
+        public Vector3 targetPosition;        // 타겟 포인트 위치
+
+        public int evaderSpawnNodeId;         // 도망 드론 스폰 위치의 가장 가까운 그래프 노드 ID
+        public int pursuerSpawnNodeId;        // 추적 드론 스폰 위치의 가장 가까운 그래프 노드 ID
+        public int targetNodeId;              // 타겟 포인트의 가장 가까운 그래프 노드 ID
+
+        public float achievedMinSeparation;   // 실제 달성된 최소 분리 거리 (디버그용)
+        public bool isValid;                  // 생성 성공 여부
+    }
+
+    /// <summary>
     /// 도시 생성 결과를 저장하는 클래스
     /// </summary>
     [Serializable]
