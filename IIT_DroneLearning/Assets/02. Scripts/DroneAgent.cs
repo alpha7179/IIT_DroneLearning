@@ -42,8 +42,6 @@ public class DroneAgent : Agent
         if (_dronePhysics == null)
             return;
 
-        _dronePhysics.ResetPhysics();
-
         transform.SetPositionAndRotation(
             new Vector3(
                 Random.Range(-SpawnRangeX, SpawnRangeX),
@@ -52,6 +50,8 @@ public class DroneAgent : Agent
             ),
             Quaternion.Euler(0f, Random.Range(-SpawnYawMaxDeg, SpawnYawMaxDeg), 0f)
         );
+
+        _dronePhysics.ResetPhysics();
     }
 
     public override void CollectObservations(VectorSensor sensor)
