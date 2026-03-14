@@ -32,6 +32,11 @@ public float MotorHeightOffset = -0.02f;
     public float MaxHorizontalSpeed = 4f;
     public float MaxVerticalSpeed = 2.5f;
 
+[Header("Zero-input horizontal damping")]
+public bool EnableZeroInputHorizontalDamping = true;
+public float ZeroInputCommandDeadzone = 0.05f;
+public float ZeroInputHorizontalDamping = 1.2f;
+
 [Header("Attitude limits")]
 public float MaxRollAngle = 20f;
 public float MaxPitchAngle = 20f;
@@ -43,7 +48,7 @@ public float AttitudeDeadbandDeg = 0.6f;
 public float YawDeadbandDeg = 0.8f;
 public float RollRateDamping = 0.12f;
 public float PitchRateDamping = 0.12f;
-public float YawRateDamping = 0.15f;
+public float YawRateDamping = 0.03f;
 
     [Header("PID - Altitude")]
     public float AltKp = 5.5f;
@@ -64,6 +69,37 @@ public float YawRateDamping = 0.15f;
 public float YawKp = 1.2f;
 public float YawKi = 0.01f;
 public float YawKd = 0.10f;
+
+[Header("Controller safeties")]
+public bool EnableAntiWindup = true;
+
+    [Header("Legacy Serialized Fields (Read-only cache)")]
+    [SerializeField, HideInInspector, UnityEngine.Serialization.FormerlySerializedAs("MaxThrust")]
+    private float _legacyMaxThrust = float.NaN;
+
+    [SerializeField, HideInInspector, UnityEngine.Serialization.FormerlySerializedAs("ThrustGain")]
+    private float _legacyThrustGain = float.NaN;
+
+    [SerializeField, HideInInspector, UnityEngine.Serialization.FormerlySerializedAs("MaxRollRate")]
+    private float _legacyMaxRollRate = float.NaN;
+
+    [SerializeField, HideInInspector, UnityEngine.Serialization.FormerlySerializedAs("MaxPitchRate")]
+    private float _legacyMaxPitchRate = float.NaN;
+
+    [SerializeField, HideInInspector, UnityEngine.Serialization.FormerlySerializedAs("MaxYawRate")]
+    private float _legacyMaxYawRate = float.NaN;
+
+    [SerializeField, HideInInspector, UnityEngine.Serialization.FormerlySerializedAs("SmoothFactor")]
+    private float _legacySmoothFactor = float.NaN;
+
+    [SerializeField, HideInInspector, UnityEngine.Serialization.FormerlySerializedAs("AttitudeKp")]
+    private float _legacyAttitudeKp = float.NaN;
+
+    [SerializeField, HideInInspector, UnityEngine.Serialization.FormerlySerializedAs("MaxAttitudeRateCmd")]
+    private float _legacyMaxAttitudeRateCmd = float.NaN;
+
+    [SerializeField, HideInInspector]
+    private int _legacyMigrationVersion = 0;
 
     private Rigidbody _rb;
     private PIDController _altPID;
@@ -120,6 +156,7 @@ public float YawKd = 0.10f;
 
         UpdateControl(dt);
         ApplyForces();
+        ApplyZeroInputHorizontalDamping(dt);
         ClampAltitude();
         ClampVelocity();
     }
@@ -186,17 +223,29 @@ public float YawKd = 0.10f;
         if (Mathf.Abs(altError) < AltDeadband)
             altError = 0f;
 
-        float altAccCmd = _altPID.Update(altError, dt) - altVel * AltVelocityDamping;
-        float rollTorqueCmd = _rollPID.Update(rollError, dt) - (localAngVel.z * Mathf.Rad2Deg * RollRateDamping);
-        float pitchTorqueCmd = _pitchPID.Update(pitchError, dt) - (localAngVel.x * Mathf.Rad2Deg * PitchRateDamping);
-        float yawTorqueCmd = _yawPID.Update(yawError, dt) - (yawRateDeg * YawRateDamping);
-
         float g = Mathf.Abs(Physics.gravity.y);
-        float liftCmd = _rb.mass * (g + altAccCmd);
-        float baseNorm = Mathf.Clamp(liftCmd / (4f * MaxMotorThrust), 0f, 1f);
+        float minAltAcc = -g;
+        float thrustAccel = (4f * Mathf.Max(0.01f, MaxMotorThrust)) / Mathf.Max(0.01f, _rb.mass);
+        float maxAltAcc = Mathf.Max(minAltAcc + 0.01f, thrustAccel - g);
+        float rollLimit = Mathf.Max(1e-4f, Mathf.Abs(MaxRollTorque));
+        float pitchLimit = Mathf.Max(1e-4f, Mathf.Abs(MaxPitchTorque));
+        float yawLimit = Mathf.Max(1e-4f, Mathf.Abs(MaxYawTorque));
 
-        float rollMix = Mathf.Clamp(rollTorqueCmd / Mathf.Max(1e-4f, MaxRollTorque), -1f, 1f);
-        float pitchMix = Mathf.Clamp(pitchTorqueCmd / Mathf.Max(1e-4f, MaxPitchTorque), -1f, 1f);
+        float altPidCmd = _altPID.Update(altError, dt, minAltAcc, maxAltAcc, EnableAntiWindup);
+        float rollPidCmd = _rollPID.Update(rollError, dt, -rollLimit, rollLimit, EnableAntiWindup);
+        float pitchPidCmd = _pitchPID.Update(pitchError, dt, -pitchLimit, pitchLimit, EnableAntiWindup);
+        float yawPidCmd = _yawPID.Update(yawError, dt);
+
+        float altAccCmd = Mathf.Clamp(altPidCmd - altVel * AltVelocityDamping, minAltAcc, maxAltAcc);
+        float rollTorqueCmd = Mathf.Clamp(rollPidCmd - (localAngVel.z * Mathf.Rad2Deg * RollRateDamping), -rollLimit, rollLimit);
+        float pitchTorqueCmd = Mathf.Clamp(pitchPidCmd - (localAngVel.x * Mathf.Rad2Deg * PitchRateDamping), -pitchLimit, pitchLimit);
+        float yawTorqueCmd = Mathf.Clamp(yawPidCmd - (yawRateDeg * YawRateDamping), -yawLimit, yawLimit);
+
+        float liftCmd = _rb.mass * (g + altAccCmd);
+        float baseNorm = Mathf.Clamp(liftCmd / (4f * Mathf.Max(0.01f, MaxMotorThrust)), 0f, 1f);
+
+        float rollMix = Mathf.Clamp(rollTorqueCmd / rollLimit, -1f, 1f);
+        float pitchMix = Mathf.Clamp(pitchTorqueCmd / pitchLimit, -1f, 1f);
         // Roll/Pitch mix for horizontal movement, yaw는 별도 토크로 제어
         // Front, Right, Back, Left (line-segment center layout)
         _motorThrust[0] = Mathf.Clamp01(baseNorm - pitchMix);
@@ -204,7 +253,7 @@ public float YawKd = 0.10f;
         _motorThrust[2] = Mathf.Clamp01(baseNorm + pitchMix);
         _motorThrust[3] = Mathf.Clamp01(baseNorm - rollMix);
 
-        _yawTorqueCmd = Mathf.Clamp(yawTorqueCmd, -MaxYawTorque, MaxYawTorque);
+        _yawTorqueCmd = yawTorqueCmd;
     }
 
     private void ApplyForces()
@@ -313,10 +362,102 @@ public float YawKd = 0.10f;
         _rb.linearVelocity = vel;
     }
 
+    private void ApplyZeroInputHorizontalDamping(float dt)
+    {
+        if (!EnableZeroInputHorizontalDamping)
+            return;
+
+        bool hasThrottleCommand = Mathf.Abs(_throttleInput) > ZeroInputCommandDeadzone;
+        bool hasRollCommand = Mathf.Abs(_targetRoll) > MaxRollAngle * ZeroInputCommandDeadzone;
+        bool hasPitchCommand = Mathf.Abs(_targetPitch) > MaxPitchAngle * ZeroInputCommandDeadzone;
+        bool hasYawCommand = Mathf.Abs(_yawRateInput) > MaxYawRateDeg * ZeroInputCommandDeadzone;
+
+        if (hasThrottleCommand || hasRollCommand || hasPitchCommand || hasYawCommand)
+            return;
+
+        Vector3 vel = _rb.linearVelocity;
+        Vector3 horizontal = new Vector3(vel.x, 0f, vel.z);
+        if (horizontal.sqrMagnitude < 1e-6f)
+            return;
+
+        float decay = Mathf.Clamp01(ZeroInputHorizontalDamping * dt);
+        horizontal = Vector3.Lerp(horizontal, Vector3.zero, decay);
+        vel.x = horizontal.x;
+        vel.z = horizontal.z;
+        _rb.linearVelocity = vel;
+    }
+
+    [ContextMenu("Legacy/Migrate cached legacy fields to current (safe one-time)")]
+    private void MigrateLegacyFieldsToCurrentSafe()
+    {
+        if (_legacyMigrationVersion >= 1)
+            return;
+
+        bool changed = false;
+
+        // Copy only when current values are still defaults, so existing tuned setups stay intact.
+        if (HasLegacy(_legacyMaxThrust) && Mathf.Approximately(MaxMotorThrust, 6.0f))
+        {
+            MaxMotorThrust = Mathf.Max(0.1f, _legacyMaxThrust);
+            changed = true;
+        }
+
+        if (HasLegacy(_legacyMaxRollRate) && Mathf.Approximately(MaxRollAngle, 20.0f))
+        {
+            MaxRollAngle = Mathf.Clamp(ToDegreesIfLikelyRadians(_legacyMaxRollRate), 1f, 89f);
+            changed = true;
+        }
+
+        if (HasLegacy(_legacyMaxPitchRate) && Mathf.Approximately(MaxPitchAngle, 20.0f))
+        {
+            MaxPitchAngle = Mathf.Clamp(ToDegreesIfLikelyRadians(_legacyMaxPitchRate), 1f, 89f);
+            changed = true;
+        }
+
+        if (HasLegacy(_legacyMaxYawRate) && Mathf.Approximately(MaxYawRateDeg, 45.0f))
+        {
+            MaxYawRateDeg = Mathf.Clamp(ToDegreesIfLikelyRadians(_legacyMaxYawRate), 1f, 360f);
+            changed = true;
+        }
+
+        _legacyMigrationVersion = 1;
+
+#if UNITY_EDITOR
+        if (changed)
+            UnityEditor.EditorUtility.SetDirty(this);
+#endif
+    }
+
+    [ContextMenu("Legacy/Log cached legacy fields")]
+    private void LogLegacyFields()
+    {
+        Debug.Log(
+            "[DronePhysics] Legacy cache - " +
+            $"MaxThrust={_legacyMaxThrust}, ThrustGain={_legacyThrustGain}, " +
+            $"MaxRollRate={_legacyMaxRollRate}, MaxPitchRate={_legacyMaxPitchRate}, MaxYawRate={_legacyMaxYawRate}, " +
+            $"SmoothFactor={_legacySmoothFactor}, AttitudeKp={_legacyAttitudeKp}, MaxAttitudeRateCmd={_legacyMaxAttitudeRateCmd}, " +
+            $"MigrationVersion={_legacyMigrationVersion}",
+            this
+        );
+    }
+
     private static float WrapSignedAngle(float angle)
     {
         angle = Mathf.Repeat(angle + 180f, 360f) - 180f;
         return angle;
+    }
+
+    private static bool HasLegacy(float value)
+    {
+        return !float.IsNaN(value);
+    }
+
+    private static float ToDegreesIfLikelyRadians(float value)
+    {
+        if (Mathf.Abs(value) <= 10f)
+            return value * Mathf.Rad2Deg;
+
+        return value;
     }
 }
 
@@ -341,17 +482,47 @@ public class PIDController
 
     public float Update(float error, float dt)
     {
+        return Update(error, dt, float.NegativeInfinity, float.PositiveInfinity, false);
+    }
+
+    public float Update(float error, float dt, float minOutput, float maxOutput, bool antiWindupEnabled)
+    {
+        if (maxOutput < minOutput)
+        {
+            float temp = minOutput;
+            minOutput = maxOutput;
+            maxOutput = temp;
+        }
+
         if (_firstUpdate)
         {
             _prevError = error;
             _firstUpdate = false;
         }
 
-        _integral = Mathf.Clamp(_integral + error * dt, -IntegralClamp, IntegralClamp);
-        float derivative = (error - _prevError) / Mathf.Max(dt, 1e-6f);
+        float safeDt = Mathf.Max(dt, 1e-6f);
+        float derivative = (error - _prevError) / safeDt;
+        float candidateIntegral = Mathf.Clamp(_integral + error * safeDt, -IntegralClamp, IntegralClamp);
+        float candidateOutput = _kp * error + _ki * candidateIntegral + _kd * derivative;
+        float clampedCandidateOutput = Mathf.Clamp(candidateOutput, minOutput, maxOutput);
+
+        if (!antiWindupEnabled)
+        {
+            _integral = candidateIntegral;
+        }
+        else
+        {
+            bool isSaturated = !Mathf.Approximately(candidateOutput, clampedCandidateOutput);
+            bool pullsBackFromUpper = candidateOutput > maxOutput && error < 0f;
+            bool pullsBackFromLower = candidateOutput < minOutput && error > 0f;
+            if (!isSaturated || pullsBackFromUpper || pullsBackFromLower)
+                _integral = candidateIntegral;
+        }
+
         _prevError = error;
 
-        return _kp * error + _ki * _integral + _kd * derivative;
+        float output = _kp * error + _ki * _integral + _kd * derivative;
+        return Mathf.Clamp(output, minOutput, maxOutput);
     }
 
     public void Reset()
