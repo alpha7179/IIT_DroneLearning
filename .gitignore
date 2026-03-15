@@ -20,10 +20,20 @@ python/results/
 !python/models/.gitkeep
 !python/results/.gitkeep
 
-# Claude Code (프로젝트 commands는 커밋, memory/는 사용자 전용)
+# Claude Code (프로젝트 commands는 커밋, memory/skills/는 사용자 전용)
 .claude/memory/
+.claude/skills/
 .claude/settings.local.json
+
+# MkDocs 빌드 결과물
+_site/
+
+# ML-Agents 자동 생성 로그 (실행마다 변경됨)
+IIT_DroneLearning/Assets/ML-Agents/Timers/
 
 # OS
 .DS_Store
 Thumbs.db
+
+# 개인 보고서 (git 제외)
+private_reports/

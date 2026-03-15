@@ -1,24 +1,8 @@
-# IIT_DroneLearning — Python 의존성 (Version Lock)
-# Python 3.10 권장
-#
-# 설치:
-#   python -m venv venv
-#   source venv/bin/activate        # Windows: venv\Scripts\activate
-#   pip install -r requirements.txt
-
-# ── ML-Agents (버전 락: 4.0.x) ───────────────────────────
-mlagents==4.0.0
-
-# ── PyTorch (버전 락: 2.x) ───────────────────────────────
-torch>=2.0.0,<3.0.0
-
-# ── TensorBoard ──────────────────────────────────────────
-tensorboard>=2.14.0
-
-# ── 데이터/시각화 ─────────────────────────────────────────
-numpy>=1.23.0,<2.0.0
-matplotlib>=3.7.0
-pyyaml>=6.0
-
-# ── 개발 유틸리티 ─────────────────────────────────────────
-tqdm>=4.65.0
+mlagents @ git+https://github.com/Unity-Technologies/ml-agents.git@release_23#subdirectory=ml-agents
+mlagents-envs @ git+https://github.com/Unity-Technologies/ml-agents.git@release_23#subdirectory=ml-agents-envs
+torch>=2.0.0
+grpcio>=1.11.0,<=1.53.2
+protobuf>=3.20.0
+numpy>=1.21.0
+tensorboard>=2.10.0
+onnx>=1.15.0
