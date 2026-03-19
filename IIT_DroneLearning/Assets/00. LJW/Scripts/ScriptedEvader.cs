@@ -102,26 +102,23 @@ public class ScriptedEvader : MonoBehaviour
     // ─── 움직임 적용 ─────────────────────────────────────────────────────────
     private void ApplyDesiredDirection(Vector3 desiredDir)
     {
-        // 수평 이동 (DronePhysics.ApplyMovement는 로컬 좌표)
+        // 수평 이동 (로컬 좌표 → roll/pitch)
         Vector3 localDir = transform.InverseTransformDirection(desiredDir);
-        _dronePhysics.ApplyMovement(
-            localDir.x * _goalSpeed,
-            0f,                     // 고도는 아래서 별도 처리
-            localDir.z * _goalSpeed
-        );
+        float roll  = localDir.x * _goalSpeed;
+        float pitch = localDir.z * _goalSpeed;
 
         // Yaw — 목표 방향으로 부드럽게 회전
         float yawError = Mathf.DeltaAngle(
             transform.eulerAngles.y,
             Mathf.Atan2(desiredDir.x, desiredDir.z) * Mathf.Rad2Deg
         );
-        float yawCmd = Mathf.Clamp(yawError / 90f, -1f, 1f);
-        _dronePhysics.ApplyYaw(yawCmd);
+        float yaw = Mathf.Clamp(yawError / 90f, -1f, 1f);
 
-        // 고도 유지
-        float altError = _targetAltitude - transform.position.y;
-        float thrustY  = Mathf.Clamp(altError / 3f, -1f, 1f);
-        _dronePhysics.ApplyMovement(0f, thrustY, 0f);
+        // 고도 유지 → throttle
+        float altError  = _targetAltitude - transform.position.y;
+        float throttle  = Mathf.Clamp(altError / 3f, -1f, 1f);
+
+        _dronePhysics.SetCommand(throttle, roll, pitch, yaw);
     }
 
     // ─── 공개 API (에피소드 리셋 시 외부에서 호출) ───────────────────────────

@@ -1,44 +1,53 @@
 using UnityEngine;
-using Unity.MLAgents;
 using Unity.MLAgents.Sensors;
 using Unity.MLAgents.Actuators;
 
 /// <summary>
-/// EvaderAgent — 회피 드론(Evader) ML-Agents 에이전트
+/// EvaderAgent — DroneAgent 기반 회피 드론 에이전트
 ///
-/// Stage0: DronePhysics와 직접 연결 (DroneController 없이 동작)
-/// 제어 흐름: RL 정책 → SetCommand(throttle, roll, pitch, yaw) → DronePhysics PID
+/// DroneAgent에서 그대로 사용:
+///   - _dronePhysics, _sensorSystem (Awake에서 자동 설정)
+///   - GoalTransform, TargetTransform (Inspector 필드)
+///   - QE/WASD/화살표 Heuristic
+///   - DroneRole.Evader
+///
+/// EvaderAgent가 추가/오버라이드:
+///   - Stage0-A/B 전환 (_goalOnlyMode, _currentStage)
+///   - 반경·고도 기반 랜덤 스폰 + GoalTransform 위치 랜덤화
+///   - 18-obs 관측 (자기 상태 7 + 목표 4 + 추격자/메모리 7)
+///   - EvaderReward 위임 보상 + 종료 조건 (목표·포획·타임아웃)
+///   - LOS 기반 추격자 메모리 (Stage1+)
+///   - 외부 API: SetCrash(), SetPursuerVisibility()
+///
 /// 담당: 이재왕 (work/evader)
 /// </summary>
-public class EvaderAgent : Agent
+public class EvaderAgent : DroneAgent
 {
-    // ───────── Inspector 설정 ─────────────────────────────────────────────
-    [Header("References")]
-    [SerializeField] private Transform  _goalTransform;
-    [SerializeField] private Transform  _pursuerTransform;   // goalOnlyMode=true 시 비움
-    [SerializeField] private DronePhysics _dronePhysics;     // Assets/02. Scripts/DronePhysics.cs
+    // ───────── Inspector 설정 (Evader 전용) ───────────────────────────────
+    // GoalTransform   : DroneAgent.GoalTransform  사용 (목표 지점)
+    // TargetTransform : DroneAgent.TargetTransform 사용 (추격 드론)
 
-    [Header("Episode Settings")]
+    [Header("Evader — Episode Settings")]
     [SerializeField] private float _maxEpisodeSeconds = 25f;
     [SerializeField] private float _catchDistance     = 1.5f;
     [SerializeField] private float _goalDistance      = 2.0f;
 
-    [Header("Stage Control")]
+    [Header("Evader — Stage Control")]
     [Tooltip("true = Stage0-A (Pursuer 없음, 순수 목표 도달 학습)")]
     [SerializeField] private bool _goalOnlyMode  = true;
     [SerializeField] private int  _currentStage  = 0;
 
-    [Header("Spawn Randomization")]
-    [SerializeField] private float _spawnRadius          = 10f;
-    [SerializeField] private float _spawnAltitude        = 5f;
-    [SerializeField] private float _goalRandomizeRadius  = 20f;
+    [Header("Evader — Spawn Randomization")]
+    [SerializeField] private float _spawnRadius         = 10f;
+    [SerializeField] private float _spawnAltitude       = 5f;
+    [SerializeField] private float _goalRandomizeRadius = 20f;
 
-    [Header("Observation Normalization")]
+    [Header("Evader — Observation Normalization")]
     [SerializeField] private float _maxDistance = 50f;
-    [SerializeField] private float _maxSpeed    = 10f;
+    [SerializeField] private float _maxObsSpeed = 10f;
 
     // ───────── 내부 상태 ──────────────────────────────────────────────────
-    private Rigidbody    _rb;
+    // _rb 는 DroneAgent.ResetPhysicsState() 로 위임 — 직접 선언 불필요
     private EvaderReward _rewardCalculator;
     private float        _episodeTimer;
 
@@ -51,21 +60,35 @@ public class EvaderAgent : Agent
     private bool    _isPursuerVisible;
 
     // ───────── 초기화 ─────────────────────────────────────────────────────
+    // _dronePhysics, _sensorSystem 은 DroneAgent.Awake()에서 자동 설정됨
     public override void Initialize()
     {
-        _rb               = GetComponent<Rigidbody>();
+        Role              = DroneRole.Evader;
+        // _rb는 DroneAgent.Awake()에서 이미 설정됨
         _rewardCalculator = GetComponent<EvaderReward>();
-
         if (_rewardCalculator == null)
             _rewardCalculator = gameObject.AddComponent<EvaderReward>();
 
         _spawnCenter = transform.position;
-        _goalCenter  = _goalTransform != null
-            ? _goalTransform.position
+        _goalCenter  = GoalTransform != null
+            ? GoalTransform.position
             : transform.position + Vector3.forward * 15f;
     }
 
+    private void OnValidate()
+    {
+        _maxEpisodeSeconds   = Mathf.Max(1f,   _maxEpisodeSeconds);
+        _catchDistance       = Mathf.Max(0.1f, _catchDistance);
+        _goalDistance        = Mathf.Max(0.1f, _goalDistance);
+        _spawnRadius         = Mathf.Max(0f,   _spawnRadius);
+        _spawnAltitude       = Mathf.Max(0f,   _spawnAltitude);
+        _goalRandomizeRadius = Mathf.Max(0f,   _goalRandomizeRadius);
+        _maxDistance         = Mathf.Max(1f,   _maxDistance);
+        _maxObsSpeed         = Mathf.Max(0.1f, _maxObsSpeed);
+    }
+
     // ───────── 에피소드 시작 ──────────────────────────────────────────────
+    // DroneAgent.OnEpisodeBegin()의 CityDataAPI 스폰 대신 반경·고도 기반 스폰 사용
     public override void OnEpisodeBegin()
     {
         _episodeTimer             = 0f;
@@ -78,75 +101,81 @@ public class EvaderAgent : Agent
         transform.position = _spawnCenter + new Vector3(offset.x, _spawnAltitude, offset.y);
         transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
 
-        // 물리 초기화
-        _rb.linearVelocity  = Vector3.zero;
-        _rb.angularVelocity = Vector3.zero;
-        _dronePhysics?.ResetPhysics();
+        // 물리 초기화 — DroneAgent.ResetPhysicsState() 위임 (Rigidbody + DronePhysics 일괄 초기화)
+        ResetPhysicsState();
 
-        // 목표 지점 랜덤 이동
-        if (_goalTransform != null)
+        // 목표 지점 랜덤 이동 (GoalTransform = DroneAgent 필드)
+        if (GoalTransform != null)
         {
             Vector2 goalOffset = Random.insideUnitCircle * _goalRandomizeRadius;
-            _goalTransform.position = _goalCenter + new Vector3(goalOffset.x, 0f, goalOffset.y);
+            GoalTransform.position = _goalCenter + new Vector3(goalOffset.x, 0f, goalOffset.y);
         }
     }
 
     // ───────── 관측 수집 (VectorObs = 18) ────────────────────────────────
-    /// 구성: 자기 상태 7 + 목표 4 + 추격자/메모리 7 = 18
-    /// (Ray는 RayPerceptionSensor 컴포넌트에서 별도 처리)
+    // 구성: 자기 상태 7 + 목표 4 + 추격자/메모리 7 = 18
+    // 속도 획득: _dronePhysics API 사용 (DroneAgent와 동일 소스)
+    // Ray: RayPerceptionSensor 컴포넌트에서 별도 처리 (Sensor 담당 배민우)
     public override void CollectObservations(VectorSensor sensor)
     {
-        // 자기 상태 (7)
-        Vector3 localVel    = transform.InverseTransformDirection(_rb.linearVelocity);
-        Vector3 localAngVel = transform.InverseTransformDirection(_rb.angularVelocity);
-        sensor.AddObservation(localVel    / _maxSpeed);        // 3
-        sensor.AddObservation(localAngVel / _maxSpeed);        // 3
-        sensor.AddObservation(transform.position.y / _maxDistance); // 1
-
-        // 목표 지점 (4)
-        if (_goalTransform != null)
+        // DroneAgent.IsDroneReady() — null 가드 통일
+        if (!IsDroneReady())
         {
-            Vector3 toGoal = _goalTransform.position - transform.position;
-            sensor.AddObservation(toGoal.normalized);              // 3
-            sensor.AddObservation(toGoal.magnitude / _maxDistance); // 1
+            for (int i = 0; i < 18; i++)
+                sensor.AddObservation(0f);
+            return;
+        }
+
+        // 자기 상태 (7) — _dronePhysics API 경유
+        Vector3 localVel    = transform.InverseTransformDirection(_dronePhysics.GetVelocity());
+        Vector3 localAngVel = _dronePhysics.GetLocalAngularVelocity();
+        sensor.AddObservation(localVel    / _maxObsSpeed);             // 3
+        sensor.AddObservation(localAngVel / _maxObsSpeed);             // 3
+        sensor.AddObservation(transform.position.y / _maxDistance);    // 1
+
+        // 목표 지점 (4) — DroneAgent.GoalTransform 사용
+        if (GoalTransform != null)
+        {
+            Vector3 toGoal = GoalTransform.position - transform.position;
+            sensor.AddObservation(toGoal.normalized);                  // 3
+            sensor.AddObservation(toGoal.magnitude / _maxDistance);    // 1
         }
         else
         {
-            sensor.AddObservation(Vector3.zero); // 3
-            sensor.AddObservation(1f);           // 1
+            sensor.AddObservation(Vector3.zero);                       // 3
+            sensor.AddObservation(1f);                                 // 1
         }
 
-        // 추격자 정보 (7) — goalOnlyMode 시 전부 0
-        bool usePursuerHint = !_goalOnlyMode && _currentStage == 0 && _pursuerTransform != null;
+        // 추격자 정보 (7) — DroneAgent.TargetTransform 사용, goalOnlyMode 시 전부 0
+        bool usePursuerHint = !_goalOnlyMode && _currentStage == 0 && TargetTransform != null;
         if (usePursuerHint)
         {
-            Vector3 toPursuer = _pursuerTransform.position - transform.position;
-            Rigidbody pRb     = _pursuerTransform.GetComponent<Rigidbody>();
-            Vector3 relVel    = pRb != null ? pRb.linearVelocity - _rb.linearVelocity : Vector3.zero;
-            sensor.AddObservation(toPursuer / _maxDistance);    // 3
-            sensor.AddObservation(relVel    / _maxSpeed);       // 3
-            sensor.AddObservation(_isPursuerVisible ? 1f : 0f); // 1
+            Vector3 toPursuer = TargetTransform.position - transform.position;
+            Rigidbody pRb     = TargetTransform.GetComponent<Rigidbody>();
+            Vector3 relVel    = pRb != null
+                ? pRb.linearVelocity - _dronePhysics.GetVelocity()
+                : Vector3.zero;
+            sensor.AddObservation(toPursuer / _maxDistance);           // 3
+            sensor.AddObservation(relVel    / _maxObsSpeed);           // 3
+            sensor.AddObservation(_isPursuerVisible ? 1f : 0f);        // 1
         }
         else
         {
             // goalOnlyMode 또는 Stage1+: 메모리 기반 (초기엔 전부 0)
             sensor.AddObservation(_lastKnownPursuerPos / _maxDistance); // 3
-            sensor.AddObservation(GetPursuerRelVelNormalized());         // 3
+            sensor.AddObservation(GetPursuerRelVelNormalized());        // 3
             sensor.AddObservation(_isPursuerVisible ? 1f : 0f);         // 1
         }
     }
 
     // ───────── 행동 처리 ──────────────────────────────────────────────────
-    /// Action Space: Continuous 4D
-    ///   [0] thrust_cmd    ∈ [0, 1]
-    ///   [1] roll_rate_cmd ∈ [-1, 1]
-    ///   [2] pitch_rate_cmd ∈ [-1, 1]
-    ///   [3] yaw_rate_cmd  ∈ [-1, 1]
+    // Heuristic()은 DroneAgent의 QE/WASD 구현을 그대로 사용
+    // Action Space: Continuous 4D — thrust [-1,1] (DroneAgent와 동일 범위)
     public override void OnActionReceived(ActionBuffers actions)
     {
         _episodeTimer += Time.fixedDeltaTime;
 
-        float thrust = Mathf.Clamp01(actions.ContinuousActions[0]);
+        float thrust = Mathf.Clamp(actions.ContinuousActions[0], -1f, 1f);
         float roll   = Mathf.Clamp(actions.ContinuousActions[1], -1f, 1f);
         float pitch  = Mathf.Clamp(actions.ContinuousActions[2], -1f, 1f);
         float yaw    = Mathf.Clamp(actions.ContinuousActions[3], -1f, 1f);
@@ -155,8 +184,8 @@ public class EvaderAgent : Agent
 
         AddReward(_rewardCalculator.ComputeStepReward(
             agentPos:         transform.position,
-            goalPos:          _goalTransform   != null ? _goalTransform.position   : Vector3.zero,
-            pursuerPos:       _pursuerTransform != null ? _pursuerTransform.position : Vector3.zero,
+            goalPos:          GoalTransform    != null ? GoalTransform.position    : Vector3.zero,
+            pursuerPos:       TargetTransform  != null ? TargetTransform.position  : Vector3.zero,
             isPursuerVisible: _isPursuerVisible
         ));
 
@@ -167,8 +196,8 @@ public class EvaderAgent : Agent
     private void CheckTerminationConditions()
     {
         // 1) 목표 도달
-        if (_goalTransform != null &&
-            Vector3.Distance(transform.position, _goalTransform.position) < _goalDistance)
+        if (GoalTransform != null &&
+            Vector3.Distance(transform.position, GoalTransform.position) < _goalDistance)
         {
             AddReward(1.0f);
             EndEpisode();
@@ -176,8 +205,8 @@ public class EvaderAgent : Agent
         }
 
         // 2) 포획 (goalOnlyMode=false 시에만)
-        if (!_goalOnlyMode && _pursuerTransform != null &&
-            Vector3.Distance(transform.position, _pursuerTransform.position) < _catchDistance)
+        if (!_goalOnlyMode && TargetTransform != null &&
+            Vector3.Distance(transform.position, TargetTransform.position) < _catchDistance)
         {
             AddReward(-1.0f);
             EndEpisode();
@@ -215,21 +244,13 @@ public class EvaderAgent : Agent
         }
     }
 
-    // ───────── 에디터 테스트용 Heuristic ─────────────────────────────────
-    public override void Heuristic(in ActionBuffers actionsOut)
-    {
-        var ca = actionsOut.ContinuousActions;
-        ca[0] = Input.GetKey(KeyCode.Space) ? 1f : 0.5f; // 기본 호버링
-        ca[1] = Input.GetAxis("Horizontal");
-        ca[2] = Input.GetAxis("Vertical");
-        ca[3] = 0f;
-    }
-
     // ───────── 헬퍼 ──────────────────────────────────────────────────────
     private Vector3 GetPursuerRelVelNormalized()
     {
-        if (_pursuerTransform == null) return Vector3.zero;
-        Rigidbody pRb = _pursuerTransform.GetComponent<Rigidbody>();
-        return pRb != null ? (pRb.linearVelocity - _rb.linearVelocity) / _maxSpeed : Vector3.zero;
+        if (TargetTransform == null || !IsDroneReady()) return Vector3.zero;
+        Rigidbody pRb = TargetTransform.GetComponent<Rigidbody>();
+        return pRb != null
+            ? (pRb.linearVelocity - _dronePhysics.GetVelocity()) / _maxObsSpeed
+            : Vector3.zero;
     }
 }

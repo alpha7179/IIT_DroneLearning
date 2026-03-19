@@ -39,14 +39,42 @@ public class DroneAgent : Agent
     public float ManualAttitude = 0.5f;
     public float ManualYawRate = 0.4f;
 
-    private DronePhysics _dronePhysics;
-    private DroneSensorSystem _sensorSystem;
+    protected DronePhysics _dronePhysics;
+    protected DroneSensorSystem _sensorSystem;
+    protected Rigidbody _rb;
 
     protected override void Awake()
     {
         base.Awake();
+        _rb           = GetComponent<Rigidbody>();
         _dronePhysics = GetComponent<DronePhysics>();
         _sensorSystem = GetComponent<DroneSensorSystem>();
+    }
+
+    /// <summary>DronePhysics 컴포넌트가 준비되었는지 확인 — 서브클래스 null 가드용</summary>
+    protected bool IsDroneReady() => _dronePhysics != null;
+
+    /// <summary>Rigidbody 속도 초기화 + DronePhysics 내부 상태 초기화</summary>
+    protected void ResetPhysicsState()
+    {
+        if (_rb != null)
+        {
+            _rb.linearVelocity  = Vector3.zero;
+            _rb.angularVelocity = Vector3.zero;
+        }
+        _dronePhysics?.ResetPhysics();
+    }
+
+    private void OnValidate()
+    {
+        SpawnRangeX    = Mathf.Max(0f, SpawnRangeX);
+        SpawnRangeZ    = Mathf.Max(0f, SpawnRangeZ);
+        SpawnHeight    = Mathf.Max(0f, SpawnHeight);
+        SpawnYawMaxDeg = Mathf.Clamp(SpawnYawMaxDeg, 0f, 180f);
+        StepPenalty    = Mathf.Min(0f, StepPenalty);
+        ManualThrottle = Mathf.Max(0f, ManualThrottle);
+        ManualAttitude = Mathf.Max(0f, ManualAttitude);
+        ManualYawRate  = Mathf.Max(0f, ManualYawRate);
     }
 
     public override void OnEpisodeBegin()
