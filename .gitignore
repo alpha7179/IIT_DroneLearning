@@ -3,7 +3,7 @@
 *.prettierrc
 *.json
 /.kiro/
-AGENTS.md
+AGENT.md
 CLAUDE.md
 
 # Python
