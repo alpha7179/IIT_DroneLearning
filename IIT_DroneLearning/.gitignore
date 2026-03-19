@@ -11,6 +11,10 @@
 /[Ll]ogs/
 /[Uu]ser[Ss]ettings/
 *.log
+AGENT.md
+AGENTS.md
+CLAUDE.md
+
 
 /[Nn]o[Gg]it/
 

@@ -4,6 +4,7 @@
 *.json
 /.kiro/
 AGENT.md
+AGENTS.md
 CLAUDE.md
 
 # Python
