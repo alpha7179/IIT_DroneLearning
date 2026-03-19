@@ -1,6 +1,6 @@
 # CONTRACT.md — 팀 인터페이스 계약서 초안
 
-> **상태**: 초안 (Week 1 팀 회의에서 수치 확정 필요)
+> **상태**: 확정 (2026-03-15 종료조건 수치 확정)
 > **작성**: 이재왕 (work/evader)
 > **목적**: Evader/Pursuer/World/Sensor 간 인터페이스를 사전 정의하여 병렬 개발 중 충돌을 방지한다.
 > 변경 시 모든 담당자가 합의하고 이 파일을 PR로 업데이트한다.
@@ -81,15 +81,15 @@
 
 두 에이전트 에피소드를 동시에 종료시키는 공통 조건:
 
-| 조건 | 수치 (초안) | 확정 필요 | 제공자 |
-|---|---|---|---|
-| **Catch**: Pursuer-Evader 거리 | `d < 2.0m`, `k=3 step 연속` | ✅ 합의 필요 | World |
-| **Crash**: 고도 | `altitude < 0.5m` | ✅ 합의 필요 | World |
-| **Crash**: 기울기 | `tilt > 60°` 지속 | ✅ 합의 필요 | World |
-| **Crash**: 충돌 | `OnCollisionEnter` 트리거 | | World |
-| **Timeout**: 에피소드 시간 | `T_max = 20s` | ✅ 합의 필요 | World |
-| **Goal Reached**: Evader 도달 | `d < 2.0m` | ✅ 합의 필요 | World |
-| **Out-of-bounds**: 경계 이탈 | 맵 크기에 따라 결정 | ✅ 합의 필요 | World |
+| 조건 | 수치 (**확정**) | 제공자 |
+|---|---|---|
+| **Catch**: Pursuer-Evader 거리 | `d < 1.5m`, `k=5 step 연속` | World |
+| **Crash**: 고도 | `altitude < 0.5m` | World |
+| **Crash**: 기울기 | `tilt > 70°` 지속 | World |
+| **Crash**: 충돌 | `OnCollisionEnter` 트리거 | World |
+| **Timeout**: 에피소드 시간 | `T_max = 25s` | World |
+| **Goal Reached**: Evader 도달 | `d < 2.0m` | World |
+| **Out-of-bounds**: 경계 이탈 | 맵 크기에 따라 결정 | World |
 
 ### API 규약
 
@@ -169,5 +169,5 @@ Python (ML-Agents 학습 루프)
 | 날짜 | 항목 | 변경 내용 | 합의자 |
 |---|---|---|---|
 | 2026-03-03 | 전체 초안 | 이재왕 작성 | 이재왕 (검토 필요) |
-
-> Week 1 팀 회의에서 수치 확정 후 이 표에 기록한다.
+| 2026-03-09 | 수치 불일치 확인 | Pursuer AGENTS.md와 차이 발견 | 이재왕 |
+| 2026-03-15 | 종료조건 확정 | AGENTS.md 기준으로 통일: catch d<1.5m/k=5, timeout 25s, tilt>70° | 이재왕 |

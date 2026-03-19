@@ -67,34 +67,4 @@ hide:
   </div>
 </div>
 
----
 
-## 알고리즘 분석 미리보기
-
-500×500 도시 그리드에서 8종 경로 탐색 알고리즘 성능 비교 — [전체 결과 보기](analysis.md)
-
-![Algorithm Metrics](assets/metrics_bar.png)
-
-| 순위 | 알고리즘 | Composite | Success | LOS Exp% |
-|:---:|---|:---:|:---:|:---:|
-| 1 | **Theta\*** | 0.888 | 100% | 0.9% |
-| 2 | A\* (Octile) | 0.887 | 100% | 0.5% |
-| 3 | A\*+LOS (w=1.0) | 0.883 | 100% | 0.2% |
-
----
-
-## 기술 스택
-
-| 레이어 | 기술 |
-|---|---|
-| 시뮬레이션 환경 | Unity 6000.0.58f2 + URP 17.0.4 |
-| RL 프레임워크 | ML-Agents 4.0.x (PPO) |
-| 딥러닝 | Python 3.10, PyTorch 2.x |
-| 시각화 | TensorBoard, Matplotlib |
-| 학습 인프라 | Google Colab Pro+ |
-
----
-
-!!! note "진행 상황"
-    본 프로젝트는 현재 **Phase 1 (환경 구축 및 설계)** 단계입니다.
-    알고리즘 분석 벤치마크는 완료되었으며, Unity 환경 및 RL 학습은 진행 중입니다.
