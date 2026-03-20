@@ -221,8 +221,11 @@ namespace DroneVisualPipeline
                     return;
                 }
 
-                // 2. DroneCamera_Solo GameObject에 Depth 전용 Camera 추가 (DroneVisionSystem과 동일 방식)
-                _depthCamera = soloCamera.gameObject.AddComponent<Camera>();
+                // 2. Depth 전용 child GameObject 생성 후 Camera 추가
+                //    (DroneCamera_Solo에는 Camera가 이미 존재하므로 자식 오브젝트에 별도 생성)
+                var depthGO = new GameObject("DroneDepthCamera");
+                depthGO.transform.SetParent(soloCamera.transform, false);
+                _depthCamera = depthGO.AddComponent<Camera>();
                 _depthCamera.fieldOfView   = soloCamera.fieldOfView;
                 _depthCamera.nearClipPlane = nearClipOverride > 0f ? nearClipOverride : soloCamera.nearClipPlane;
                 _depthCamera.farClipPlane  = farClipOverride > 0f  ? farClipOverride  : soloCamera.farClipPlane;
@@ -352,7 +355,6 @@ namespace DroneVisualPipeline
             _depthMaterial.SetInt("_UseLinear",         depthMode == DepthOutputMode.Linear ? 1 : 0);
             _depthMaterial.SetInt("_UseJetColorRamp",   colorRamp == DepthColorRamp.Jet ? 1 : 0);
         }
-    }
 
         /// <summary>
         /// sensorName과 일치하는 RenderTextureSensorComponent를 반환한다.

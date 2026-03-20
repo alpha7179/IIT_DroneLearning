@@ -23948,6 +23948,9 @@ GameObject:
   - component: {fileID: 1589079196}
   - component: {fileID: 1589079195}
   - component: {fileID: 1589079205}
+  - component: {fileID: 1589079208}
+  - component: {fileID: 1589079207}
+  - component: {fileID: 1589079206}
   m_Layer: 0
   m_Name: Drone
   m_TagString: Untagged
@@ -24128,7 +24131,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_BrainParameters:
-    VectorObservationSize: 1
+    VectorObservationSize: 44
     NumStackedVectorObservations: 1
     m_ActionSpec:
       m_NumContinuousActions: 4
@@ -24250,6 +24253,80 @@ MonoBehaviour:
   DecisionPeriod: 5
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
+--- !u!114 &1589079206
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1589079194}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c26c494eb36973d44898d4b76fa746e9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  enableDepthSensor: 1
+  depthWidth: 84
+  depthHeight: 84
+  depthMode: 0
+  maxDepthDistance: 0
+  nearClipOverride: 0
+  farClipOverride: 0
+  colorRamp: 0
+  showDebugFrustum: 0
+  showPreviewOverlay: 0
+  previewSize: 0.2
+  sensorName: DroneDepth
+--- !u!114 &1589079207
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1589079194}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8ceb6eb63c79c9e4ea60d3269df3eb31, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  enableCapture: 0
+  captureInterval: 5
+  captureRGB: 1
+  captureDepth: 0
+  captureWidth: 0
+  captureHeight: 0
+  imageFormat: 0
+  jpgQuality: 85
+  basePath: CapturedData
+  filePrefix: 
+  saveMetadata: 1
+  includeRayDistances: 1
+  saveEpisodeSummary: 1
+  maxAsyncRequests: 3
+  logCaptureEvents: 0
+  showCaptureStatus: 0
+--- !u!114 &1589079208
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1589079194}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5d9f3718451be44abff0748fc35f838, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  enableVisualObservation: 1
+  textureWidth: 84
+  textureHeight: 84
+  grayscale: 0
+  fovOverride: 0
+  farClipOverride: 0
+  showDebugFrustum: 0
+  showPreviewOverlay: 0
+  previewSize: 0.2
+  sensorName: DroneRGB
 --- !u!1 &1589584786
 GameObject:
   m_ObjectHideFlags: 0

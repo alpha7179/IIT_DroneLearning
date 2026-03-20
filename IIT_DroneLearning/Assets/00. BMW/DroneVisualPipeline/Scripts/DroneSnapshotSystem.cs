@@ -55,7 +55,7 @@ namespace DroneVisualPipeline
 
         [Header("저장 경로")]
         [Tooltip("저장 기본 경로 (프로젝트 루트 기준)\n런타임 변경 시 다음 에피소드부터 적용")]
-        public string basePath = "CapturedData";
+        public string basePath = "Assets/00. BMW/DroneVisualPipeline/CapturedData";
 
         [Tooltip("파일명 접두사 (드론 식별용)\n비어있으면 DroneRole을 자동 사용")]
         public string filePrefix = "";
@@ -74,6 +74,10 @@ namespace DroneVisualPipeline
         [Tooltip("최대 동시 비동기 요청 수\n높을수록 메모리 사용 증가")]
         [Range(1, 10)]
         public int maxAsyncRequests = 3;
+
+        [Header("플레이 모드 종료")]
+        [Tooltip("플레이 모드 종료 시 캡처 데이터를 자동으로 삭제한다")]
+        public bool deleteOnPlayModeExit = false;
 
         [Header("디버그")]
         [Tooltip("캡처 시 Console에 파일 경로 로그 출력")]
@@ -198,7 +202,7 @@ namespace DroneVisualPipeline
 
             // 3. basePath 유효성 검사
             if (string.IsNullOrWhiteSpace(basePath))
-                basePath = "CapturedData";
+                basePath = "Assets/00. BMW/DroneVisualPipeline/CapturedData";
 
             // 4. captureDepth: DroneDepthSystem 미존재 시 경고 (플레이 모드)
             if (Application.isPlaying && captureDepth && _depthSystem == null)
@@ -424,10 +428,11 @@ namespace DroneVisualPipeline
                 if (comp == null || comp.GetType().Name != "DroneAgent") continue;
 
                 _droneAgent = comp;
+                // ML-Agents 4.x Agent 베이스 내부 필드명: m_Reward / m_CumulativeReward
                 _rewardField = comp.GetType().GetField(
-                    "reward", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                    "m_Reward", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                 _cumulativeRewardField = comp.GetType().GetField(
-                    "cumulativeReward", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                    "m_CumulativeReward", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
 
                 if (_rewardField == null)
                 {

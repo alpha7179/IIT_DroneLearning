@@ -194,9 +194,12 @@ namespace DroneVisualPipeline
                 return;
             }
 
-            // 2. DroneCamera_Solo GameObject에 Observation 전용 Camera 추가
-            //    동일 Transform 자동 공유 → LateUpdate 위치 갱신 자동 추종
-            _observationCamera = soloCamera.gameObject.AddComponent<Camera>();
+            // 2. Observation 전용 child GameObject 생성 후 Camera 추가
+            //    (DroneCamera_Solo에는 Camera가 이미 존재하므로 자식 오브젝트에 별도 생성)
+            //    동일 parent Transform → LateUpdate 위치 갱신 자동 추종
+            var obsGO = new GameObject("DroneVisionCamera");
+            obsGO.transform.SetParent(soloCamera.transform, false);
+            _observationCamera = obsGO.AddComponent<Camera>();
 
             // 3. RenderTexture 생성
             _renderTexture = CreateRenderTexture(textureWidth, textureHeight);
