@@ -213,10 +213,9 @@ public class EvaderAgent : DroneAgent
             return;
         }
 
-        // 3) 타임아웃 (생존으로 간주)
+        // 3) 타임아웃
         if (_episodeTimer >= _maxEpisodeSeconds)
         {
-            AddReward(0.2f);
             EndEpisode();
         }
     }
