@@ -48,8 +48,10 @@ public class EvaderAgent : DroneAgent
 
     // ───────── 내부 상태 ──────────────────────────────────────────────────
     // _rb 는 DroneAgent.ResetPhysicsState() 로 위임 — 직접 선언 불필요
-    private EvaderReward _rewardCalculator;
-    private float        _episodeTimer;
+    private EvaderReward  _rewardCalculator;
+    private EpisodeLogger _episodeLogger;
+    private float         _episodeTimer;
+    private int           _episodeSteps;
 
     private Vector3 _spawnCenter;
     private Vector3 _goalCenter;
@@ -68,6 +70,8 @@ public class EvaderAgent : DroneAgent
         _rewardCalculator = GetComponent<EvaderReward>();
         if (_rewardCalculator == null)
             _rewardCalculator = gameObject.AddComponent<EvaderReward>();
+
+        _episodeLogger = GetComponent<EpisodeLogger>();
 
         _spawnCenter = transform.position;
         _goalCenter  = GoalTransform != null
@@ -92,6 +96,7 @@ public class EvaderAgent : DroneAgent
     public override void OnEpisodeBegin()
     {
         _episodeTimer             = 0f;
+        _episodeSteps             = 0;
         _timeSincePursuerDetected = 0f;
         _isPursuerVisible         = false;
         _lastKnownPursuerPos      = Vector3.zero;
@@ -174,6 +179,7 @@ public class EvaderAgent : DroneAgent
     public override void OnActionReceived(ActionBuffers actions)
     {
         _episodeTimer += Time.fixedDeltaTime;
+        _episodeSteps++;
 
         float thrust = Mathf.Clamp(actions.ContinuousActions[0], -1f, 1f);
         float roll   = Mathf.Clamp(actions.ContinuousActions[1], -1f, 1f);
@@ -200,6 +206,7 @@ public class EvaderAgent : DroneAgent
             Vector3.Distance(transform.position, GoalTransform.position) < _goalDistance)
         {
             AddReward(1.0f);
+            _episodeLogger?.LogEpisode(EpisodeLogger.TermType.Goal, _episodeSteps);
             EndEpisode();
             return;
         }
@@ -209,6 +216,7 @@ public class EvaderAgent : DroneAgent
             Vector3.Distance(transform.position, TargetTransform.position) < _catchDistance)
         {
             AddReward(-1.0f);
+            _episodeLogger?.LogEpisode(EpisodeLogger.TermType.Captured, _episodeSteps);
             EndEpisode();
             return;
         }
@@ -216,6 +224,7 @@ public class EvaderAgent : DroneAgent
         // 3) 타임아웃
         if (_episodeTimer >= _maxEpisodeSeconds)
         {
+            _episodeLogger?.LogEpisode(EpisodeLogger.TermType.Timeout, _episodeSteps);
             EndEpisode();
         }
     }
@@ -225,6 +234,7 @@ public class EvaderAgent : DroneAgent
     public void SetCrash()
     {
         AddReward(-1.0f);
+        _episodeLogger?.LogEpisode(EpisodeLogger.TermType.Crash, _episodeSteps);
         EndEpisode();
     }
 
