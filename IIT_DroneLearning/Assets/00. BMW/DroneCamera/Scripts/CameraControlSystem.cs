@@ -9,24 +9,21 @@ namespace BMW.DroneCamera
     /// 씬 전체의 카메라 레이아웃을 관리하는 매니저 컴포넌트.
     /// 활성 배치 수에 따라 Single/Multi 모드를 자동 전환한다.
     ///
-    /// Single Batch 레이아웃 (Viewport Rect):
-    ///   ┌──────────────────────────────┐
-    ///   │     TopView  (0,0.5,1,0.5)   │
-    ///   ├──────────────┬───────────────┤
-    ///   │ Tracker FPV  │  Evader FPV   │
-    ///   │ (0,0,0.5,.5) │ (.5,0,.5,.5)  │
-    ///   └──────────────┴───────────────┘
+    /// Display 할당 (CameraControlSystem 존재 시):
+    ///   Display 1 (targetDisplay=0) — 다중뷰 분할 화면
+    ///     ┌──────────────────────────────┐
+    ///     │        TopView  (상단 절반)   │
+    ///     ├──────────────┬───────────────┤
+    ///     │  Pursuer FPV │   Evader FPV  │
+    ///     └──────────────┴───────────────┘
+    ///   Display 3 (targetDisplay=2) — 탑뷰 단독 전체 화면
+    ///   Display 4 (targetDisplay=3) — Evader FPV 단독 전체 화면
+    ///   Display 5 (targetDisplay=4) — Pursuer FPV 단독 전체 화면
     ///
-    /// Multi Batch 레이아웃:
-    ///   전체 화면 BatchTopView (0,0,1,1)
+    ///   Multi Batch 시: Display 1에 BatchTopView 전체 화면, 나머지 비활성.
     ///
     /// TopView/BatchTopView 카메라는 런타임 Awake()에서 생성한다 (씬 미리 배치 불필요).
-    ///
-    /// Orthographic Size 공식:
-    ///   TopView    : max(cityWidth, cityDepth) / 2 * paddingFactor
-    ///   BatchTopView: max(totalW, totalD) / 2 * paddingFactor
-    ///     totalW = columns * slotWidth  + (columns-1) * spacingX
-    ///     totalD = rows    * slotDepth  + (rows   -1) * spacingZ
+    /// 드론 카메라는 DroneAgent.Role 리플렉션으로 자동 탐색·등록한다.
     ///
     /// Assembly-CSharp(CityBatchGenerator, CityDataAPI, DroneAgent)는
     /// named assembly에서 직접 참조 불가 → 리플렉션으로 접근.
@@ -60,7 +57,11 @@ namespace BMW.DroneCamera
         // 내부 상태
         // ────────────────────────────────────────────
 
-        private Camera _topViewCamera;
+        // Display 1 (targetDisplay=0): 다중뷰 분할용 TopView
+        private Camera _topViewCameraMulti;
+        // Display 3 (targetDisplay=2): 탑뷰 단독 전체 화면
+        private Camera _topViewCameraSolo;
+        // Display 1 (targetDisplay=0): Multi-batch 전체 화면
         private Camera _batchTopViewCamera;
 
         private readonly List<DroneCameraSystem> _trackerCameras = new List<DroneCameraSystem>();
@@ -72,7 +73,14 @@ namespace BMW.DroneCamera
         // 리플렉션 캐시 (AppDomain 스캔 1회 후 재사용)
         private Type  _batchGenType;
         private Type  _cityGenType;
+        private Type  _droneAgentType;
         private bool  _typesResolved;
+
+        // Display 인덱스 상수
+        private const int DisplayMultiView = 0;  // Display 1 — 다중뷰(분할 + BatchTopView)
+        private const int DisplayTopView   = 2;  // Display 3 — 탑뷰 단독
+        private const int DisplayEvader    = 3;  // Display 4 — Evader FPV 단독
+        private const int DisplayPursuer   = 4;  // Display 5 — Pursuer FPV 단독
 
         // ────────────────────────────────────────────
         // Unity 생명주기
@@ -80,13 +88,14 @@ namespace BMW.DroneCamera
 
         private void Awake()
         {
-            CreateTopViewCamera();
+            CreateTopViewCameras();
             CreateBatchTopViewCamera();
         }
 
         private void Start()
         {
             ResolveExternalTypes();
+            ScanAndRegisterDroneAgents();
             int n = GetActiveBatchCount();
             _lastBatchCount = n;
             ApplyLayout(n);
@@ -100,6 +109,23 @@ namespace BMW.DroneCamera
             ApplyLayout(n);
         }
 
+        private void OnValidate()
+        {
+            // 인스펙터 변경 시 카메라 파라미터 즉시 반영
+            SyncTopViewCameraParams();
+
+            if (_batchTopViewCamera != null)
+            {
+                _batchTopViewCamera.targetDisplay = DisplayMultiView;
+                var p = _batchTopViewCamera.transform.position;
+                _batchTopViewCamera.transform.position = new Vector3(p.x, batchTopViewHeight, p.z);
+            }
+
+            if (_topViewCameraMulti == null || _batchTopViewCamera == null) return;
+            int n = _lastBatchCount >= 0 ? _lastBatchCount : 1;
+            ApplyLayout(n);
+        }
+
         // ────────────────────────────────────────────
         // 공개 API
         // ────────────────────────────────────────────
@@ -110,13 +136,17 @@ namespace BMW.DroneCamera
             if (role == DroneRole.Pursuer)
             {
                 if (!_trackerCameras.Contains(cam)) _trackerCameras.Add(cam);
+                cam.SetSoloDisplay(DisplayPursuer);
             }
             else
             {
                 if (!_evaderCameras.Contains(cam)) _evaderCameras.Add(cam);
+                cam.SetSoloDisplay(DisplayEvader);
             }
 
-            // 현재 레이아웃 재적용 (다중 등록 정책 즉시 반영)
+            // 다중뷰 카메라는 항상 Display 1
+            cam.SetMultiViewDisplay(DisplayMultiView);
+
             int n = _lastBatchCount >= 0 ? _lastBatchCount : GetActiveBatchCount();
             ApplyLayout(n);
         }
@@ -161,6 +191,8 @@ namespace BMW.DroneCamera
         /// </summary>
         public void ApplyLayout(int batchCount)
         {
+            ApplyDisplayAssignments();
+
             if (batchCount <= 0)
                 ApplyNoneMode();
             else if (batchCount == 1)
@@ -177,8 +209,9 @@ namespace BMW.DroneCamera
         {
             _currentMode = CameraMode.None;
 
-            SetCamEnabled(_topViewCamera,      false);
-            SetCamEnabled(_batchTopViewCamera, false);
+            SetCamEnabled(_topViewCameraMulti,  false);
+            SetCamEnabled(_topViewCameraSolo,   false);
+            SetCamEnabled(_batchTopViewCamera,  false);
             foreach (var c in _trackerCameras) c.SetEnabled(false);
             foreach (var c in _evaderCameras)  c.SetEnabled(false);
 
@@ -192,48 +225,102 @@ namespace BMW.DroneCamera
             // BatchTopView 비활성화
             SetCamEnabled(_batchTopViewCamera, false);
 
-            // TopView — 상단 와이드
-            SetCamEnabled(_topViewCamera, true);
-            _topViewCamera.rect = new Rect(0f, 0.5f, 1f, 0.5f);
-            UpdateTopViewCamera();
+            // ── Display 1 다중뷰 분할 레이아웃 ──
+            // TopView: 상단 절반
+            SetCamEnabled(_topViewCameraMulti, true);
+            _topViewCameraMulti.rect = new Rect(0f, 0.5f, 1f, 0.5f);
 
-            // 드론 FPV — 다중 등록 시 [0]만 렌더링
-            SetDroneViewports(_trackerCameras, new Rect(0f,   0f, 0.5f, 0.5f));
-            SetDroneViewports(_evaderCameras,  new Rect(0.5f, 0f, 0.5f, 0.5f));
+            // 드론 FPV: 하단 분할 (다중뷰용 MultiViewCamera)
+            SetDroneMultiViewports(_trackerCameras, new Rect(0f,   0f, 0.5f, 0.5f));
+            SetDroneMultiViewports(_evaderCameras,  new Rect(0.5f, 0f, 0.5f, 0.5f));
+
+            // ── 개별 디스플레이 단독 전체 화면 ──
+            // TopView Solo: Display 3
+            SetCamEnabled(_topViewCameraSolo, true);
+            _topViewCameraSolo.rect = new Rect(0f, 0f, 1f, 1f);
+
+            // 드론 FPV Solo: Display 4, 5
+            SetDroneSoloViewports(_trackerCameras, new Rect(0f, 0f, 1f, 1f));
+            SetDroneSoloViewports(_evaderCameras,  new Rect(0f, 0f, 1f, 1f));
+
+            UpdateTopViewCamera();
         }
 
         private void ApplyMultiBatchMode()
         {
             _currentMode = CameraMode.MultiBatch;
 
-            // TopView / 드론 FPV 전부 비활성화
-            SetCamEnabled(_topViewCamera, false);
+            // 개별 TopView 및 드론 FPV 전부 비활성화
+            SetCamEnabled(_topViewCameraMulti, false);
+            SetCamEnabled(_topViewCameraSolo,  false);
             foreach (var c in _trackerCameras) c.SetEnabled(false);
             foreach (var c in _evaderCameras)  c.SetEnabled(false);
 
-            // BatchTopView 전체 화면
+            // BatchTopView — Display 1, 전체 화면
             SetCamEnabled(_batchTopViewCamera, true);
             _batchTopViewCamera.rect = new Rect(0f, 0f, 1f, 1f);
             UpdateBatchTopViewCamera();
         }
 
         /// <summary>
-        /// 카메라 리스트에 Viewport 적용.
+        /// 다중뷰(Display 1)용 드론 카메라에 분할 Viewport 적용.
         /// [0]번만 활성화하고, 나머지는 비활성화 (다중 등록 정책).
         /// </summary>
-        private static void SetDroneViewports(List<DroneCameraSystem> cameras, Rect rect)
+        private static void SetDroneMultiViewports(List<DroneCameraSystem> cameras, Rect rect)
         {
             for (int i = 0; i < cameras.Count; i++)
             {
                 if (i == 0)
                 {
-                    cameras[i].SetEnabled(true);
+                    cameras[i].SetMultiViewEnabled(true);
                     cameras[i].SetViewportRect(rect);
                 }
                 else
                 {
-                    cameras[i].SetEnabled(false);
+                    cameras[i].SetMultiViewEnabled(false);
                 }
+            }
+        }
+
+        /// <summary>
+        /// 단독 디스플레이용 드론 카메라에 Viewport 적용.
+        /// [0]번만 활성화하고, 나머지는 비활성화 (다중 등록 정책).
+        /// </summary>
+        private static void SetDroneSoloViewports(List<DroneCameraSystem> cameras, Rect rect)
+        {
+            for (int i = 0; i < cameras.Count; i++)
+            {
+                if (i == 0)
+                {
+                    cameras[i].SetSoloEnabled(true);
+                    cameras[i].SetSoloViewportRect(rect);
+                }
+                else
+                {
+                    cameras[i].SetSoloEnabled(false);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 모든 카메라에 targetDisplay를 재할당한다.
+        /// ApplyLayout 호출 시마다 실행되어 인스펙터 변경도 반영.
+        /// </summary>
+        private void ApplyDisplayAssignments()
+        {
+            if (_topViewCameraMulti != null) _topViewCameraMulti.targetDisplay = DisplayMultiView;
+            if (_topViewCameraSolo  != null) _topViewCameraSolo.targetDisplay  = DisplayTopView;
+            if (_batchTopViewCamera != null) _batchTopViewCamera.targetDisplay = DisplayMultiView;
+
+            foreach (var cam in _trackerCameras)
+            {
+                cam.SetMultiViewDisplay(DisplayMultiView);
+                cam.SetSoloDisplay(DisplayPursuer);
+            }
+            foreach (var cam in _evaderCameras)
+            {
+                cam.SetMultiViewDisplay(DisplayMultiView);
+                cam.SetSoloDisplay(DisplayEvader);
             }
         }
 
@@ -241,17 +328,29 @@ namespace BMW.DroneCamera
         // 카메라 생성
         // ────────────────────────────────────────────
 
-        private void CreateTopViewCamera()
+        private void CreateTopViewCameras()
         {
-            var go = new GameObject("TopView_Camera");
-            go.transform.SetParent(transform, false);
-            go.transform.position = new Vector3(0f, topViewHeight, 0f);
-            go.transform.rotation = Quaternion.LookRotation(Vector3.down, Vector3.forward);
+            // 다중뷰 분할용 (Display 1)
+            var goMulti = new GameObject("TopView_Camera");
+            goMulti.transform.SetParent(transform, false);
+            goMulti.transform.position = new Vector3(0f, topViewHeight, 0f);
+            goMulti.transform.rotation = Quaternion.LookRotation(Vector3.down, Vector3.forward);
+            _topViewCameraMulti = goMulti.AddComponent<Camera>();
+            _topViewCameraMulti.orthographic     = true;
+            _topViewCameraMulti.orthographicSize = topViewOrthoSize;
+            _topViewCameraMulti.targetDisplay    = DisplayMultiView;
+            _topViewCameraMulti.enabled          = false;
 
-            _topViewCamera = go.AddComponent<Camera>();
-            _topViewCamera.orthographic     = true;
-            _topViewCamera.orthographicSize = topViewOrthoSize;
-            _topViewCamera.enabled          = false;
+            // 탑뷰 단독 전체 화면 (Display 3)
+            var goSolo = new GameObject("TopView_Camera_Solo");
+            goSolo.transform.SetParent(transform, false);
+            goSolo.transform.position = new Vector3(0f, topViewHeight, 0f);
+            goSolo.transform.rotation = Quaternion.LookRotation(Vector3.down, Vector3.forward);
+            _topViewCameraSolo = goSolo.AddComponent<Camera>();
+            _topViewCameraSolo.orthographic     = true;
+            _topViewCameraSolo.orthographicSize = topViewOrthoSize;
+            _topViewCameraSolo.targetDisplay    = DisplayTopView;
+            _topViewCameraSolo.enabled          = false;
         }
 
         private void CreateBatchTopViewCamera()
@@ -264,6 +363,7 @@ namespace BMW.DroneCamera
             _batchTopViewCamera = go.AddComponent<Camera>();
             _batchTopViewCamera.orthographic     = true;
             _batchTopViewCamera.orthographicSize = topViewOrthoSize;
+            _batchTopViewCamera.targetDisplay    = DisplayMultiView;
             _batchTopViewCamera.enabled          = false;
         }
 
@@ -271,29 +371,58 @@ namespace BMW.DroneCamera
         // 카메라 파라미터 업데이트
         // ────────────────────────────────────────────
 
+        /// <summary>TopView 두 카메라(Multi/Solo) 위치·OrthoSize 동기화.</summary>
+        private void SyncTopViewCameraParams()
+        {
+            if (_topViewCameraMulti != null)
+            {
+                _topViewCameraMulti.targetDisplay    = DisplayMultiView;
+                _topViewCameraMulti.orthographicSize = topViewOrthoSize;
+                var p = _topViewCameraMulti.transform.position;
+                _topViewCameraMulti.transform.position = new Vector3(p.x, topViewHeight, p.z);
+            }
+            if (_topViewCameraSolo != null)
+            {
+                _topViewCameraSolo.targetDisplay    = DisplayTopView;
+                _topViewCameraSolo.orthographicSize = topViewOrthoSize;
+                var p = _topViewCameraSolo.transform.position;
+                _topViewCameraSolo.transform.position = new Vector3(p.x, topViewHeight, p.z);
+            }
+        }
+
         /// <summary>
-        /// TopView 카메라 위치 및 Orthographic Size 갱신.
+        /// TopView 두 카메라 위치 및 OrthoSize 갱신.
         /// CityBatchGenerator + CityGenerator 파라미터 기반 자동 계산;
         /// 미존재 시 Inspector 기본값 사용.
         /// </summary>
         private void UpdateTopViewCamera()
         {
-            // 도시 중심 및 크기 계산 시도
+            Vector3 pos;
+            float orthoSize;
+
             if (!TryGetSingleCityBounds(out Vector3 center, out float width, out float depth))
             {
-                // 기본값 유지
-                _topViewCamera.orthographicSize = topViewOrthoSize;
-                _topViewCamera.transform.position = new Vector3(0f, topViewHeight, 0f);
-                return;
+                orthoSize = topViewOrthoSize;
+                pos       = new Vector3(0f, topViewHeight, 0f);
+            }
+            else
+            {
+                orthoSize = Mathf.Max(width, depth) / 2f * topViewPaddingFactor;
+                pos       = new Vector3(center.x, topViewHeight, center.z);
             }
 
-            float orthoSize = Mathf.Max(width, depth) / 2f * topViewPaddingFactor;
-            _topViewCamera.orthographicSize = orthoSize;
-            _topViewCamera.transform.position = new Vector3(center.x, topViewHeight, center.z);
+            _topViewCameraMulti.orthographicSize = orthoSize;
+            _topViewCameraMulti.transform.position = pos;
+
+            if (_topViewCameraSolo != null)
+            {
+                _topViewCameraSolo.orthographicSize = orthoSize;
+                _topViewCameraSolo.transform.position = pos;
+            }
         }
 
         /// <summary>
-        /// BatchTopView 카메라 위치 및 Orthographic Size 갱신.
+        /// BatchTopView 카메라 위치 및 OrthoSize 갱신.
         /// CityBatchGenerator 배치 레이아웃 기반 전체 영역 포함.
         /// </summary>
         private void UpdateBatchTopViewCamera()
@@ -322,7 +451,6 @@ namespace BMW.DroneCamera
                 float slotW, slotD;
                 GetSlotSize(batchGen, out slotW, out slotD);
 
-                // 전체 배치 영역
                 float totalW = columns * slotW + (columns - 1) * spacingX;
                 float totalD = rows    * slotD + (rows    - 1) * spacingZ;
 
@@ -343,6 +471,45 @@ namespace BMW.DroneCamera
         }
 
         // ────────────────────────────────────────────
+        // 드론 자동 탐색 & 등록
+        // ────────────────────────────────────────────
+
+        /// <summary>
+        /// 씬 내 모든 DroneAgent 컴포넌트를 리플렉션으로 탐색하고,
+        /// 같은 GameObject의 DroneCameraSystem을 역할에 맞게 등록한다.
+        /// DroneCameraSystem.Start()에서 등록한 것은 중복 등록되지 않는다.
+        /// </summary>
+        private void ScanAndRegisterDroneAgents()
+        {
+            if (_droneAgentType == null) return;
+
+            var roleField = _droneAgentType.GetField(
+                "Role", BindingFlags.Public | BindingFlags.Instance);
+
+            var agents = FindObjectsByType(_droneAgentType, FindObjectsSortMode.None);
+            foreach (UnityEngine.Object agentObj in agents)
+            {
+                var mb = agentObj as MonoBehaviour;
+                if (mb == null) continue;
+
+                var camSystem = mb.GetComponent<DroneCameraSystem>();
+                if (camSystem == null) continue;
+
+                if (_trackerCameras.Contains(camSystem) || _evaderCameras.Contains(camSystem))
+                    continue;
+
+                DroneRole role = DroneRole.Pursuer;
+                if (roleField != null)
+                {
+                    int roleValue = Convert.ToInt32(roleField.GetValue(mb));
+                    role = roleValue == 1 ? DroneRole.Evader : DroneRole.Pursuer;
+                }
+
+                RegisterDroneCamera(camSystem, role);
+            }
+        }
+
+        // ────────────────────────────────────────────
         // 외부 타입 리플렉션 헬퍼
         // ────────────────────────────────────────────
 
@@ -357,14 +524,12 @@ namespace BMW.DroneCamera
                     _batchGenType = assembly.GetType("ProceduralCityGenerator.CityBatchGenerator");
                 if (_cityGenType == null)
                     _cityGenType  = assembly.GetType("ProceduralCityGenerator.CityGenerator");
-                if (_batchGenType != null && _cityGenType != null) break;
+                if (_droneAgentType == null)
+                    _droneAgentType = assembly.GetType("DroneAgent");
+                if (_batchGenType != null && _cityGenType != null && _droneAgentType != null) break;
             }
         }
 
-        /// <summary>
-        /// 단일 도시의 중심 좌표와 크기를 계산.
-        /// CityBatchGenerator(1×1) 또는 CityGenerator 단독 사용 시.
-        /// </summary>
         private bool TryGetSingleCityBounds(out Vector3 center, out float width, out float depth)
         {
             center = Vector3.zero;
@@ -394,9 +559,6 @@ namespace BMW.DroneCamera
             }
         }
 
-        /// <summary>
-        /// CityBatchGenerator가 참조하는 CityGenerator 템플릿으로부터 슬롯 크기를 계산.
-        /// </summary>
         private void GetSlotSize(MonoBehaviour batchGen, out float slotWidth, out float slotDepth)
         {
             slotWidth  = 100f;
@@ -404,7 +566,6 @@ namespace BMW.DroneCamera
 
             if (_cityGenType == null) return;
 
-            // cityTemplateObject(GameObject) → cityTemplate(CityGenerator) 순으로 탐색
             MonoBehaviour cityGen = null;
 
             var templateObjField = _batchGenType.GetField("cityTemplateObject");
@@ -424,7 +585,6 @@ namespace BMW.DroneCamera
 
             if (cityGen == null) return;
 
-            // CityBatchGenerator.CalculateSlotSize 로직 재현
             float unitDistance    = Convert.ToSingle(_cityGenType.GetField("unitDistance")    ?.GetValue(cityGen) ?? 1f);
             int   buildingWidth   = Convert.ToInt32 (_cityGenType.GetField("buildingWidth")   ?.GetValue(cityGen) ?? 1);
             int   buildingDepth   = Convert.ToInt32 (_cityGenType.GetField("buildingDepth")   ?.GetValue(cityGen) ?? 1);

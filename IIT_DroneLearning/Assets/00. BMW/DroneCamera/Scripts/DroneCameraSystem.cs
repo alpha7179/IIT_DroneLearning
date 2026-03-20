@@ -1,7 +1,6 @@
 using System;
 using System.Reflection;
 using UnityEngine;
-using BMW.DroneSensor;
 
 namespace BMW.DroneCamera
 {
@@ -13,20 +12,31 @@ namespace BMW.DroneCamera
 
     /// <summary>
     /// 드론 GameObject에 부착되는 FPV 카메라 컴포넌트.
-    /// 드론의 자식 GameObject로 Camera를 생성하고, CameraControlSystem에 등록한다.
+    /// 카메라를 두 개 생성한다:
+    ///   Camera         (SoloCamera)     — 개별 디스플레이 단독 전체 화면
+    ///   MultiViewCamera                 — Display 1 다중뷰 분할 화면
     ///
-    /// 전방 방향 결정:
-    ///   - DroneSensorSystem 존재 시: Middle/N 레이 방향(로컬 +Z)과 자동 정렬됨 (Quaternion.identity)
-    ///   - DroneSensorSystem 미존재 시: 드론 Transform 로컬 +Z축 사용 (동일하게 Quaternion.identity)
-    /// 카메라는 드론의 자식 Transform이므로 드론 회전 시 자동 추종한다.
+    /// CameraControlSystem 존재 시:
+    ///   SoloCamera  → Pursuer: Display 5 (targetDisplay=4) / Evader: Display 4 (targetDisplay=3)
+    ///   MultiViewCamera → Display 1 (targetDisplay=0), 분할 viewport
+    ///
+    /// CameraControlSystem 미존재 시 (독립 동작):
+    ///   SoloCamera only → Evader: Display 2 (targetDisplay=1) / Pursuer: Display 3 (targetDisplay=2)
+    ///   MultiViewCamera 비활성화
     /// </summary>
     public class DroneCameraSystem : MonoBehaviour
     {
-        [Header("카메라 설정")]
-        [Tooltip("카메라 오프셋 위치 (드론 로컬 좌표)")]
-        public Vector3 cameraOffset = new Vector3(0f, 0.1f, 0.2f);
+        [Header("카메라 위치")]
+        [Tooltip("카메라 좌우·상하 오프셋 (드론 로컬 X·Y 좌표)")]
+        public Vector2 cameraLateralOffset = new Vector2(0f, 0f);
 
+        [Tooltip("드론으로부터 카메라까지의 전방 거리 (드론 로컬 +Z)")]
+        [Range(0f, 100f)]
+        public float cameraDistance = 0.5f;
+
+        [Header("카메라 설정")]
         [Tooltip("카메라 Field of View")]
+        [Range(10f, 170f)]
         public float fieldOfView = 60f;
 
         [Tooltip("카메라 Near Clip Plane")]
@@ -35,11 +45,17 @@ namespace BMW.DroneCamera
         [Tooltip("카메라 Far Clip Plane")]
         public float farClipPlane = 500f;
 
-        /// <summary>생성된 Camera 컴포넌트 참조 (read-only)</summary>
+        /// <summary>개별 디스플레이용 카메라 (단독 전체 화면)</summary>
         public Camera Camera { get; private set; }
 
-        // DroneSensorSystem 선택적 참조
-        private DroneSensorSystem _sensorSystem;
+        /// <summary>Display 1 다중뷰 분할용 카메라</summary>
+        public Camera MultiViewCamera { get; private set; }
+
+        private Transform _cameraTransform;
+        private Transform _multiViewTransform;
+
+        // CCS 참조 캐시 (OnValidate 실시간 알림용)
+        private CameraControlSystem _controlSystem;
 
         // ────────────────────────────────────────────
         // Unity 생명주기
@@ -47,64 +63,145 @@ namespace BMW.DroneCamera
 
         private void Awake()
         {
-            // DroneSensorSystem 선택적 탐색
-            _sensorSystem = GetComponent<DroneSensorSystem>();
+            // 개별 디스플레이용 카메라
+            var soloGO = new GameObject("DroneCamera_Solo");
+            soloGO.transform.SetParent(transform, false);
+            soloGO.transform.localRotation = Quaternion.identity;
+            _cameraTransform = soloGO.transform;
+            Camera = soloGO.AddComponent<Camera>();
+            ApplyCameraSettings();
 
-            // 자식 GameObject 생성
-            var cameraGO = new GameObject("DroneCamera");
-            cameraGO.transform.SetParent(transform, false);
-            cameraGO.transform.localPosition = cameraOffset;
+            // 다중뷰(Display 1) 분할용 카메라
+            var multiGO = new GameObject("DroneCamera_MultiView");
+            multiGO.transform.SetParent(transform, false);
+            multiGO.transform.localRotation = Quaternion.identity;
+            _multiViewTransform = multiGO.transform;
+            MultiViewCamera = multiGO.AddComponent<Camera>();
+            MultiViewCamera.targetDisplay = 0;
+            MultiViewCamera.enabled = false;
+            ApplyCameraSettingsTo(MultiViewCamera);
 
-            // 전방 방향 설정
-            // DroneSensorSystem의 Middle/N 로컬 방향 = (0,0,1) = 드론 로컬 +Z
-            // localRotation = identity 로 두면 두 경우 모두 자동 만족
-            cameraGO.transform.localRotation = Quaternion.identity;
+            ApplyCameraPosition();
+        }
 
-            // Camera 컴포넌트 추가 및 설정
-            Camera = cameraGO.AddComponent<Camera>();
-            Camera.fieldOfView = fieldOfView;
-            Camera.nearClipPlane = nearClipPlane;
-            Camera.farClipPlane = farClipPlane;
+        private void LateUpdate()
+        {
+            ApplyCameraPosition();
+        }
+
+        /// <summary>인스펙터 값 변경 시 카메라 파라미터 실시간 반영.</summary>
+        private void OnValidate()
+        {
+            if (_cameraTransform != null)   ApplyCameraPosition();
+            if (Camera != null)             ApplyCameraSettings();
+            if (MultiViewCamera != null)    ApplyCameraSettingsTo(MultiViewCamera);
+
+            // 플레이 모드에서 CCS 레이아웃 재적용
+            if (Application.isPlaying && _controlSystem != null)
+            {
+                int n = _controlSystem.GetActiveBatchCount();
+                _controlSystem.ApplyLayout(n);
+            }
         }
 
         private void Start()
         {
-            // CameraControlSystem 탐색 및 등록
-            var controlSystem = FindFirstObjectByType<CameraControlSystem>();
-            if (controlSystem == null)
+            _controlSystem = FindFirstObjectByType<CameraControlSystem>();
+
+            if (_controlSystem == null)
             {
                 Debug.LogWarning("[DroneCameraSystem] CameraControlSystem을 찾을 수 없습니다. 독립 동작합니다.");
+                // CCS 없음 → SoloCamera만 사용, 역할 기반 디스플레이 할당
+                DroneRole role = ResolveRole();
+                Camera.targetDisplay = role == DroneRole.Evader ? 1 : 2;
+                if (MultiViewCamera != null) MultiViewCamera.enabled = false;
                 return;
             }
-            controlSystem.RegisterDroneCamera(this, ResolveRole());
+
+            _controlSystem.RegisterDroneCamera(this, ResolveRole());
         }
 
         private void OnDestroy()
         {
-            // CameraControlSystem에서 등록 해제
-            var controlSystem = FindFirstObjectByType<CameraControlSystem>();
-            controlSystem?.UnregisterDroneCamera(this);
+            var cs = _controlSystem != null
+                ? _controlSystem
+                : FindFirstObjectByType<CameraControlSystem>();
+            cs?.UnregisterDroneCamera(this);
         }
 
         // ────────────────────────────────────────────
-        // 공개 API
+        // 공개 API — CameraControlSystem에서 호출
         // ────────────────────────────────────────────
 
-        /// <summary>카메라 활성/비활성 전환</summary>
+        /// <summary>Solo/MultiView 카메라 모두 활성/비활성 전환</summary>
         public void SetEnabled(bool enabled)
+        {
+            if (Camera != null)         Camera.enabled = enabled;
+            if (MultiViewCamera != null) MultiViewCamera.enabled = enabled;
+        }
+
+        /// <summary>MultiView 카메라만 활성/비활성 전환 (분할 레이아웃 제어용)</summary>
+        public void SetMultiViewEnabled(bool enabled)
+        {
+            if (MultiViewCamera != null) MultiViewCamera.enabled = enabled;
+        }
+
+        /// <summary>Solo 카메라만 활성/비활성 전환 (개별 디스플레이 제어용)</summary>
+        public void SetSoloEnabled(bool enabled)
         {
             if (Camera != null) Camera.enabled = enabled;
         }
 
-        /// <summary>Viewport Rect 설정</summary>
+        /// <summary>MultiView 카메라의 분할 Viewport Rect 설정 (Display 1 다중뷰용)</summary>
         public void SetViewportRect(Rect rect)
         {
+            if (MultiViewCamera != null) MultiViewCamera.rect = rect;
+        }
+
+        /// <summary>Solo 카메라의 Viewport Rect 설정 (개별 디스플레이 전체 화면용)</summary>
+        public void SetSoloViewportRect(Rect rect)
+        {
             if (Camera != null) Camera.rect = rect;
+        }
+
+        /// <summary>Solo 카메라의 targetDisplay 설정 (Pursuer=4, Evader=3)</summary>
+        public void SetSoloDisplay(int display)
+        {
+            if (Camera != null) Camera.targetDisplay = display;
+        }
+
+        /// <summary>MultiView 카메라의 targetDisplay 설정 (항상 0 = Display 1)</summary>
+        public void SetMultiViewDisplay(int display)
+        {
+            if (MultiViewCamera != null) MultiViewCamera.targetDisplay = display;
         }
 
         // ────────────────────────────────────────────
         // 내부 헬퍼
         // ────────────────────────────────────────────
+
+        private void ApplyCameraPosition()
+        {
+            var localPos = new Vector3(
+                cameraLateralOffset.x,
+                cameraLateralOffset.y,
+                cameraDistance);
+
+            if (_cameraTransform != null)    _cameraTransform.localPosition    = localPos;
+            if (_multiViewTransform != null) _multiViewTransform.localPosition = localPos;
+        }
+
+        private void ApplyCameraSettings()
+        {
+            if (Camera != null) ApplyCameraSettingsTo(Camera);
+        }
+
+        private void ApplyCameraSettingsTo(Camera cam)
+        {
+            cam.fieldOfView   = fieldOfView;
+            cam.nearClipPlane = nearClipPlane;
+            cam.farClipPlane  = farClipPlane;
+        }
 
         /// <summary>
         /// DroneAgent.Role을 리플렉션으로 읽어 로컬 DroneRole로 변환.
