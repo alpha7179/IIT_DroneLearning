@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace ProceduralCityGenerator
+namespace CityGenerator
 {
     /// <summary>
     /// 런타임에 도시 데이터를 쿼리하기 위한 싱글톤 API 클래스

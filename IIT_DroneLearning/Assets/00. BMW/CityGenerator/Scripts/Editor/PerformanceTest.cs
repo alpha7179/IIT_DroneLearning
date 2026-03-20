@@ -4,7 +4,7 @@ using UnityEditor;
 using System.Diagnostics;
 using System.Collections.Generic;
 
-namespace ProceduralCityGenerator.Tests
+namespace CityGenerator.Tests
 {
     /// <summary>
     /// Task 14.3: 성능 테스트 및 검증

@@ -1,6 +1,6 @@
 {
     "name": "DroneCameraSystem",
-    "rootNamespace": "BMW.DroneCamera",
+    "rootNamespace": "DroneCamera",
     "references": [
         "DroneSensorSystem"
     ],

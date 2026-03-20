@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 
-namespace BMW.DroneCamera
+namespace DroneCamera
 {
     /// <summary>
     /// 씬 전체의 카메라 레이아웃을 관리하는 매니저 컴포넌트.

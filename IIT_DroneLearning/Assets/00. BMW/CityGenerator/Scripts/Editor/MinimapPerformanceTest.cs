@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Diagnostics;
 
-namespace ProceduralCityGenerator.Tests
+namespace CityGenerator.Tests
 {
     /// <summary>
     /// MinimapRenderer 성능 테스트

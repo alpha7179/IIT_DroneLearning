@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace ProceduralCityGenerator
+namespace CityGenerator
 {
     /// <summary>
     /// 공간 쿼리를 최적화하기 위한 Quadtree 기반 공간 인덱스

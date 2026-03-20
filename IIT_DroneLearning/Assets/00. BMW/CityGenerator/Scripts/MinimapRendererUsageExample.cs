@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace ProceduralCityGenerator
+namespace CityGenerator
 {
     /// <summary>
     /// MinimapRenderer 사용 예제

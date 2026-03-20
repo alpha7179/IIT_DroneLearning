@@ -6,7 +6,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace ProceduralCityGenerator.Tests
+namespace CityGenerator.Tests
 {
     /// <summary>
     /// MinimapRenderer 실시간 업데이트 기능 테스트

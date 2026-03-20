@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace BMW.DroneSensor
+namespace DroneSensor
 {
     /// <summary>
     /// 드론 레이 센서 시스템

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace ProceduralCityGenerator
+namespace CityGenerator
 {
     /// <summary>
     /// 그래프 노드의 타입을 정의하는 열거형

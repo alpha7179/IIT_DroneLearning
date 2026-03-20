@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.TestTools;
 using System.IO;
 
-namespace ProceduralCityGenerator.Tests
+namespace CityGenerator.Tests
 {
     /// <summary>
     /// SaveMinimapToPNG 메서드 테스트

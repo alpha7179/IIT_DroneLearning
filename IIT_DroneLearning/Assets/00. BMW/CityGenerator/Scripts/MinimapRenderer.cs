@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace ProceduralCityGenerator
+namespace CityGenerator
 {
     /// <summary>
     /// UI 캔버스에 미니맵을 표시하고 실시간 업데이트를 처리하는 MonoBehaviour 컴포넌트

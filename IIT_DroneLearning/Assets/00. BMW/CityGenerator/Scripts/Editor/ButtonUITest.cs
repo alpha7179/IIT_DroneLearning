@@ -2,7 +2,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEditor;
 
-namespace ProceduralCityGenerator
+namespace CityGenerator
 {
     /// <summary>
     /// Task 13.3 버튼 UI 테스트
