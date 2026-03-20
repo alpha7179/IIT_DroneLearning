@@ -15,6 +15,10 @@
 | 날짜 | commit | config | run-id | seed | survival | goal | capture | crash | 코멘트 |
 |------|--------|--------|--------|------|----------|------|---------|-------|--------|
 | _(예시)_ | `a76f38d` | `evader_s0_template` | `evader_s0_base_seed42` | 42 | 72% | 51% | 25% | 3% | Stage0 첫 수렴 확인 |
+| 2026-03-20 | `166e7da` | `evader_s0_flat_template` | `evader_s0_flat_seed42` | 42 | - | ~35% | - | - | 평지 Stage0 초도 학습 (300k). timeout 보상 제거, goalShaping 0.02→0.1. 진동하며 최대 0.375 도달. |
+| 2026-03-20 | `166e7da` | `evader_s0_flat_template` | `evader_s0_flat_seed42_v2` | 42 | - | **~60%** | - | - | warm-start 추가 300k. 115k에서 0.5 돌파, 최종 0.637(peak 0.686). M1 goal_reach_rate ≥50% **달성**. |
+| 2026-03-20 | `d12dfa2` | `evader_s0_flat_template` | `evader_s0_flat_seed42_v3` | 42 | - | **~80~90%** | - | - | warm-start v2→v3 300k. 50k부터 0.9 돌파, peak 0.982(230k), 최종 0.768. |
+| 2026-03-21 | `1079846` | `evader_s0_flat_template` | `evader_s0_flat_seed42_v3` | 42 | **100%** | **68%** | **0%** | **0%** | eval 50 eps (EpisodeLogger). survival/goal/M1 전부 달성. timeout 32% → Stage1 전환 준비. |
 
 ---
 
