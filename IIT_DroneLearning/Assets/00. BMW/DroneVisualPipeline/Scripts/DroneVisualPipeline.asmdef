@@ -1,0 +1,18 @@
+{
+    "name": "DroneVisualPipeline",
+    "rootNamespace": "DroneVisualPipeline",
+    "references": [
+        "DroneCameraSystem",
+        "DroneSensorSystem",
+        "Unity.ML-Agents"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
