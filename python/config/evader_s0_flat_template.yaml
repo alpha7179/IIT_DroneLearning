@@ -1,22 +1,20 @@
 # evader_s0_flat_template.yaml
-# Stage0: 평지 환경 (Stage0_Flat.unity), 순수 목표 도달 학습
-#   - 장애물 없음, Pursuer 없음 (_goalOnlyMode = true)
-#   - 목표: goal_reach_rate >= 50% 안정 수렴
+# Stage0: flat env (Stage0_Flat.unity), goal-reach only
+#   - No obstacles, no Pursuer (_goalOnlyMode = true)
+#   - Target: goal_reach_rate >= 50%
 #
-# Unity Inspector 설정:
+# Unity Inspector:
 #   EvaderAgent._goalOnlyMode      = true
-#   EvaderAgent._pursuerTransform  = (비워두기)
+#   EvaderAgent._pursuerTransform  = (empty)
 #   EvaderAgent._goalTransform     = GoalZone
-#   BehaviorParameters.Behavior Name = EvaderAgent
-#   BehaviorParameters.Continuous Actions = 4
-#   BehaviorParameters.Vector Obs Size    = 18
-#   DecisionRequester.Decision Period     = 5
+#   BehaviorParameters.Behavior Name        = EvaderAgent
+#   BehaviorParameters.Continuous Actions   = 4
+#   BehaviorParameters.Vector Obs Size      = 18
+#   DecisionRequester.Decision Period       = 5
 #
-# 실행 (로컬):
+# Run (local):
 #   mlagents-learn python/config/evader_s0_flat_template.yaml \
 #     --run-id=evader_s0_flat_seed42 --force
-#
-# 실행 (Colab): stage0_flat_colab.ipynb 사용
 
 behaviors:
   EvaderAgent:
@@ -24,9 +22,9 @@ behaviors:
 
     hyperparameters:
       batch_size: 64
-      buffer_size: 6400        # 25s × 10Hz × 4env → 1000/env × 4 × 1.6
+      buffer_size: 6400
       learning_rate: 3.0e-4
-      beta: 5.0e-3             # 탐색 엔트로피 — 수렴 후 자연 감소
+      beta: 5.0e-3
       epsilon: 0.2
       lambd: 0.99
       num_epoch: 3
@@ -34,7 +32,7 @@ behaviors:
 
     network_settings:
       normalize: true
-      hidden_units: 128        # 평지 환경은 단순 → 작은 네트워크로 충분
+      hidden_units: 128
       num_layers: 2
 
     reward_signals:
@@ -42,26 +40,19 @@ behaviors:
         gamma: 0.99
         strength: 1.0
 
-    max_steps: 300000          # 평지라 수렴 빠름 (필요 시 연장)
+    max_steps: 300000
     time_horizon: 64
     summary_freq: 5000
     checkpoint_interval: 30000
     keep_checkpoints: 5
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 보상 구조 (EvaderReward.cs)
+# Reward structure (EvaderReward.cs):
+#   step   = goalShapingCoeff(0.02) * (d_prev - d_now)
+#          + survivalRewardPerStep(+0.001)
+#          + timePenaltyPerStep(-0.001)
+#   end    = goal reached: +1.0 / timeout: +0.2
 #
-# step reward  = goalShapingCoeff(0.02) * (d_prev - d_now)
-#              + survivalRewardPerStep(+0.001)
-#              + timePenaltyPerStep(-0.001)
-# episode end  = goal reached: +1.0
-#              = timeout:      +0.2  (생존 부분 보상)
-#
-# Decision Period: 5 fixedUpdate steps (50Hz → 10Hz 결정)
-# ──────────────────────────────────────────────────────────────────────────────
-#
-# 수렴 기준 (TensorBoard):
-#   Cumulative Reward > 0.5 안정
-#   Episode Length 감소 추세 (더 빨리 Goal 도달)
-#   → goal_reach_rate >= 50% 확인 후 Stage0-B(Pursuer 추가)로 전환
-# ──────────────────────────────────────────────────────────────────────────────
+# Convergence (TensorBoard):
+#   Cumulative Reward > 0.5 stable
+#   Episode Length decreasing
+#   -> goal_reach_rate >= 50% -> move to Stage0-B
