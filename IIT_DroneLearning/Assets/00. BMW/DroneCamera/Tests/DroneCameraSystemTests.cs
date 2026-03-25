@@ -248,7 +248,7 @@ namespace DroneCamera
         // ────────────────────────────────────────────
 
         /// <summary>
-        /// 요구사항 2.1~2.4: Single Batch 모드에서 3분할 Viewport Rect가 올바르게 적용되어야 한다.
+        /// 요구사항 2.1~2.4: Single Batch 모드에서 각 1대일 때 기본 Viewport Rect가 올바르게 적용되어야 한다.
         /// </summary>
         [Test]
         public void SingleBatch_ViewportRects_AreCorrect()
@@ -265,20 +265,146 @@ namespace DroneCamera
                 ctrl.RegisterDroneCamera(evader,  DroneRole.Evader);
                 ctrl.ApplyLayout(1);
 
-                Assert.AreEqual(new Rect(0f,   0f, 0.5f, 0.5f), tracker.Camera.rect,
-                    "Tracker FPV Viewport: 좌하단 (0,0,0.5,0.5)");
-                Assert.AreEqual(new Rect(0.5f, 0f, 0.5f, 0.5f), evader.Camera.rect,
-                    "Evader FPV Viewport: 우하단 (0.5,0,0.5,0.5)");
+                Assert.AreEqual(new Rect(2f / 3f, 0.5f, 1f / 3f, 0.5f), tracker.Camera.rect,
+                    "Tracker FPV Viewport: 우상단 (2/3, 0.5, 1/3, 0.5)");
+                Assert.AreEqual(new Rect(2f / 3f, 0f,   1f / 3f, 0.5f), evader.Camera.rect,
+                    "Evader FPV Viewport: 우하단 (2/3, 0, 1/3, 0.5)");
 
                 var tvCam = _controlGO.transform.Find("TopView_Camera")?.GetComponent<Camera>();
                 Assert.IsNotNull(tvCam);
-                Assert.AreEqual(new Rect(0f, 0.5f, 1f, 0.5f), tvCam.rect,
-                    "TopView Viewport: 상단 와이드 (0,0.5,1,0.5)");
+                Assert.AreEqual(new Rect(0f, 0f, 2f / 3f, 1f), tvCam.rect,
+                    "TopView Viewport: 좌측 2/3 전체 높이 (0, 0, 2/3, 1)");
             }
             finally
             {
                 Object.DestroyImmediate(trackerGO);
                 Object.DestroyImmediate(evaderGO);
+            }
+        }
+
+        /// <summary>
+        /// Pursuer 2대 등록 시 Pursuer 섹션이 2등분, Evader 섹션은 유지.
+        /// </summary>
+        [Test]
+        public void SingleBatch_MultiPursuer_SectionSplitsVertically()
+        {
+            var ctrl = AddAndAwake<CameraControlSystem>(_controlGO);
+            var p0GO = new GameObject("Pursuer0");
+            var p1GO = new GameObject("Pursuer1");
+            var eGO  = new GameObject("Evader");
+            try
+            {
+                var p0 = AddAndAwake<DroneCameraSystem>(p0GO);
+                var p1 = AddAndAwake<DroneCameraSystem>(p1GO);
+                var ev = AddAndAwake<DroneCameraSystem>(eGO);
+
+                ctrl.RegisterDroneCamera(p0, DroneRole.Pursuer);
+                ctrl.RegisterDroneCamera(p1, DroneRole.Pursuer);
+                ctrl.RegisterDroneCamera(ev, DroneRole.Evader);
+                ctrl.ApplyLayout(1);
+
+                // Pursuer 섹션 (y: 0.5~1.0) → 2등분 (각 slotH = 0.25)
+                Assert.AreEqual(new Rect(2f / 3f, 0.75f, 1f / 3f, 0.25f), p0.MultiViewCamera.rect,
+                    "Pursuer[0]: 섹션 상단 슬롯");
+                Assert.AreEqual(new Rect(2f / 3f, 0.5f,  1f / 3f, 0.25f), p1.MultiViewCamera.rect,
+                    "Pursuer[1]: 섹션 하단 슬롯");
+                Assert.IsTrue(p0.MultiViewCamera.enabled,  "Pursuer[0] MultiView 활성");
+                Assert.IsTrue(p1.MultiViewCamera.enabled,  "Pursuer[1] MultiView 활성");
+
+                // Evader 섹션 (y: 0.0~0.5) → 1개이므로 그대로
+                Assert.AreEqual(new Rect(2f / 3f, 0f, 1f / 3f, 0.5f), ev.MultiViewCamera.rect,
+                    "Evader[0]: 섹션 전체");
+                Assert.IsTrue(ev.MultiViewCamera.enabled, "Evader[0] MultiView 활성");
+            }
+            finally
+            {
+                Object.DestroyImmediate(p0GO);
+                Object.DestroyImmediate(p1GO);
+                Object.DestroyImmediate(eGO);
+            }
+        }
+
+        /// <summary>
+        /// Pursuer 4대 등록 시 섹션 내 2×2 그리드로 배치되는지 확인.
+        /// </summary>
+        [Test]
+        public void SingleBatch_FourPursuers_TwoColumnGrid()
+        {
+            var ctrl = AddAndAwake<CameraControlSystem>(_controlGO);
+            var gos  = new GameObject[4];
+            try
+            {
+                var drones = new DroneCameraSystem[4];
+                for (int i = 0; i < 4; i++)
+                {
+                    gos[i]    = new GameObject($"Pursuer{i}");
+                    drones[i] = AddAndAwake<DroneCameraSystem>(gos[i]);
+                    ctrl.RegisterDroneCamera(drones[i], DroneRole.Pursuer);
+                }
+                ctrl.ApplyLayout(1);
+
+                // Pursuer 섹션 (y: 0.5~1.0), 2×2 그리드 → slotW=1/6, slotH=0.25
+                float x0 = 2f / 3f;
+                float x1 = 2f / 3f + 1f / 6f;
+                float slotW = 1f / 6f;
+                float slotH = 0.25f;
+
+                Assert.AreEqual(new Rect(x0, 0.75f, slotW, slotH), drones[0].MultiViewCamera.rect, "P[0]: 상단-좌");
+                Assert.AreEqual(new Rect(x1, 0.75f, slotW, slotH), drones[1].MultiViewCamera.rect, "P[1]: 상단-우");
+                Assert.AreEqual(new Rect(x0, 0.5f,  slotW, slotH), drones[2].MultiViewCamera.rect, "P[2]: 하단-좌");
+                Assert.AreEqual(new Rect(x1, 0.5f,  slotW, slotH), drones[3].MultiViewCamera.rect, "P[3]: 하단-우");
+                for (int i = 0; i < 4; i++)
+                    Assert.IsTrue(drones[i].MultiViewCamera.enabled, $"Pursuer[{i}] 활성");
+            }
+            finally
+            {
+                foreach (var go in gos) if (go != null) Object.DestroyImmediate(go);
+            }
+        }
+
+        /// <summary>
+        /// 각 역할 4대 + 초과 1대씩 등록 시 최대 4대까지 활성, 초과분 비활성.
+        /// 4대/역할 → 2×2 그리드이므로 slotW=1/6, slotH=0.25.
+        /// </summary>
+        [Test]
+        public void SingleBatch_MaxSlots_FourPerRole()
+        {
+            var ctrl = AddAndAwake<CameraControlSystem>(_controlGO);
+            var gos  = new GameObject[10]; // Pursuer 5, Evader 5 (초과 1대씩)
+            try
+            {
+                var drones = new DroneCameraSystem[10];
+                for (int i = 0; i < 10; i++)
+                {
+                    gos[i]    = new GameObject($"Drone{i}");
+                    drones[i] = AddAndAwake<DroneCameraSystem>(gos[i]);
+                    ctrl.RegisterDroneCamera(drones[i], i < 5 ? DroneRole.Pursuer : DroneRole.Evader);
+                }
+                ctrl.ApplyLayout(1);
+
+                // 4대 → 2×2 그리드: slotW = 1/6, slotH = 섹션높이(0.5) / 2행 = 0.25
+                float slotW = 1f / 6f;
+                float slotH = 0.25f;
+
+                // Pursuer 최대 4개 활성, 5번째는 비활성
+                for (int i = 0; i < 4; i++)
+                    Assert.IsTrue(drones[i].MultiViewCamera.enabled, $"Pursuer[{i}] 활성");
+                Assert.IsFalse(drones[4].MultiViewCamera.enabled, "Pursuer[4] 비활성 (초과)");
+
+                // Evader 최대 4개 활성, 5번째는 비활성
+                for (int i = 5; i < 9; i++)
+                    Assert.IsTrue(drones[i].MultiViewCamera.enabled, $"Evader[{i - 5}] 활성");
+                Assert.IsFalse(drones[9].MultiViewCamera.enabled, "Evader[4] 비활성 (초과)");
+
+                // 슬롯 크기 확인 (2×2 그리드)
+                Assert.AreEqual(slotW, drones[0].MultiViewCamera.rect.width,  1e-5f, "Pursuer 슬롯 너비");
+                Assert.AreEqual(slotH, drones[0].MultiViewCamera.rect.height, 1e-5f, "Pursuer 슬롯 높이");
+                Assert.AreEqual(slotW, drones[5].MultiViewCamera.rect.width,  1e-5f, "Evader 슬롯 너비");
+                Assert.AreEqual(slotH, drones[5].MultiViewCamera.rect.height, 1e-5f, "Evader 슬롯 높이");
+            }
+            finally
+            {
+                foreach (var go in gos) if (go != null) Object.DestroyImmediate(go);
             }
         }
 

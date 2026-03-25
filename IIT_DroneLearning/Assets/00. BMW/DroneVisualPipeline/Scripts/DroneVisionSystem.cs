@@ -17,6 +17,7 @@ namespace DroneVisualPipeline
     ///   - 기존 DroneAgent, DroneCameraSystem, DroneSensorSystem 코드 수정 없음
     /// </summary>
     [RequireComponent(typeof(DroneCameraSystem))]
+    [DefaultExecutionOrder(-200)]
     public class DroneVisionSystem : MonoBehaviour
     {
         #region Unity Inspector 노출 속성
@@ -89,6 +90,21 @@ namespace DroneVisualPipeline
         // ────────────────────────────────────────────
         // Unity 생명주기
         // ────────────────────────────────────────────
+
+        private void Awake()
+        {
+            // ML-Agents Agent.Initialize()가 Start() 이전에 센서를 생성하므로,
+            // RenderTextureSensorComponent에 임시 RT를 미리 할당하여
+            // Texture2D(0,0) 생성 에러를 방지한다.
+            var rtSensor = FindSensorComponent(sensorName);
+            if (rtSensor != null && rtSensor.RenderTexture == null)
+            {
+                _renderTexture = CreateRenderTexture(textureWidth, textureHeight);
+                rtSensor.RenderTexture = _renderTexture;
+                rtSensor.SensorName    = sensorName;
+                rtSensor.Grayscale     = grayscale;
+            }
+        }
 
         private void Start()
         {
