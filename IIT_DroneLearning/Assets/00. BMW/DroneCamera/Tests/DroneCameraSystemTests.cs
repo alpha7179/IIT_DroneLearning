@@ -3,7 +3,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-namespace BMW.DroneCamera
+namespace DroneCamera
 {
     /// <summary>
     /// DroneCameraSystem / CameraControlSystem 단위 테스트.

@@ -3,7 +3,7 @@ using System.IO;
 using System.Text;
 using UnityEngine;
 
-namespace ProceduralCityGenerator
+namespace CityGenerator
 {
     /// <summary>
     /// 도시 그래프(노드·엣지·전략 위치)를 JSON 및 CSV 파일로 내보내는 정적 유틸리티 클래스.

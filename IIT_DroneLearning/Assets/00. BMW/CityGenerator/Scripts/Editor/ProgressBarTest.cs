@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEditor;
 
-namespace ProceduralCityGenerator
+namespace CityGenerator
 {
     /// <summary>
     /// 진행률 표시 기능을 테스트하는 에디터 스크립트

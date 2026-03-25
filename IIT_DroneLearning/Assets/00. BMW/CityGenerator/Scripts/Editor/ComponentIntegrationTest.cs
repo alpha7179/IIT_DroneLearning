@@ -1,8 +1,9 @@
 using NUnit.Framework;
 using UnityEngine;
-using ProceduralCityGenerator;
+using CityGenerator;
+using CityGeneratorComponent = CityGenerator.CityGenerator;
 
-namespace ProceduralCityGenerator.Tests
+namespace CityGenerator.Tests
 {
     /// <summary>
     /// Task 15.1: 컴포넌트 통합 테스트
@@ -11,14 +12,14 @@ namespace ProceduralCityGenerator.Tests
     public class ComponentIntegrationTest
     {
         private GameObject testGameObject;
-        private CityGenerator cityGenerator;
+        private CityGeneratorComponent cityGenerator;
 
         [SetUp]
         public void Setup()
         {
             // 테스트용 GameObject 생성
             testGameObject = new GameObject("TestCityGenerator");
-            cityGenerator = testGameObject.AddComponent<CityGenerator>();
+            cityGenerator = testGameObject.AddComponent<CityGeneratorComponent>();
 
             // 기본 머티리얼 설정
             cityGenerator.defaultBuildingMaterial = new Material(Shader.Find("Standard"));

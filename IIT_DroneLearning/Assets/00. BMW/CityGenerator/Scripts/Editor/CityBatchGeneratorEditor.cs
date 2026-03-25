@@ -1,7 +1,7 @@
 using UnityEditor;
 using UnityEngine;
 
-namespace ProceduralCityGenerator
+namespace CityGenerator
 {
     /// <summary>
     /// CityBatchGenerator 컴포넌트를 위한 Custom Inspector

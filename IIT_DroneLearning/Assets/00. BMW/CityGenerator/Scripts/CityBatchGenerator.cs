@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace ProceduralCityGenerator
+namespace CityGenerator
 {
     /// <summary>씨드 할당 방식을 결정하는 열거형</summary>
     public enum BatchSeedMode

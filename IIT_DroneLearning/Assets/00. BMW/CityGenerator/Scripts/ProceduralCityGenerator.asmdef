@@ -1,6 +1,6 @@
 {
-    "name": "ProceduralCityGenerator",
-    "rootNamespace": "BMW.ProceduralCityGenerator",
+    "name": "CityGeneratorSystem",
+    "rootNamespace": "CityGenerator",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],

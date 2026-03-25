@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEditor;
 
-namespace ProceduralCityGenerator.Editor
+namespace CityGenerator.Editor
 {
     /// <summary>
     /// CityGenerator의 프리셋 저장 및 로드 기능을 테스트하는 에디터 스크립트

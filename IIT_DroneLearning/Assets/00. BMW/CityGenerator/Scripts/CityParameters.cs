@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace ProceduralCityGenerator
+namespace CityGenerator
 {
     /// <summary>
     /// 도시 생성 파라미터를 저장하는 ScriptableObject

@@ -2,7 +2,7 @@ using System;
 using System.Reflection;
 using UnityEngine;
 
-namespace BMW.DroneCamera
+namespace DroneCamera
 {
     /// <summary>
     /// 드론 역할 — BMW.DroneCamera 로컬 사본.

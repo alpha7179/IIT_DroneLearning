@@ -2,7 +2,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-namespace BMW.DroneSensor
+namespace DroneSensor
 {
     /// <summary>
     /// Unit tests for DroneSensorSystem

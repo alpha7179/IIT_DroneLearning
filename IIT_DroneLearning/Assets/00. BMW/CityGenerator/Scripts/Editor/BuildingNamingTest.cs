@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEditor;
 using System.Linq;
 
-namespace ProceduralCityGenerator.Editor
+namespace CityGenerator.Editor
 {
     /// <summary>
     /// 건물 이름 지정 기능을 검증하는 테스트

@@ -2,8 +2,8 @@
 using Unity.MLAgents;
 using Unity.MLAgents.Sensors;
 using Unity.MLAgents.Actuators;
-using BMW.DroneSensor;
-using ProceduralCityGenerator;
+using DroneSensor;
+using CityGenerator;
 
 /// <summary>드론 역할 — Inspector에서 선택</summary>
 public enum DroneRole

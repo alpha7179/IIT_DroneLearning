@@ -1,6 +1,6 @@
 {
     "name": "DroneSensorSystem",
-    "rootNamespace": "BMW.DroneSensor",
+    "rootNamespace": "DroneSensor",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],

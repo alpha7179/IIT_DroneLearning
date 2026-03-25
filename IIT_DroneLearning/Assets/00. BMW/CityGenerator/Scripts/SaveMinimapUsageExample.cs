@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace ProceduralCityGenerator
+namespace CityGenerator
 {
     /// <summary>
     /// SaveMinimapToPNG 메서드 사용 예제
