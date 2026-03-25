@@ -33,6 +33,9 @@ _site/
 # ML-Agents 자동 생성 로그 (실행마다 변경됨)
 IIT_DroneLearning/Assets/ML-Agents/Timers/
 
+# DroneSnapshotSystem 캡처 데이터 (프로젝트 루트 기준, Assets 외부)
+IIT_DroneLearning/CapturedData/
+
 # OS
 .DS_Store
 Thumbs.db

@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
 
-namespace ProceduralCityGenerator.Editor
+namespace CityGenerator.Editor
 {
     /// <summary>
     /// CityDataAPI의 위치 기반 쿼리 기능을 테스트하는 에디터 스크립트

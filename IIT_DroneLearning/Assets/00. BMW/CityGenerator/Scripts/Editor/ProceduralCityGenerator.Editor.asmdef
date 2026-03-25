@@ -1,8 +1,8 @@
 {
-    "name": "ProceduralCityGenerator.Editor",
-    "rootNamespace": "ProceduralCityGenerator.Tests",
+    "name": "CityGeneratorSystem.Editor",
+    "rootNamespace": "CityGenerator.Tests",
     "references": [
-        "ProceduralCityGenerator",
+        "CityGeneratorSystem",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

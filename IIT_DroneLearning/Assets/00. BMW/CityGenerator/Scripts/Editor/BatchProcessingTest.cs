@@ -2,7 +2,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEditor;
 
-namespace ProceduralCityGenerator.Tests
+namespace CityGenerator.Tests
 {
     /// <summary>
     /// Task 14.1: 배치 처리 구현 테스트

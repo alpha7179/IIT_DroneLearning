@@ -2,7 +2,7 @@ using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 
-namespace BMW.DroneCamera
+namespace DroneCamera
 {
     /// <summary>
     /// DroneCameraSystem 속성 기반 테스트.
@@ -142,7 +142,7 @@ namespace BMW.DroneCamera
                     go.transform.rotation = RandRotation();
 
                     // DroneSensorSystem 먼저 Awake (Awake 호출 순서 보장)
-                    var sensor = go.AddComponent<BMW.DroneSensor.DroneSensorSystem>();
+                    var sensor = go.AddComponent<DroneSensor.DroneSensorSystem>();
                     InvokePrivate(sensor, "Awake");
 
                     var sys = AddAndAwake<DroneCameraSystem>(go);

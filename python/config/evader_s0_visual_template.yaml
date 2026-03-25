@@ -1,0 +1,90 @@
+# evader_s0_visual_template.yaml
+# Stage2: RGB Visual Observation (DroneVisionSystem) + Vector (26-ray + 18-state = 44차원) 혼합 학습
+# 목표: Visual Observation이 Vector 학습 성능을 유지하면서 Sim2Real 데이터셋 생성 가능
+# 복사하여 날짜와 실험 설명을 파일명에 추가할 것
+# 예: evader_s0_visual_20260401_84x84_simple.yaml
+#
+# 실행:
+#   mlagents-learn python/config/evader_s0_visual_template.yaml \
+#     --run-id=evader_s0_visual_seed42 --force
+#
+# Unity Inspector 설정 (DroneAgent GameObject):
+#   - DroneVisionSystem: enableVisualObservation=true, textureWidth=84, textureHeight=84
+#   - RenderTextureSensorComponent: (DroneVisionSystem이 자동 설정)
+#   - DroneSnapshotSystem: enableCapture=false (학습 중 성능 유지용)
+#
+# 참고:
+#   - vis_encode_type: simple  — 2-layer CNN, 84x84 저해상도에 최적 (빠름)
+#   - vis_encode_type: nature_cnn — 3-layer CNN, DQN 논문 기반 (범용, 더 느림)
+#   - vis_encode_type: resnet    — ResNet 블록, 고해상도·복잡 환경용 (가장 느림)
+
+behaviors:
+  EvaderAgent:
+    trainer_type: ppo
+
+    hyperparameters:
+      # 이미지 학습 시 더 큰 배치 권장 (gradient 품질 유지)
+      batch_size: 128           # Vector-only 64 → Visual 128 (2x)
+      buffer_size: 12800        # batch_size * 100
+      learning_rate: 3.0e-4
+      beta: 5.0e-3
+      epsilon: 0.2
+      lambd: 0.99
+      num_epoch: 3
+      learning_rate_schedule: linear
+
+    network_settings:
+      normalize: true           # Vector Observation 정규화 (이미지에는 별도 적용됨)
+      hidden_units: 256
+      num_layers: 2
+      # visual encoder 설정
+      vis_encode_type: simple   # simple | nature_cnn | resnet
+      # simple:      2-layer CNN, 빠름, 저해상도(84x84) 에 최적
+      # nature_cnn:  3-layer CNN, DQN 논문 기반, 범용적
+      # resnet:      ResNet 블록, 고해상도 / 복잡 환경용, 가장 느림
+
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+      # curiosity 보상: Visual 관측 기반 탐색 유도 (선택적)
+      # curiosity:
+      #   strength: 0.02
+      #   gamma: 0.99
+      #   encoding_size: 64
+      #   learning_rate: 3.0e-4
+
+    # 이미지 학습은 수렴이 느려 max_steps 증가
+    max_steps: 1000000          # Vector-only 500000 → Visual 1000000 (2x)
+    time_horizon: 64
+    summary_freq: 10000
+    checkpoint_interval: 100000
+    keep_checkpoints: 5
+
+# ============================================================
+# Visual + Vector 혼합 학습 참고사항
+#
+# [관측 구성]
+#   - Vector Observation: 44차원 (DroneAgent.CollectObservations 기존 유지)
+#       · 26-ray DroneSensorSystem 정규화 거리
+#       · 드론 위치/속도/회전 (18차원)
+#   - Visual Observation: 84×84×3 RGB (DroneVisionSystem 추가)
+#       · RenderTextureSensorComponent 자동 등록
+#       · grayscale=false → RGB 3채널
+#
+# [Depth 추가 시 (Phase 4, DroneDepthSystem)]
+#   - Visual Observation 2: 84×84×1 Grayscale
+#   - 아래 behaviors에 추가 센서 설정 필요 없음 (RenderTextureSensorComponent 자동 감지)
+#
+# [성능 기준]
+#   - < 2ms / frame (10 드론 동시)
+#   - Visual 추가 후 FPS >= 60 (GeForce RTX 기준)
+#
+# [Sim2Real 데이터 수집 시]
+#   DroneSnapshotSystem: enableCapture=true, captureInterval=5
+#   → CapturedData/{Role}_episode_{NNNN}/step_{NNNN}_rgb.png + _meta.json
+#
+# [보상 함수 (Vector-only와 동일)]
+#   R_total = w1*R_goal + w2*R_survival + w3*R_occlusion + w4*R_collision + w5*R_time
+#   Stage0 권장: R_goal(+1.0), R_survival(+0.001/step), R_collision(-1.0), R_captured(-1.0)
+# ============================================================

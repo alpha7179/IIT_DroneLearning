@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEditor;
 
-namespace ProceduralCityGenerator.Editor
+namespace CityGenerator.Editor
 {
     /// <summary>
     /// CityGenerator의 파라미터 검증 기능을 테스트하는 에디터 스크립트

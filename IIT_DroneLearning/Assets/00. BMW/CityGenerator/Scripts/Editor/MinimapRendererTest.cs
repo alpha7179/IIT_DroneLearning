@@ -4,7 +4,7 @@ using UnityEngine.UI;
 using UnityEngine.TestTools;
 using System.Collections;
 
-namespace ProceduralCityGenerator.Tests
+namespace CityGenerator.Tests
 {
     /// <summary>
     /// MinimapRenderer 클래스의 단위 테스트

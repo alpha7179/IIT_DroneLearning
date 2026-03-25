@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace ProceduralCityGenerator
+namespace CityGenerator
 {
     /// <summary>
     /// 등고선 스타일 미니맵을 생성하는 클래스

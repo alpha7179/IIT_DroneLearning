@@ -1,6 +1,6 @@
 {
-    "name": "DroneSensorSystemTests",
-    "rootNamespace": "BMW.DroneSensor",
+    "name": "DroneSensorSystem.Tests",
+    "rootNamespace": "DroneSensor",
     "references": [
         "DroneSensorSystem",
         "UnityEngine.TestRunner",
