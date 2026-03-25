@@ -18,6 +18,7 @@ namespace DroneVisualPipeline
     ///   - 기존 DroneAgent, DroneCameraSystem, DroneSensorSystem 코드 수정 없음
     /// </summary>
     [RequireComponent(typeof(DroneCameraSystem))]
+    [DefaultExecutionOrder(-200)]
     public class DroneDepthSystem : MonoBehaviour
     {
         #region Unity Inspector 노출 속성
@@ -101,6 +102,21 @@ namespace DroneVisualPipeline
         // ────────────────────────────────────────────
         // Unity 생명주기
         // ────────────────────────────────────────────
+
+        private void Awake()
+        {
+            // ML-Agents Agent.OnEnable() → LazyInitialize() → CreateSensors()가
+            // Start()보다 먼저 실행되므로, Awake에서 임시 RT를 미리 할당하여
+            // Texture2D(0,0) 생성 에러를 방지한다.
+            var rtSensor = FindSensorComponent(sensorName);
+            if (rtSensor != null && rtSensor.RenderTexture == null)
+            {
+                _depthRT = CreateDepthRenderTexture(depthWidth, depthHeight);
+                rtSensor.RenderTexture = _depthRT;
+                rtSensor.SensorName    = sensorName;
+                rtSensor.Grayscale     = true;
+            }
+        }
 
         private void Start()
         {
