@@ -18,11 +18,11 @@ public class EvaderReward : MonoBehaviour
     // ───────── Inspector 가중치 설정 ──────────────────────────────────────
     [Header("Goal Shaping")]
     [Tooltip("목표 지점 접근에 따른 potential-based shaping 계수")]
-    [SerializeField] private float _goalShapingCoeff = 0.02f;
+    [SerializeField] private float _goalShapingCoeff = 0.1f;
 
     [Header("Survival")]
-    [Tooltip("매 스텝 생존 보너스 (+)")]
-    [SerializeField] private float _survivalRewardPerStep = 0.001f;
+    [Tooltip("매 스텝 생존 보너스 (Stage0에서는 0 권장 — timePenalty와 상쇄됨)")]
+    [SerializeField] private float _survivalRewardPerStep = 0.0f;
 
     [Header("Occlusion (Stage1+)")]
     [Tooltip("Pursuer LOS 차단 성공 시 보너스 (0이면 비활성)")]
