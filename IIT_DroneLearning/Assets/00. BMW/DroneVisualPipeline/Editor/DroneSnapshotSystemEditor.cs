@@ -12,6 +12,22 @@ public class DroneSnapshotSystemEditor : UnityEditor.Editor
     {
         _snap = target as DroneSnapshotSystem;
         EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+        MigrateOldBasePath();
+    }
+
+    /// <summary>
+    /// 구 basePath("Assets/..." 형식) → 신 basePath("CapturedData", 프로젝트 루트 기준)로 자동 마이그레이션.
+    /// Assets 내부 경로는 Unity 파일 감시자가 .meta를 생성하여 에디터 리로드를 유발하므로 외부로 이동.
+    /// </summary>
+    private void MigrateOldBasePath()
+    {
+        if (_snap == null) return;
+        if (!_snap.basePath.StartsWith("Assets/")) return;
+
+        string oldPath = _snap.basePath;
+        _snap.basePath = "CapturedData";
+        EditorUtility.SetDirty(_snap);
+        Debug.Log($"[DroneSnapshotSystem] basePath 마이그레이션: '{oldPath}' → 'CapturedData'");
     }
 
     private void OnDisable()

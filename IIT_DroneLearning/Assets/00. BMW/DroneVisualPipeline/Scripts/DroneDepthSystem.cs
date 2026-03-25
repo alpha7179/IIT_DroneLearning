@@ -231,6 +231,9 @@ namespace DroneVisualPipeline
                 _depthCamera.farClipPlane  = farClipOverride > 0f  ? farClipOverride  : soloCamera.farClipPlane;
                 _depthCamera.clearFlags    = CameraClearFlags.Depth;
                 _depthCamera.cullingMask   = soloCamera.cullingMask;
+                // Display 8(index=7)로 격리 — Display 1은 기존 MultiView 카메라가 사용
+                // targetTexture 없이 ClearFlags.Depth이므로 설정하지 않으면 Display 1 위에 렌더링됨
+                _depthCamera.targetDisplay = 7;
             }
 
             // 3. depthTextureMode 설정 → URP _CameraDepthTexture 자동 생성
@@ -299,6 +302,7 @@ namespace DroneVisualPipeline
             _depthCamera.nearClipPlane = 0.1f;
             _depthCamera.farClipPlane  = 500f;
             _depthCamera.clearFlags    = CameraClearFlags.Depth;
+            _depthCamera.targetDisplay = 7;
         }
 
         // ────────────────────────────────────────────

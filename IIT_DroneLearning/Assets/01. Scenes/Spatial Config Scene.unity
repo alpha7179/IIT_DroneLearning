@@ -24289,13 +24289,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8ceb6eb63c79c9e4ea60d3269df3eb31, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  enableCapture: 0
+  enableCapture: 1
   captureInterval: 5
   captureRGB: 1
   captureDepth: 0
-  captureWidth: 0
-  captureHeight: 0
-  imageFormat: 0
+  captureWidth: 720
+  captureHeight: 480
+  captureFovOverride: 120
+  imageFormat: 1
   jpgQuality: 85
   basePath: CapturedData
   filePrefix: 
@@ -24303,6 +24304,7 @@ MonoBehaviour:
   includeRayDistances: 1
   saveEpisodeSummary: 1
   maxAsyncRequests: 3
+  deleteOnPlayModeExit: 0
   logCaptureEvents: 0
   showCaptureStatus: 0
 --- !u!114 &1589079208

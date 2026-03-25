@@ -4,7 +4,8 @@
     "references": [
         "DroneCameraSystem",
         "DroneSensorSystem",
-        "Unity.ML-Agents"
+        "Unity.ML-Agents",
+        "Unity.RenderPipelines.Universal.Runtime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

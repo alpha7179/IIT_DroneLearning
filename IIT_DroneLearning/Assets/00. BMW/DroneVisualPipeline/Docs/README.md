@@ -138,12 +138,13 @@ DroneVisionSystem.RenderTexture (또는 DroneDepthSystem.DepthRenderTexture)
 | `captureInterval` | int [1-100] | 5 | 매 N 스텝마다 캡처 |
 | `captureRGB` | bool | true | RGB 이미지 캡처 |
 | `captureDepth` | bool | false | Depth 이미지 캡처 (DroneDepthSystem 필요) |
-| `captureWidth` | int [0-1024] | 0 | 0 = DroneVisionSystem RT 해상도 사용 |
-| `captureHeight` | int [0-1024] | 0 | 0 = DroneVisionSystem RT 해상도 사용 |
+| `captureWidth` | int [0-1920] | 0 | 0 = DroneVisionSystem RT 해상도 사용 |
+| `captureHeight` | int [0-1080] | 0 | 0 = DroneVisionSystem RT 해상도 사용 |
+| `captureFovOverride` | float [0-170] | 0 | 0 = ObservationCamera FOV 그대로 사용. ML-Agents Observation FOV와 독립적으로 스냅샷 시야각 설정 가능 |
 | `imageFormat` | ImageFormat | PNG | PNG 또는 JPG |
 | `jpgQuality` | int [1-100] | 85 | JPG 품질 |
 | `basePath` | string | "CapturedData" | 저장 기본 경로 (프로젝트 루트 기준) |
-| `filePrefix` | string | "" | 비어있으면 DroneAgent.Role 자동 사용 (Evader/Pursuer) |
+| `filePrefix` | string | "" | 비어있으면 `{Role}_{GameObjectName}` 자동 생성 (예: `Evader_Drone(1)`). 한 씬에 동일 Role 드론이 여러 개일 때 폴더 충돌 방지 |
 | `saveMetadata` | bool | true | 메타데이터 JSON 동시 저장 |
 | `includeRayDistances` | bool | true | 메타데이터에 26개 레이센서 거리값 포함 |
 | `saveEpisodeSummary` | bool | true | 에피소드 종료 시 요약 JSON 저장 |
@@ -205,10 +206,26 @@ CapturedData/
 }
 ```
 
+#### 에피소드 분리 조건
+
+`DroneSnapshotSystem`은 ML-Agents 에피소드 리셋을 **자동으로 감지하지 않는다.**
+`DroneAgent.OnEpisodeBegin()`에서 직접 호출해야 에피소드별 폴더가 분리된다.
+
+```csharp
+// DroneAgent.cs — 수동 연결 필요
+public override void OnEpisodeBegin()
+{
+    // ... 기존 로직 ...
+    GetComponent<DroneSnapshotSystem>()?.OnEpisodeBegin();
+}
+```
+
+연결이 없으면 항상 `episode_0001` 폴더 하나에 계속 저장된다 (스텝 번호가 같으면 덮어쓰기).
+
 #### 공개 API
 
 ```csharp
-void OnEpisodeBegin()                              // 에피소드 시작 시 호출
+void OnEpisodeBegin()                              // 에피소드 시작 시 호출 (DroneAgent에서 수동 연결 필요)
 void OnEpisodeEnd(string terminationReason)         // 에피소드 종료 시 호출
 
 int EpisodeCount { get; }

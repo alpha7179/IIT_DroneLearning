@@ -52,7 +52,7 @@ namespace DroneVisualPipeline
             m?.Invoke(comp, null);
         }
 
-        private DroneSnapshotSystem SetupSnapshot(string basePath = "Assets/00. BMW/DroneVisualPipeline/CapturedData_Test")
+        private DroneSnapshotSystem SetupSnapshot(string basePath = "CapturedData_Test")
         {
             var snap = _droneGO.AddComponent<DroneSnapshotSystem>();
             snap.basePath       = basePath;
@@ -231,12 +231,12 @@ namespace DroneVisualPipeline
             var snap = _droneGO.AddComponent<DroneSnapshotSystem>();
             snap.basePath = "";
             InvokeOnValidate(snap);
-            Assert.AreEqual("Assets/00. BMW/DroneVisualPipeline/CapturedData", snap.basePath,
+            Assert.AreEqual("CapturedData", snap.basePath,
                 "basePath가 빈 문자열이면 기본 경로로 복구되어야 합니다.");
 
             snap.basePath = "   ";
             InvokeOnValidate(snap);
-            Assert.AreEqual("Assets/00. BMW/DroneVisualPipeline/CapturedData", snap.basePath,
+            Assert.AreEqual("CapturedData", snap.basePath,
                 "basePath가 공백 문자열이면 기본 경로로 복구되어야 합니다.");
         }
 

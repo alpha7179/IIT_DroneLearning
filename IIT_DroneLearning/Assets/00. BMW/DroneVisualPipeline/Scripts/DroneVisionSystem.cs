@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 using Unity.MLAgents.Sensors;
 using DroneCamera;
 
@@ -217,6 +218,20 @@ namespace DroneVisualPipeline
             _observationCamera.clearFlags    = soloCamera.clearFlags;
             _observationCamera.backgroundColor = soloCamera.backgroundColor;
             _observationCamera.cullingMask   = soloCamera.cullingMask;
+            // Display 8(index=7)로 격리 — Display 1은 기존 MultiView 카메라가 사용
+            // targetTexture가 설정되므로 실제 Display 출력은 없지만,
+            // 기본값 targetDisplay=0(Display 1)을 유지하면 MultiView와 충돌할 수 있다.
+            _observationCamera.targetDisplay = 7;
+
+            // 4-1. URP TAA/포스트프로세싱 비활성화 (단일 프레임 캡처 떨림 방지)
+            //      TAA는 시간 누적으로 AA를 수행하므로 개별 프레임에 sub-pixel jitter만 남아
+            //      스틸 이미지/ML-Agents Observation에서 shimmer 아티팩트가 발생한다.
+            var urpCameraData = _observationCamera.GetUniversalAdditionalCameraData();
+            if (urpCameraData != null)
+            {
+                urpCameraData.antialiasing        = AntialiasingMode.None;
+                urpCameraData.renderPostProcessing = false;
+            }
 
             // 5. Observation 카메라의 targetTexture = RenderTexture
             _observationCamera.targetTexture = _renderTexture;

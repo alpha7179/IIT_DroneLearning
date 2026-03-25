@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Reflection;
+using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -39,15 +40,20 @@ namespace DroneVisualPipeline
 
         [Header("이미지 설정")]
         [Tooltip("캡처 이미지 가로 해상도 (픽셀)\n0이면 DroneVisionSystem의 RenderTexture 해상도를 그대로 사용")]
-        [Range(0, 1024)]
+        [Range(0, 1920)]
         public int captureWidth = 0;
 
         [Tooltip("캡처 이미지 세로 해상도 (픽셀)\n0이면 DroneVisionSystem의 RenderTexture 해상도를 그대로 사용")]
-        [Range(0, 1024)]
+        [Range(0, 1080)]
         public int captureHeight = 0;
 
+        [Tooltip("캡처 카메라 FOV 오버라이드 (도)\n0이면 DroneVisionSystem ObservationCamera의 FOV를 그대로 사용\n" +
+                 "ML-Agents Observation FOV와 독립적으로 스냅샷 시야각을 넓힐 수 있다")]
+        [Range(0f, 170f)]
+        public float captureFovOverride = 0f;
+
         [Tooltip("이미지 저장 포맷")]
-        public ImageFormat imageFormat = ImageFormat.PNG;
+        public ImageFormat imageFormat = ImageFormat.JPG;
 
         [Tooltip("JPG 품질 (imageFormat이 JPG일 때만 적용)")]
         [Range(1, 100)]
@@ -55,7 +61,7 @@ namespace DroneVisualPipeline
 
         [Header("저장 경로")]
         [Tooltip("저장 기본 경로 (프로젝트 루트 기준)\n런타임 변경 시 다음 에피소드부터 적용")]
-        public string basePath = "Assets/00. BMW/DroneVisualPipeline/CapturedData";
+        public string basePath = "CapturedData";
 
         [Tooltip("파일명 접두사 (드론 식별용)\n비어있으면 DroneRole을 자동 사용")]
         public string filePrefix = "";
@@ -150,7 +156,14 @@ namespace DroneVisualPipeline
             if (_pendingRequests >= maxAsyncRequests) return;
 
             if (captureRGB && _visionSystem != null && _visionSystem.RenderTexture != null)
-                RequestCapture(_visionSystem.RenderTexture, isCaptureDepth: false);
+            {
+                bool isTemp;
+                var captureRT = PrepareCaptureRT(
+                    _visionSystem.RenderTexture,
+                    _visionSystem.ObservationCamera,
+                    out isTemp);
+                RequestCapture(captureRT, isCaptureDepth: false, isTemporary: isTemp);
+            }
 
             if (captureDepth)
             {
@@ -161,7 +174,13 @@ namespace DroneVisualPipeline
                 }
                 else if (_depthSystem.DepthRenderTexture != null)
                 {
-                    RequestCapture(_depthSystem.DepthRenderTexture, isCaptureDepth: true);
+                    // Depth: endCameraRendering 방식이므로 카메라 직접 렌더 불가 → blit 폴백
+                    bool isTemp;
+                    var captureRT = PrepareCaptureRT(
+                        _depthSystem.DepthRenderTexture,
+                        null,
+                        out isTemp);
+                    RequestCapture(captureRT, isCaptureDepth: true, isTemporary: isTemp);
                 }
             }
         }
@@ -202,7 +221,7 @@ namespace DroneVisualPipeline
 
             // 3. basePath 유효성 검사
             if (string.IsNullOrWhiteSpace(basePath))
-                basePath = "Assets/00. BMW/DroneVisualPipeline/CapturedData";
+                basePath = "CapturedData";
 
             // 4. captureDepth: DroneDepthSystem 미존재 시 경고 (플레이 모드)
             if (Application.isPlaying && captureDepth && _depthSystem == null)
@@ -243,7 +262,51 @@ namespace DroneVisualPipeline
         // 비동기 캡처 파이프라인
         // ────────────────────────────────────────────
 
-        private void RequestCapture(RenderTexture source, bool isCaptureDepth)
+        /// <summary>
+        /// captureWidth/Height가 소스 RT 해상도와 다를 경우, 카메라를 직접 렌더링하여
+        /// 업스케일 아티팩트 없이 목표 해상도 RT를 생성한다.
+        /// isTemporary=true 면 AsyncGPUReadback 완료 후 ReleaseTemporary가 자동 호출된다.
+        /// sourceCamera가 null이거나 비활성이면 Graphics.Blit 폴백을 사용한다.
+        /// </summary>
+        private RenderTexture PrepareCaptureRT(RenderTexture sourceRT, Camera sourceCamera, out bool isTemporary)
+        {
+            int targetW = captureWidth  > 0 ? captureWidth  : sourceRT.width;
+            int targetH = captureHeight > 0 ? captureHeight : sourceRT.height;
+
+            bool needsFovOverride = captureFovOverride > 0f;
+
+            // 해상도 변경도 없고 FOV 오버라이드도 없으면 소스 RT를 그대로 사용
+            if (targetW == sourceRT.width && targetH == sourceRT.height && !needsFovOverride)
+            {
+                isTemporary = false;
+                return sourceRT;
+            }
+
+            // 카메라 직접 렌더링: 목표 해상도 + FOV 오버라이드를 적용하여 씬을 새로 렌더
+            if (sourceCamera != null && sourceCamera.enabled)
+            {
+                var captureRT  = RenderTexture.GetTemporary(targetW, targetH, 24, RenderTextureFormat.ARGB32);
+                var prevTarget = sourceCamera.targetTexture;
+                var prevFov    = sourceCamera.fieldOfView;
+
+                sourceCamera.targetTexture = captureRT;
+                if (needsFovOverride)
+                    sourceCamera.fieldOfView = captureFovOverride;
+                sourceCamera.Render();
+                sourceCamera.fieldOfView   = prevFov;
+                sourceCamera.targetTexture = prevTarget;
+                isTemporary = true;
+                return captureRT;
+            }
+
+            // 폴백: Blit 리사이즈 (카메라를 사용할 수 없을 때)
+            var tempRT = RenderTexture.GetTemporary(targetW, targetH, 0, sourceRT.format);
+            Graphics.Blit(sourceRT, tempRT);
+            isTemporary = true;
+            return tempRT;
+        }
+
+        private void RequestCapture(RenderTexture source, bool isCaptureDepth, bool isTemporary = false)
         {
             if (source == null || !source.IsCreated()) return;
 
@@ -253,9 +316,19 @@ namespace DroneVisualPipeline
             // 메타데이터를 캡처 시점에서 수집 (FixedUpdate 프레임)
             CaptureMetadata meta = saveMetadata ? CollectMetadata(episode, step) : null;
 
+            // 콜백 내 ReleaseTemporary 이후에도 w/h가 유효하도록 미리 캡처
+            int captureW = source.width;
+            int captureH = source.height;
+
             _pendingRequests++;
-            AsyncGPUReadback.Request(source, 0, request =>
+            // TextureFormat.RGBA32 명시: DX11/DX12는 RenderTexture를 BGRA 순서로 저장하므로
+            // 포맷 미지정 시 raw bytes가 BGRA로 반환된다. TextureFormat을 지정하면
+            // AsyncGPUReadback이 readback 시점에 RGBA32 변환을 수행하여 채널 순서를 보정한다.
+            AsyncGPUReadback.Request(source, 0, TextureFormat.RGBA32, request =>
             {
+                if (isTemporary)
+                    RenderTexture.ReleaseTemporary(source);
+
                 _pendingRequests = Mathf.Max(0, _pendingRequests - 1);
 
                 if (request.hasError)
@@ -265,8 +338,8 @@ namespace DroneVisualPipeline
                     return;
                 }
 
-                int w = source.width;
-                int h = source.height;
+                int w = captureW;
+                int h = captureH;
 
                 // Readback 텍스처 준비 (재사용)
                 if (_readbackTexture == null ||
@@ -365,7 +438,7 @@ namespace DroneVisualPipeline
             _startTime            = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
 
             _currentEpisodePath = Path.Combine(
-                Application.dataPath.Replace("Assets", ""),
+                GetProjectRoot(),
                 basePath,
                 $"{_resolvedPrefix}_episode_{_episodeCount:D4}");
 
@@ -459,13 +532,15 @@ namespace DroneVisualPipeline
 
         private void ResolveFilePrefix()
         {
+            // filePrefix가 직접 지정된 경우 그대로 사용 (수동 고유값 보장)
             if (!string.IsNullOrWhiteSpace(filePrefix))
             {
                 _resolvedPrefix = filePrefix;
                 return;
             }
 
-            // DroneAgent.Role 리플렉션으로 prefix 자동 결정
+            // DroneAgent.Role 리플렉션으로 role 결정
+            string role = "Drone";
             if (_droneAgent != null)
             {
                 var roleField = _droneAgent.GetType().GetField(
@@ -473,12 +548,31 @@ namespace DroneVisualPipeline
                 if (roleField != null)
                 {
                     int roleVal = Convert.ToInt32(roleField.GetValue(_droneAgent));
-                    _resolvedPrefix = roleVal == 1 ? "Evader" : "Pursuer";
-                    return;
+                    role = roleVal == 1 ? "Evader" : "Pursuer";
                 }
             }
 
-            _resolvedPrefix = "Drone";
+            // GameObject 이름을 파일명 안전 문자로 정규화하여 suffix로 추가
+            // 한 씬에 동일 Role 드론이 여러 개일 때 폴더 충돌 방지
+            // 예) Evader_Drone(1), Pursuer_Drone(2)
+            string safeName = SanitizeFileName(gameObject.name);
+            _resolvedPrefix = $"{role}_{safeName}";
+        }
+
+        /// <summary>
+        /// 파일명에 사용할 수 없는 문자를 제거하고 공백을 '_'로 치환한다.
+        /// Path.GetInvalidFileNameChars() 기준.
+        /// </summary>
+        private static string SanitizeFileName(string name)
+        {
+            char[] invalid = Path.GetInvalidFileNameChars();
+            var sb = new StringBuilder(name.Length);
+            foreach (char c in name)
+            {
+                if (Array.IndexOf(invalid, c) >= 0) continue;
+                sb.Append(c == ' ' ? '_' : c);
+            }
+            return sb.Length > 0 ? sb.ToString() : "Unknown";
         }
 
         // ────────────────────────────────────────────
@@ -543,9 +637,23 @@ namespace DroneVisualPipeline
             return 84;
         }
 
+        /// <summary>
+        /// Unity 프로젝트 루트 경로를 반환한다.
+        /// Application.dataPath = ".../{ProjectName}/Assets"이므로 끝의 "Assets"만 제거한다.
+        /// String.Replace()는 경로 중간의 "Assets" 문자열도 치환하므로 사용 금지.
+        /// </summary>
+        private static string GetProjectRoot()
+        {
+            string dataPath = Application.dataPath;
+            if (dataPath.EndsWith("/Assets") || dataPath.EndsWith("\\Assets"))
+                return dataPath.Substring(0, dataPath.Length - "Assets".Length);
+            return dataPath + "/";
+        }
+
         private void RecreateReadbackTexture(int width, int height)
         {
             CleanupReadbackTexture();
+            // RGBA32: AsyncGPUReadback 변환 포맷과 일치 (ARGB32는 DX에서 BGRA raw와 불일치)
             _readbackTexture = new Texture2D(width, height, TextureFormat.RGBA32, false);
         }
 

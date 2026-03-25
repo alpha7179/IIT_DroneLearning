@@ -215,15 +215,20 @@ namespace DroneVisualPipeline
         }
 
         /// <summary>
-        /// 요구사항 1.1: Observation 카메라가 Solo 카메라와 동일한 Transform을 공유해야 한다.
+        /// 요구사항 1.1: Observation 카메라가 Solo 카메라 Transform의 직계 자식이어야 한다.
+        /// 구현 방식: DroneCamera_Solo GO에는 Camera가 이미 존재하므로,
+        /// child GameObject를 생성하여 Camera를 추가한다.
+        /// child의 localPosition/localRotation이 zero이므로 world Transform은 Solo와 동일하게 추종된다.
         /// </summary>
         [Test]
         public void Start_ObservationCameraSharesSoloTransform()
         {
             var (cam, vision) = SetupFullSystem();
 
-            Assert.AreEqual(cam.Camera.gameObject, vision.ObservationCamera.gameObject,
-                "Observation 카메라는 DroneCamera_Solo GameObject에 추가되어야 합니다.");
+            Assert.AreEqual(cam.Camera.transform, vision.ObservationCamera.transform.parent,
+                "Observation 카메라 GO의 parent는 DroneCamera_Solo Transform이어야 합니다.");
+            Assert.AreEqual(Vector3.zero, vision.ObservationCamera.transform.localPosition,
+                "Observation 카메라의 localPosition은 zero여야 Solo 카메라와 동일한 위치를 공유합니다.");
         }
 
         /// <summary>
