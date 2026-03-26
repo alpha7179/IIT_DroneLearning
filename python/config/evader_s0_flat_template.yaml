@@ -8,7 +8,7 @@
 #   EvaderAgent._goalOnlyMode      = true
 #   EvaderAgent._pursuerTransform  = (empty)
 #   EvaderAgent._goalTransform     = GoalZone
-#   BehaviorParameters.Behavior Name        = EvaderAgent
+#   BehaviorParameters.Behavior Name        = Drone_Evader
 #   BehaviorParameters.Continuous Actions   = 4
 #   BehaviorParameters.Vector Obs Size      = 18  (Ray는 자동 합산)
 #   RayPerceptionSensor3D.Rays Per Dir      = (배민우 설정 따름)
@@ -19,7 +19,7 @@
 #     --run-id=evader_s0_flat_44d_seed42 --force
 
 behaviors:
-  EvaderAgent:
+  Drone_Evader:
     trainer_type: ppo
 
     hyperparameters:
