@@ -28,6 +28,10 @@ public class EvaderReward : MonoBehaviour
     [Tooltip("Pursuer LOS 차단 성공 시 보너스 (0이면 비활성)")]
     [SerializeField] private float _occlusionBonus = 0.0f;   // Stage0에서는 0
 
+    [Header("Path Guidance")]
+    [Tooltip("목표 방향으로 Yaw 정렬 시 보너스 (Stage0 최단 직선 경로 유도). Stage1+에서는 0 권장)")]
+    [SerializeField] private float _yawAlignCoeff = 0.05f;
+
     [Header("Time Penalty")]
     [Tooltip("스텝당 시간 페널티 (음수 유지)")]
     [SerializeField] private float _timePenaltyPerStep = -0.001f;
@@ -35,8 +39,14 @@ public class EvaderReward : MonoBehaviour
     // ───────── 내부 상태 ──────────────────────────────────────────────────
     private float _prevGoalDistance = float.MaxValue;
     private bool _prevPursuerVisible = false;
+    private Transform _agentTransform;
 
     // ───────── 에피소드 초기화 ────────────────────────────────────────────
+    private void Awake()
+    {
+        _agentTransform = transform;
+    }
+
     private void OnEnable()
     {
         _prevGoalDistance = float.MaxValue;
@@ -77,6 +87,18 @@ public class EvaderReward : MonoBehaviour
                 reward += _occlusionBonus;
         }
         _prevPursuerVisible = isPursuerVisible;
+
+        // ── Yaw 정렬 보상 (목표 방향으로 드론 정면이 향할수록 +보상) ────────
+        if (_yawAlignCoeff > 0f && currGoalDist > 0.5f)
+        {
+            Vector3 fwd = _agentTransform.forward; fwd.y = 0f;
+            Vector3 dir = goalPos - agentPos; dir.y = 0f;
+            if (fwd.sqrMagnitude > 0f && dir.sqrMagnitude > 0f)
+            {
+                float alignment = Vector3.Dot(fwd.normalized, dir.normalized);
+                reward += _yawAlignCoeff * alignment;
+            }
+        }
 
         // ── 시간 페널티 ──────────────────────────────────────────────────
         reward += _timePenaltyPerStep;

@@ -1,6 +1,7 @@
 # evader_s0_flat_template.yaml
 # Stage0: flat env (Stage0_Flat.unity), goal-reach only
 #   - No obstacles, no Pursuer (_goalOnlyMode = true)
+#   - Obs: VectorObs 18 + RayPerceptionSensor 26 = 44 total
 #   - Target: goal_reach_rate >= 50%
 #
 # Unity Inspector:
@@ -9,20 +10,21 @@
 #   EvaderAgent._goalTransform     = GoalZone
 #   BehaviorParameters.Behavior Name        = EvaderAgent
 #   BehaviorParameters.Continuous Actions   = 4
-#   BehaviorParameters.Vector Obs Size      = 18
+#   BehaviorParameters.Vector Obs Size      = 18  (Ray는 자동 합산)
+#   RayPerceptionSensor3D.Rays Per Dir      = (배민우 설정 따름)
 #   DecisionRequester.Decision Period       = 5
 #
 # Run (local):
 #   mlagents-learn python/config/evader_s0_flat_template.yaml \
-#     --run-id=evader_s0_flat_seed42 --force
+#     --run-id=evader_s0_flat_44d_seed42 --force
 
 behaviors:
   EvaderAgent:
     trainer_type: ppo
 
     hyperparameters:
-      batch_size: 64
-      buffer_size: 6400
+      batch_size: 512
+      buffer_size: 10240
       learning_rate: 3.0e-4
       beta: 5.0e-3
       epsilon: 0.2
@@ -32,7 +34,7 @@ behaviors:
 
     network_settings:
       normalize: true
-      hidden_units: 128
+      hidden_units: 256
       num_layers: 2
 
     reward_signals:
@@ -40,19 +42,19 @@ behaviors:
         gamma: 0.99
         strength: 1.0
 
-    max_steps: 300000
+    max_steps: 500000
     time_horizon: 64
     summary_freq: 5000
-    checkpoint_interval: 30000
+    checkpoint_interval: 50000
     keep_checkpoints: 5
 
 # Reward structure (EvaderReward.cs):
-#   step   = goalShapingCoeff(0.02) * (d_prev - d_now)
-#          + survivalRewardPerStep(+0.001)
+#   step   = goalShapingCoeff(0.1) * (d_prev - d_now)
+#          + yawAlignCoeff(0.05) * dot(forward, toGoal)   <- 최단 경로 유도
 #          + timePenaltyPerStep(-0.001)
-#   end    = goal reached: +1.0 / timeout: +0.2
+#   end    = goal reached: +1.0 / captured: -1.0 / crash: -1.0
 #
 # Convergence (TensorBoard):
 #   Cumulative Reward > 0.5 stable
 #   Episode Length decreasing
-#   -> goal_reach_rate >= 50% -> move to Stage0-B
+#   -> goal_reach_rate >= 50% -> move to Stage1
