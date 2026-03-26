@@ -245,6 +245,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Drone_Evader
       objectReference: {fileID: 0}
+    - target: {fileID: 3269647626456829882, guid: bc3f174419f0f0d4fb445d846fa4f86d, type: 3}
+      propertyPath: m_BehaviorType
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 3560668907877994196, guid: bc3f174419f0f0d4fb445d846fa4f86d, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
