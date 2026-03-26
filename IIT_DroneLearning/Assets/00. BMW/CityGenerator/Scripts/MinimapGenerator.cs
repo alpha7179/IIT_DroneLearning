@@ -1,0 +1,449 @@
+using UnityEngine;
+
+namespace CityGenerator
+{
+    /// <summary>
+    /// 등고선 스타일 미니맵을 생성하는 클래스
+    /// 건물 높이를 시각적으로 표현하여 AI 에이전트가 환경을 이해할 수 있도록 지원
+    /// </summary>
+    public class MinimapGenerator
+    {
+        private readonly int resolution;
+        private readonly Bounds cityBounds;
+        private readonly float pixelsPerMeterX;  // X축 (월드 X → 텍스처 U)
+        private readonly float pixelsPerMeterZ;  // Z축 (월드 Z → 텍스처 V)
+
+        /// <summary>
+        /// MinimapGenerator 생성자
+        /// </summary>
+        /// <param name="resolution">미니맵 해상도 (픽셀 단위)</param>
+        /// <param name="bounds">도시 경계 (Bounds) — 전체 격자 면적 기준으로 전달해야 함</param>
+        public MinimapGenerator(int resolution, Bounds bounds)
+        {
+            this.resolution = resolution;
+            this.cityBounds = bounds;
+
+            // X/Z 축에 독립적인 스케일 팩터: 도시가 정사각형이 아니어도 텍스처를 꽉 채움
+            this.pixelsPerMeterX = resolution / Mathf.Max(bounds.size.x, 0.001f);
+            this.pixelsPerMeterZ = resolution / Mathf.Max(bounds.size.z, 0.001f);
+        }
+
+        /// <summary>미니맵 해상도를 반환</summary>
+        public int Resolution => resolution;
+
+        /// <summary>도시 경계를 반환</summary>
+        public Bounds CityBounds => cityBounds;
+
+        /// <summary>X축 픽셀/미터 비율을 반환</summary>
+        public float PixelsPerMeterX => pixelsPerMeterX;
+
+        /// <summary>Z축 픽셀/미터 비율을 반환</summary>
+        public float PixelsPerMeterZ => pixelsPerMeterZ;
+
+        /// <summary>픽셀/미터 비율 (X/Z 평균) — 하위 호환용</summary>
+        public float PixelsPerMeter => (pixelsPerMeterX + pixelsPerMeterZ) * 0.5f;
+
+        /// <summary>
+        /// 건물 배열과 도시 그래프를 기반으로 등고선 스타일 미니맵을 생성
+        /// </summary>
+        /// <param name="buildings">건물 배열</param>
+        /// <param name="graph">도시 그래프 (선택적)</param>
+        /// <param name="strategicLocations">전략적 위치 리스트 (선택적)</param>
+        /// <returns>생성된 미니맵 Texture2D</returns>
+        public Texture2D GenerateMinimap(Building[] buildings, CityGraph graph = null, System.Collections.Generic.List<StrategicLocation> strategicLocations = null, SpawnConfiguration? spawnConfig = null)
+        {
+            // Texture2D 생성 (지정된 해상도)
+            Texture2D minimap = new Texture2D(resolution, resolution, TextureFormat.RGB24, false);
+
+            // 배경을 밝은 색으로 초기화 (개방 공간)
+            Color backgroundColor = new Color(0.9f, 0.9f, 0.9f); // 밝은 회색
+            Color[] pixels = new Color[resolution * resolution];
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = backgroundColor;
+            }
+            minimap.SetPixels(pixels);
+
+            // 건물이 없으면 전략적 마커만 그리고 반환
+            if (buildings == null || buildings.Length == 0)
+            {
+                if (strategicLocations != null && strategicLocations.Count > 0)
+                    DrawStrategicMarkers(minimap, strategicLocations);
+                if (spawnConfig.HasValue && spawnConfig.Value.isValid)
+                    DrawSpawnMarkers(minimap, spawnConfig.Value);
+                minimap.Apply();
+                return minimap;
+            }
+
+            // 건물 높이 범위 계산
+            float minHeight = float.MaxValue;
+            float maxHeight = float.MinValue;
+            foreach (var building in buildings)
+            {
+                if (building.height < minHeight) minHeight = building.height;
+                if (building.height > maxHeight) maxHeight = building.height;
+            }
+
+            // 건물을 미니맵에 그리기
+            foreach (var building in buildings)
+            {
+                DrawBuilding(minimap, building, minHeight, maxHeight);
+            }
+
+            // 전략적 위치 마커 그리기
+            if (strategicLocations != null && strategicLocations.Count > 0)
+            {
+                DrawStrategicMarkers(minimap, strategicLocations);
+            }
+
+            // 스폰/타겟 마커 그리기 (전략 마커 위에 덮어씌워 항상 잘 보이게)
+            if (spawnConfig.HasValue && spawnConfig.Value.isValid)
+            {
+                DrawSpawnMarkers(minimap, spawnConfig.Value);
+            }
+
+            // 텍스처 적용
+            minimap.Apply();
+            return minimap;
+        }
+
+        /// <summary>
+        /// 건물을 미니맵에 그리는 내부 메서드
+        /// </summary>
+        /// <param name="minimap">미니맵 텍스처</param>
+        /// <param name="building">건물 정보</param>
+        /// <param name="minHeight">최소 건물 높이</param>
+        /// <param name="maxHeight">최대 건물 높이</param>
+        private void DrawBuilding(Texture2D minimap, Building building, float minHeight, float maxHeight)
+        {
+            // 건물의 월드 좌표를 픽셀 좌표로 변환
+            Vector2Int centerPixel = WorldToMinimapPixel(building.position);
+
+            // 건물 크기를 픽셀 단위로 변환 (X/Z 독립 스케일 적용)
+            int pixelWidth = Mathf.Max(1, Mathf.RoundToInt(building.size.x * pixelsPerMeterX));
+            int pixelDepth = Mathf.Max(1, Mathf.RoundToInt(building.size.z * pixelsPerMeterZ));
+
+            // 건물 높이에 따른 등고선 스타일 색상 계산
+            Color buildingColor = GetHeightColor(building.height, minHeight, maxHeight);
+
+            // 건물 영역의 픽셀 범위 계산
+            int startX = centerPixel.x - pixelWidth / 2;
+            int endX = centerPixel.x + pixelWidth / 2;
+            int startY = centerPixel.y - pixelDepth / 2;
+            int endY = centerPixel.y + pixelDepth / 2;
+
+            // 픽셀 그리기
+            for (int x = startX; x <= endX; x++)
+            {
+                for (int y = startY; y <= endY; y++)
+                {
+                    // 경계 체크
+                    if (x >= 0 && x < resolution && y >= 0 && y < resolution)
+                    {
+                        minimap.SetPixel(x, y, buildingColor);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 건물 높이에 따른 등고선 스타일 색상을 계산
+        /// </summary>
+        /// <param name="height">건물 높이</param>
+        /// <param name="minHeight">최소 건물 높이</param>
+        /// <param name="maxHeight">최대 건물 높이</param>
+        /// <returns>등고선 스타일 색상</returns>
+        private Color GetHeightColor(float height, float minHeight, float maxHeight)
+        {
+            // 높이를 0~1 범위로 정규화
+            float normalizedHeight = 0f;
+            if (maxHeight > minHeight)
+            {
+                normalizedHeight = (height - minHeight) / (maxHeight - minHeight);
+            }
+
+            // 등고선 스타일: 높을수록 어두운 색
+            // 낮은 건물: 연한 회색 (0.7)
+            // 중간 건물: 중간 회색 (0.4)
+            // 높은 건물: 진한 회색/검은색 (0.1)
+            float grayValue = Mathf.Lerp(0.7f, 0.1f, normalizedHeight);
+            return new Color(grayValue, grayValue, grayValue);
+        }
+
+        /// <summary>
+        /// 월드 좌표를 미니맵 픽셀 좌표로 변환
+        /// </summary>
+        /// <param name="worldPosition">월드 좌표</param>
+        /// <returns>미니맵 픽셀 좌표</returns>
+        private Vector2Int WorldToMinimapPixel(Vector3 worldPosition)
+        {
+            // 도시 경계의 최소 지점을 기준으로 상대 위치 계산
+            Vector3 relativePosition = worldPosition - cityBounds.min;
+
+            // X/Z 축 독립 스케일로 픽셀 좌표 변환 → 비정사각형 도시도 텍스처를 꽉 채움
+            int pixelX = Mathf.RoundToInt(relativePosition.x * pixelsPerMeterX);
+            int pixelY = Mathf.RoundToInt(relativePosition.z * pixelsPerMeterZ);
+
+            // 경계 내로 제한
+            pixelX = Mathf.Clamp(pixelX, 0, resolution - 1);
+            pixelY = Mathf.Clamp(pixelY, 0, resolution - 1);
+
+            return new Vector2Int(pixelX, pixelY);
+        }
+
+        /// <summary>
+        /// 격자 구조를 선으로 미니맵에 표시합니다.
+        /// Requirements: 16.2
+        /// </summary>
+        /// <param name="minimap">미니맵 텍스처</param>
+        /// <param name="gridSpacing">격자 간격 (미터 단위)</param>
+        public void DrawGridLines(Texture2D minimap, float gridSpacing)
+        {
+            if (minimap == null || gridSpacing <= 0)
+            {
+                return;
+            }
+
+            // 격자선 색상 (연한 회색, 반투명)
+            Color gridLineColor = new Color(0.6f, 0.6f, 0.6f, 0.5f);
+
+            // 격자 간격을 픽셀 단위로 변환 (X/Z 독립 스케일 적용)
+            int pixelSpacingX = Mathf.Max(1, Mathf.RoundToInt(gridSpacing * pixelsPerMeterX));
+            int pixelSpacingZ = Mathf.Max(1, Mathf.RoundToInt(gridSpacing * pixelsPerMeterZ));
+
+            // 수직 격자선 그리기 (X축 간격)
+            for (int x = 0; x < resolution; x += pixelSpacingX)
+            {
+                for (int y = 0; y < resolution; y++)
+                {
+                    Color existingColor = minimap.GetPixel(x, y);
+                    minimap.SetPixel(x, y, Color.Lerp(existingColor, gridLineColor, 0.3f));
+                }
+            }
+
+            // 수평 격자선 그리기 (Z축 간격)
+            for (int y = 0; y < resolution; y += pixelSpacingZ)
+            {
+                for (int x = 0; x < resolution; x++)
+                {
+                    Color existingColor = minimap.GetPixel(x, y);
+                    minimap.SetPixel(x, y, Color.Lerp(existingColor, gridLineColor, 0.3f));
+                }
+            }
+        }
+
+        /// <summary>
+        /// 전략적 위치 마커를 미니맵에 그립니다.
+        /// Requirements: 17.5
+        /// </summary>
+        /// <param name="minimap">미니맵 텍스처</param>
+        /// <param name="strategicLocations">전략적 위치 리스트</param>
+        private void DrawStrategicMarkers(Texture2D minimap, System.Collections.Generic.List<StrategicLocation> strategicLocations)
+        {
+            foreach (var location in strategicLocations)
+            {
+                // 전략적 위치 타입에 따른 색상 가져오기
+                Color markerColor = GetStrategyTypeColor(location.locationType);
+
+                // 월드 좌표를 픽셀 좌표로 변환
+                Vector2Int pixelPos = WorldToMinimapPixel(location.position);
+
+                // 마커를 작은 점으로 그리기 (3x3 픽셀)
+                int markerSize = 2; // 반경
+                for (int dx = -markerSize; dx <= markerSize; dx++)
+                {
+                    for (int dy = -markerSize; dy <= markerSize; dy++)
+                    {
+                        int x = pixelPos.x + dx;
+                        int y = pixelPos.y + dy;
+
+                        // 경계 체크
+                        if (x >= 0 && x < resolution && y >= 0 && y < resolution)
+                        {
+                            // 원형 마커를 위한 거리 체크
+                            float distance = Mathf.Sqrt(dx * dx + dy * dy);
+                            if (distance <= markerSize)
+                            {
+                                minimap.SetPixel(x, y, markerColor);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 전략적 위치 타입에 따른 색상을 반환합니다.
+        /// Requirements: 17.5
+        /// - 은폐 지점: 파란색
+        /// - 교차로: 노란색
+        /// - 막다른 골목: 빨간색
+        /// - 개방 구역: 주황색
+        /// - 우회 경로: 초록색
+        /// </summary>
+        /// <param name="strategyType">전략적 위치 타입</param>
+        /// <returns>해당 타입의 색상</returns>
+        private Color GetStrategyTypeColor(StrategyType strategyType)
+        {
+            switch (strategyType)
+            {
+                case StrategyType.CoverPoint:
+                    return Color.blue;        // 은폐 지점: 파란색
+                case StrategyType.Intersection:
+                    return Color.yellow;      // 교차로: 노란색
+                case StrategyType.DeadEnd:
+                    return Color.red;         // 막다른 골목: 빨간색
+                case StrategyType.OpenArea:
+                    return new Color(1f, 0.5f, 0f); // 개방 구역: 주황색
+                case StrategyType.DetourPath:
+                    return Color.green;       // 우회 경로: 초록색
+                default:
+                    return Color.white;       // 기본값: 흰색
+            }
+        }
+
+        /// <summary>
+        /// 스폰/타겟 포인트를 미니맵에 표시합니다.
+        /// 전략 마커보다 크고 흰 테두리가 있는 원형 마커를 사용합니다.
+        /// </summary>
+        private void DrawSpawnMarkers(Texture2D minimap, SpawnConfiguration config)
+        {
+            // Evader: 하늘색 (cyan)
+            DrawDroneMarker(minimap, config.evaderSpawnPosition,
+                new Color(0f, 0.8f, 1f), Color.white, 5);
+
+            // Pursuer: 빨간색
+            DrawDroneMarker(minimap, config.pursuerSpawnPosition,
+                new Color(1f, 0.15f, 0.15f), Color.white, 5);
+
+            // Target: 초록색
+            DrawDroneMarker(minimap, config.targetPosition,
+                new Color(0.1f, 0.9f, 0.1f), Color.white, 5);
+        }
+
+        /// <summary>
+        /// 단일 드론/타겟 마커를 원형으로 그립니다 (채우기 색 + 흰 테두리 1px).
+        /// </summary>
+        private void DrawDroneMarker(Texture2D minimap, Vector3 worldPos, Color fillColor, Color borderColor, int radius)
+        {
+            Vector2Int center = WorldToMinimapPixel(worldPos);
+
+            for (int dx = -(radius + 1); dx <= radius + 1; dx++)
+            {
+                for (int dy = -(radius + 1); dy <= radius + 1; dy++)
+                {
+                    int x = center.x + dx;
+                    int y = center.y + dy;
+
+                    if (x < 0 || x >= resolution || y < 0 || y >= resolution)
+                        continue;
+
+                    float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                    if (dist <= radius)
+                        minimap.SetPixel(x, y, fillColor);
+                    else if (dist <= radius + 1f)
+                        minimap.SetPixel(x, y, borderColor);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 미니맵을 PNG 파일로 저장합니다.
+        /// Requirements: 16.6, 16.7
+        /// </summary>
+        /// <param name="minimap">저장할 미니맵 텍스처</param>
+        /// <param name="seedValue">파일명에 포함할 시드 값 (선택적, -1이면 타임스탬프 사용)</param>
+        public void SaveMinimapToPNG(Texture2D minimap, int seedValue = -1, string layoutTag = "")
+        {
+            if (minimap == null)
+            {
+                Debug.LogError("SaveMinimapToPNG: 미니맵 텍스처가 null입니다.");
+                return;
+            }
+
+            // Unity 에셋 상대 경로 → 절대 파일시스템 경로로 변환
+            // Application.dataPath = ".../Assets" 이므로 "Assets" 접두사를 제거하고 결합
+            string assetRelPath = GetProceduralCityFolder() + "/CityMaps";
+            string directoryPath = Application.dataPath + assetRelPath.Substring("Assets".Length);
+            directoryPath = directoryPath.Replace('\\', '/');
+
+            Debug.Log($"SaveMinimapToPNG: CityMaps 절대 경로 = {directoryPath}");
+
+            // 디렉토리가 존재하지 않으면 생성
+            if (!System.IO.Directory.Exists(directoryPath))
+            {
+                System.IO.Directory.CreateDirectory(directoryPath);
+                Debug.Log($"SaveMinimapToPNG: 디렉토리 생성됨 - {directoryPath}");
+            }
+
+            // 레이아웃 태그 처리 (비어 있으면 빈 문자열, 있으면 "_" 접두어 붙임)
+            string tag = string.IsNullOrEmpty(layoutTag) ? "" : $"_{layoutTag}";
+
+            // 파일명 생성: Minimap_Seed{N}_{LayoutMode}_{res}x{res}.png
+            string filename;
+            if (seedValue >= 0)
+            {
+                filename = $"Minimap_Seed{seedValue}{tag}_{resolution}x{resolution}.png";
+            }
+            else
+            {
+                string timestamp = System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                filename = $"Minimap_{timestamp}{tag}_{resolution}x{resolution}.png";
+            }
+
+            // 전체 파일 경로
+            string filePath = System.IO.Path.Combine(directoryPath, filename);
+
+            // 텍스처를 PNG로 인코딩
+            byte[] pngData = ImageConversion.EncodeToPNG(minimap);
+
+            if (pngData == null || pngData.Length == 0)
+            {
+                Debug.LogError("SaveMinimapToPNG: PNG 인코딩 실패");
+                return;
+            }
+
+            // 파일로 저장
+            System.IO.File.WriteAllBytes(filePath, pngData);
+
+            Debug.Log($"SaveMinimapToPNG: 미니맵 저장 완료 - {filePath}");
+
+#if UNITY_EDITOR
+            // Unity Editor에서 에셋 데이터베이스 새로고침
+            UnityEditor.AssetDatabase.Refresh();
+#endif
+        }
+
+        /// <summary>
+        /// 이 스크립트(MinimapGenerator.cs)의 위치를 기준으로
+        /// ProceduralCityGenerator 폴더의 Unity Asset 경로를 반환합니다.
+        ///
+        /// 파일 구조 가정:
+        ///   {ProceduralCityGenerator}/Scripts/MinimapGenerator.cs
+        ///           ↑ 2단계 상위 = ProceduralCityGenerator 폴더
+        /// </summary>
+        private static string GetProceduralCityFolder()
+        {
+#if UNITY_EDITOR
+            // FindAssets는 파일명에 검색어가 포함된 모든 스크립트를 반환하므로
+            // (예: MinimapGeneratorTest.cs도 포함됨) 정확히 일치하는 파일만 사용
+            string[] guids = UnityEditor.AssetDatabase.FindAssets("MinimapGenerator t:Script");
+            foreach (string guid in guids)
+            {
+                string assetPath = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
+                if (System.IO.Path.GetFileName(assetPath) == "MinimapGenerator.cs")
+                {
+                    // "Assets/00. BMW/ProceduralCityGenerator/Scripts/MinimapGenerator.cs"
+                    string scriptsFolder = System.IO.Path.GetDirectoryName(assetPath);
+                    // "Assets/00. BMW/ProceduralCityGenerator/Scripts"
+                    string baseFolder = System.IO.Path.GetDirectoryName(scriptsFolder);
+                    // "Assets/00. BMW/ProceduralCityGenerator"
+                    return baseFolder.Replace('\\', '/');
+                }
+            }
+#endif
+            // Fallback: AssetDatabase를 사용할 수 없는 환경(런타임 빌드 등)
+            return "Assets";
+        }
+    }
+}

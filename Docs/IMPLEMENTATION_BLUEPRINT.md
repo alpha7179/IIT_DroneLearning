@@ -7,7 +7,7 @@
 - 산출물: Unity 실행 환경, 학습 가능한 Agent 구성, Stage별 모델 체크포인트, 실기체 이식 가능한 제어 인터페이스.
 
 ## 2. Version Lock (필수)
-- Unity: `6.0.57f1`
+- Unity: `6000.0.69f1`
 - ML-Agents: `4.0.x`
 - Python: `3.10` 권장
 - PyTorch: `2.x`

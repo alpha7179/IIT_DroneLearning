@@ -11,6 +11,11 @@
 /[Ll]ogs/
 /[Uu]ser[Ss]ettings/
 *.log
+AGENT.md
+AGENTS.md
+CLAUDE.md
+PROJECTS.md
+
 
 /[Nn]o[Gg]it/
 
@@ -99,3 +104,17 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+# RL pipeline artifacts (Pursuer)
+/python/results/
+/python/models/
+/python/runs/
+/python/checkpoints/
+/python/exports/
+# *.onnx  # Assets/00. LJW/Models/ 는 허용 (아래 예외)
+!Assets/00. LJW/Models/*.onnx
+*.pt
+*.pth
+events.out.tfevents*
+__pycache__/
+.ipynb_checkpoints/

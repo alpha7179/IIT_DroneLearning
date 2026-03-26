@@ -2,3 +2,44 @@
 /node_modules/
 *.prettierrc
 *.json
+/.kiro/
+AGENT.md
+AGENTS.md
+CLAUDE.md
+PROJECTS.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+.venv/
+
+# Python 실험 결과 (대용량 — Drive에 별도 보관)
+python/models/
+python/results/**
+!python/results/**/
+!python/results/.gitkeep
+!python/results/**/*.onnx
+
+# Claude Code (프로젝트 commands는 커밋, memory/skills/는 사용자 전용)
+.claude/memory/
+.claude/skills/
+.claude/settings.local.json
+
+# MkDocs 빌드 결과물
+_site/
+
+# ML-Agents 자동 생성 로그 (실행마다 변경됨)
+IIT_DroneLearning/Assets/ML-Agents/Timers/
+
+# DroneSnapshotSystem 캡처 데이터 (프로젝트 루트 기준, Assets 외부)
+IIT_DroneLearning/CapturedData/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 개인 보고서 (git 제외)
+private_reports/

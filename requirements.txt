@@ -1,0 +1,8 @@
+mlagents @ git+https://github.com/Unity-Technologies/ml-agents.git@release_23#subdirectory=ml-agents
+mlagents-envs @ git+https://github.com/Unity-Technologies/ml-agents.git@release_23#subdirectory=ml-agents-envs
+torch>=2.0.0
+grpcio>=1.11.0,<=1.53.2
+protobuf>=3.20.0
+numpy>=1.21.0
+tensorboard>=2.10.0
+onnx>=1.15.0

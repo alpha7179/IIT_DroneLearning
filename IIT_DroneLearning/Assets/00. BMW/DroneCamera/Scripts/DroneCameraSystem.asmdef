@@ -1,0 +1,16 @@
+{
+    "name": "DroneCameraSystem",
+    "rootNamespace": "DroneCamera",
+    "references": [
+        "DroneSensorSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

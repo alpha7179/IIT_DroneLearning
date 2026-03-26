@@ -1,0 +1,68 @@
+# evader_s0_20260315_base.yaml
+# Stage0-A: 순수 목표 도달 선행 학습 (goalOnlyMode = true)
+#   - Pursuer 없음, Capture 판정 없음
+#   - 목표: goal_reach_rate >= 70% 안정 수렴 확인 후 Stage0-B로 전환
+#
+# Unity Inspector 설정:
+#   EvaderAgent._goalOnlyMode = true
+#   EvaderAgent._pursuerTransform = (비워두기)
+#
+# 실행:
+#   mlagents-learn python/config/evader_s0_20260315_base.yaml \
+#     --run-id=evader_s0a_goalonly_seed42 --force
+#
+# 수렴 확인 후 다음 단계:
+#   mlagents-learn python/config/evader_s0_20260315_base.yaml \
+#     --run-id=evader_s0b_withpursuer_seed42 \
+#     --initialize-from=evader_s0a_goalonly_seed42 --force
+#   (Inspector에서 _goalOnlyMode = false, _pursuerTransform 연결)
+
+behaviors:
+  EvaderAgent:
+    trainer_type: ppo
+
+    hyperparameters:
+      batch_size: 64           # buffer_size / 150 기준 (buffer=9600)
+      buffer_size: 9600        # 에피소드 25s × 10Hz × 4env ≈ 1000/env → ×4
+      learning_rate: 3.0e-4
+      beta: 5.0e-3             # 엔트로피 계수 — 수렴 후 1.0e-3으로 감소
+      epsilon: 0.2
+      lambd: 0.99
+      num_epoch: 3
+      learning_rate_schedule: linear
+
+    network_settings:
+      normalize: true          # 관측 정규화 필수
+      hidden_units: 256
+      num_layers: 2
+
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+
+    max_steps: 500000
+    time_horizon: 64           # 에피소드 평균 길이(~10s × 10Hz = 100 step)보다 짧게
+    summary_freq: 10000
+    checkpoint_interval: 50000
+    keep_checkpoints: 5
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 보상 설계 참조 (Unity EvaderAgent.cs / EvaderReward.cs에서 구현)
+#
+# step reward  = goalShapingCoeff(0.02) * (d_prev - d_now)
+#              + survivalRewardPerStep(+0.001)
+#              + timePenaltyPerStep(-0.001)
+# episode end  = goal reached: +1.0
+#              = captured:     -1.0
+#              = crash:        -1.0
+#              = timeout:      +0.2  (생존 부분 보상)
+#
+# Decision Period: 5 fixedUpdate steps (50Hz → 10Hz 결정)
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# 학습 진행 체크 (TensorBoard 기준):
+#   - Environment/Episode Length 안정화 확인 (너무 빠른 종료 = crash/capture 과다)
+#   - Policy/Entropy 초반 높고 서서히 감소해야 정상
+#   - Environment/Cumulative Reward 상승 추세 확인
+# ──────────────────────────────────────────────────────────────────────────────
