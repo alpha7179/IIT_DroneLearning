@@ -30,7 +30,7 @@ public class EvaderAgentEditor : Editor
         // ─── DroneAgent — 수정 가능 (EvaderAgent가 실제 사용) ──────────────
         DrawSection("DroneAgent — 수정 가능", ref _baseFoldout, ColorEditable, () =>
         {
-            DrawProp("GoalTransform",   "Goal Transform (목표)");
+            DrawProp("_goalZone",       "Goal Zone (Goal 컴포넌트)");
             DrawProp("TargetTransform", "Target Transform (추격자)");
             EditorGUILayout.Space(2);
             DrawProp("ManualThrottle");
@@ -45,9 +45,10 @@ public class EvaderAgentEditor : Editor
         {
             GUI.enabled = false;
             EditorGUILayout.EnumPopup(new GUIContent("Role", "Initialize()에서 Evader로 고정됨"), agent.Role);
-            EditorGUILayout.FloatField(new GUIContent("Spawn Range X", "EvaderAgent._spawnRadius로 대체됨"), agent.SpawnRangeX);
-            EditorGUILayout.FloatField(new GUIContent("Spawn Range Z", "EvaderAgent._spawnRadius로 대체됨"), agent.SpawnRangeZ);
-            EditorGUILayout.FloatField(new GUIContent("Spawn Height",  "EvaderAgent._spawnAltitude로 대체됨"), agent.SpawnHeight);
+            EditorGUILayout.ObjectField(new GUIContent("Goal Transform", "Goal 컴포넌트로 대체됨. EvaderAgent 미사용."), agent.GoalTransform, typeof(Transform), true);
+            EditorGUILayout.FloatField(new GUIContent("Spawn Range X", "SpawnCenter로 대체됨"), agent.SpawnRangeX);
+            EditorGUILayout.FloatField(new GUIContent("Spawn Range Z", "SpawnCenter로 대체됨"), agent.SpawnRangeZ);
+            EditorGUILayout.FloatField(new GUIContent("Spawn Height",  "SpawnCenter로 대체됨"), agent.SpawnHeight);
             EditorGUILayout.FloatField(new GUIContent("Spawn Yaw Max", "EvaderAgent: 0~360 전방향 고정"), agent.SpawnYawMaxDeg);
             EditorGUILayout.FloatField(new GUIContent("Step Penalty",  "EvaderAgent: EvaderReward로 대체됨"), agent.StepPenalty);
             GUI.enabled = true;
@@ -61,16 +62,17 @@ public class EvaderAgentEditor : Editor
             EditorGUILayout.LabelField("Episode Settings", EditorStyles.miniBoldLabel);
             DrawProp("_maxEpisodeSeconds");
             DrawProp("_catchDistance");
-            DrawProp("_goalDistance");
             EditorGUILayout.Space(2);
             EditorGUILayout.LabelField("Stage Control", EditorStyles.miniBoldLabel);
             DrawProp("_goalOnlyMode");
             DrawProp("_currentStage");
             EditorGUILayout.Space(2);
-            EditorGUILayout.LabelField("Spawn Randomization", EditorStyles.miniBoldLabel);
-            DrawProp("_spawnRadius");
-            DrawProp("_spawnAltitude");
-            DrawProp("_goalRandomizeRadius");
+            EditorGUILayout.LabelField("SpawnCenter 쿼리 결과 (읽기 전용)", EditorStyles.miniBoldLabel);
+            GUI.enabled = false;
+            DrawProp("_queriedMinY",   "Queried Min Y");
+            DrawProp("_queriedMaxY",   "Queried Max Y");
+            DrawProp("_queriedRadius", "Queried Radius");
+            GUI.enabled = true;
             EditorGUILayout.Space(2);
             EditorGUILayout.LabelField("Observation Normalization", EditorStyles.miniBoldLabel);
             DrawProp("_maxDistance");
