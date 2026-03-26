@@ -111,7 +111,8 @@ InitTestScene*.unity*
 /python/runs/
 /python/checkpoints/
 /python/exports/
-*.onnx
+# *.onnx  # Assets/00. LJW/Models/ 는 허용 (아래 예외)
+!Assets/00. LJW/Models/*.onnx
 *.pt
 *.pth
 events.out.tfevents*
