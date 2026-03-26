@@ -169,10 +169,10 @@ MonoBehaviour:
     VectorActionDescriptions: []
     VectorActionSpaceType: 1
     hasUpgradedBrainParametersWithActionSpec: 1
-  m_Model: {fileID: 0}
+  m_Model: {fileID: 5022602860645237092, guid: d0a8c49a9bcf35a4684a842d4afc982f, type: 3}
   m_InferenceDevice: 0
-  m_BehaviorType: 1
-  m_BehaviorName: My Behavior
+  m_BehaviorType: 0
+  m_BehaviorName: Pursuer Drone Behavior
   TeamId: 0
   m_UseChildSensors: 1
   m_UseChildActuators: 1
