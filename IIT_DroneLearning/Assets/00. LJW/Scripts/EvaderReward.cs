@@ -32,6 +32,12 @@ public class EvaderReward : MonoBehaviour
     [Tooltip("목표 방향으로 Yaw 정렬 시 보너스 (Stage0 최단 직선 경로 유도). Stage1+에서는 0 권장)")]
     [SerializeField] private float _yawAlignCoeff = 0.001f;
 
+    [Tooltip("목표 방향 실제 이동 속도 보상 (호버링 방지). dot(vel, toGoal) / maxObsSpeed × coeff")]
+    [SerializeField] private float _velAlignCoeff = 0.01f;
+
+    [Header("Observation Normalization")]
+    [SerializeField] private float _maxObsSpeed = 10f;
+
     [Header("Time Penalty")]
     [Tooltip("스텝당 시간 페널티 (음수 유지)")]
     [SerializeField] private float _timePenaltyPerStep = -0.001f;
@@ -62,7 +68,8 @@ public class EvaderReward : MonoBehaviour
         Vector3 agentPos,
         Vector3 goalPos,
         Vector3 pursuerPos,
-        bool isPursuerVisible)
+        bool    isPursuerVisible,
+        Vector3 agentVel)
     {
         float reward = 0f;
 
@@ -98,6 +105,14 @@ public class EvaderReward : MonoBehaviour
                 float alignment = Vector3.Dot(fwd.normalized, dir.normalized);
                 reward += _yawAlignCoeff * alignment;
             }
+        }
+
+        // ── 속도-목표 정렬 보상 (호버링 방지, 최단 경로 유도) ────────────────
+        if (_velAlignCoeff > 0f && currGoalDist > 0.5f)
+        {
+            Vector3 toGoalDir = (goalPos - agentPos).normalized;
+            float velTowardGoal = Vector3.Dot(agentVel, toGoalDir) / _maxObsSpeed;
+            reward += _velAlignCoeff * velTowardGoal;
         }
 
         // ── 시간 페널티 ──────────────────────────────────────────────────

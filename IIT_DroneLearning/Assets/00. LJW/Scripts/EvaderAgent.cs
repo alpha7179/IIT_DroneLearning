@@ -223,7 +223,8 @@ public class EvaderAgent : DroneAgent
             agentPos:         transform.position,
             goalPos:          _goalZone        != null ? _goalZone.GetPosition()   : Vector3.zero,
             pursuerPos:       TargetTransform  != null ? TargetTransform.position  : Vector3.zero,
-            isPursuerVisible: _isPursuerVisible
+            isPursuerVisible: _isPursuerVisible,
+            agentVel:         _dronePhysics    != null ? _dronePhysics.GetVelocity() : Vector3.zero
         ));
 
         CheckTerminationConditions();
