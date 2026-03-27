@@ -96,7 +96,7 @@ public class EvaderReward : MonoBehaviour
         _prevPursuerVisible = isPursuerVisible;
 
         // ── Yaw 정렬 보상 (목표 방향으로 드론 정면이 향할수록 +보상) ────────
-        if (_yawAlignCoeff > 0f && currGoalDist > 0.5f)
+        if (_yawAlignCoeff > 0f && currGoalDist > 0.1f)
         {
             Vector3 fwd = _agentTransform.forward; fwd.y = 0f;
             Vector3 dir = goalPos - agentPos; dir.y = 0f;
@@ -108,7 +108,7 @@ public class EvaderReward : MonoBehaviour
         }
 
         // ── 속도-목표 정렬 보상 (호버링 방지, 최단 경로 유도) ────────────────
-        if (_velAlignCoeff > 0f && currGoalDist > 0.5f)
+        if (_velAlignCoeff > 0f && currGoalDist > 0.1f)
         {
             Vector3 toGoalDir = (goalPos - agentPos).normalized;
             float velTowardGoal = Vector3.Dot(agentVel, toGoalDir) / _maxObsSpeed;
