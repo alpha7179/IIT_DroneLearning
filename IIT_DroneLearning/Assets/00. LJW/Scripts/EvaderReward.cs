@@ -34,7 +34,7 @@ public class EvaderReward : MonoBehaviour
 
     [Header("Time Penalty")]
     [Tooltip("스텝당 시간 페널티 (음수 유지)")]
-    [SerializeField] private float _timePenaltyPerStep = 0.0f;
+    [SerializeField] private float _timePenaltyPerStep = -0.001f;
 
     // ───────── 내부 상태 ──────────────────────────────────────────────────
     private float _prevGoalDistance = float.MaxValue;

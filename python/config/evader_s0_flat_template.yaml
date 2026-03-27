@@ -14,7 +14,8 @@
 #
 # Run (local):
 #   mlagents-learn python/config/evader_s0_flat_template.yaml \
-#     --run-id=evader_s0_flat_44d_v3_seed42 --force
+#     --run-id=evader_s0_flat_44d_v4_seed42 --force \
+#     --initialize-from=evader_s0_flat_44d_v3_seed42
 
 behaviors:
   Drone_Evader:
