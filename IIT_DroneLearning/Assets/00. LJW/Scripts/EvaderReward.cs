@@ -30,7 +30,7 @@ public class EvaderReward : MonoBehaviour
 
     [Header("Path Guidance")]
     [Tooltip("목표 방향으로 Yaw 정렬 시 보너스 (Stage0 최단 직선 경로 유도). Stage1+에서는 0 권장)")]
-    [SerializeField] private float _yawAlignCoeff = 0.05f;
+    [SerializeField] private float _yawAlignCoeff = 0.001f;
 
     [Header("Time Penalty")]
     [Tooltip("스텝당 시간 페널티 (음수 유지)")]
