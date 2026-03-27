@@ -250,6 +250,10 @@ PrefabInstance:
       value: Drone_Evader
       objectReference: {fileID: 0}
     - target: {fileID: 3269647626456829882, guid: bc3f174419f0f0d4fb445d846fa4f86d, type: 3}
+      propertyPath: m_Model
+      value: 
+      objectReference: {fileID: 5022602860645237092, guid: 84592ddc33699074a8886b37921dbf57, type: 3}
+    - target: {fileID: 3269647626456829882, guid: bc3f174419f0f0d4fb445d846fa4f86d, type: 3}
       propertyPath: m_BehaviorType
       value: 0
       objectReference: {fileID: 0}
@@ -1009,6 +1013,10 @@ PrefabInstance:
     - target: {fileID: 6091359780857480971, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
       propertyPath: m_Name
       value: AllowMark
+      objectReference: {fileID: 0}
+    - target: {fileID: 6091359780857480971, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6197085839296991986, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
