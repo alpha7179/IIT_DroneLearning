@@ -6,12 +6,17 @@ using System;
 ///
 /// Goal GameObject에 부착하면:
 ///   1. 태그가 자동으로 "Goal"로 설정된다 (CLAUDE.md 표준 태그).
-///   2. isTrigger Collider가 없으면 SphereCollider가 자동 추가된다.
+///   2. isTrigger Collider가 없으면 CapsuleCollider가 자동 추가된다.
 ///   3. Goal.Current에 자동 등록되어 EvaderAgent가 Inspector 없이 찾을 수 있다.
 ///
 /// 랜덤화 기준점:
 ///   _centerTransform이 할당되어 있으면 해당 Transform 위치가 기준점.
 ///   없으면 Awake 시점의 자기 자신 위치가 기준점.
+///
+/// 실린더 형태:
+///   SpawnCenter가 있으면 minY~maxY 범위를 읽어 Y 중점으로 위치를 잡고
+///   CapsuleCollider 높이를 (maxY - minY)에 꽉 차도록 자동 조절한다.
+///   동기화 모드면 sharedRange, 비동기 모드면 goalRange 값을 사용한다.
 ///
 /// 도달 판정:
 ///   "Evader" 태그를 가진 객체가 Trigger Collider에 진입하면 OnArrival 이벤트 발생.
@@ -47,8 +52,8 @@ public class Goal : MonoBehaviour
     public event Action<Goal> OnArrival;
 
     // ───────── 내부 상태 ──────────────────────────────────────────────────
-    private Vector3        _selfCenter;     // _centerTransform 미설정 시 폴백
-    private SphereCollider _sphereCollider;
+    private Vector3         _selfCenter;      // _centerTransform 미설정 시 폴백
+    private CapsuleCollider _capsuleCollider;
 
     // ───────── Editor: 컴포넌트 추가 시 자동 설정 ────────────────────────
 #if UNITY_EDITOR
@@ -59,9 +64,11 @@ public class Goal : MonoBehaviour
 
         if (GetComponent<Collider>() == null)
         {
-            var col = gameObject.AddComponent<SphereCollider>();
+            var col = gameObject.AddComponent<CapsuleCollider>();
             col.isTrigger = true;
             col.radius    = 2.0f;
+            col.height    = 10f;
+            col.direction = 1; // Y축
         }
         else
             GetComponent<Collider>().isTrigger = true;
@@ -71,8 +78,8 @@ public class Goal : MonoBehaviour
     // ───────── 초기화 ─────────────────────────────────────────────────────
     private void Awake()
     {
-        _selfCenter     = transform.position;
-        _sphereCollider = GetComponent<SphereCollider>();
+        _selfCenter      = transform.position;
+        _capsuleCollider = GetComponent<CapsuleCollider>();
 
         var col = GetComponent<Collider>();
         if (col != null && !col.isTrigger)
@@ -81,11 +88,11 @@ public class Goal : MonoBehaviour
             col.isTrigger = true;
         }
 
-        // SpawnCenter에서 골존 범위 쿼리
+        // SpawnCenter에서 골존 범위 쿼리 + 실린더 형태 적용
         QuerySpawnCenter();
     }
 
-    /// <summary>SpawnCenter에서 골존 스폰 범위를 쿼리하여 내부 필드에 저장한다.</summary>
+    /// <summary>SpawnCenter에서 골존 스폰 범위를 쿼리하여 내부 필드에 저장하고 실린더를 조형한다.</summary>
     public void QuerySpawnCenter()
     {
         if (SpawnCenter.Current != null)
@@ -97,7 +104,28 @@ public class Goal : MonoBehaviour
 
             // SpawnCenter 기준점을 centerTransform 대신 사용
             _centerTransform = SpawnCenter.Current.transform;
+
+            UpdateCylinderShape();
         }
+    }
+
+    /// <summary>
+    /// 쿼리된 minY/maxY 기준으로 오브젝트의 localScale.y를 조절한다.
+    /// 월드 높이(worldHeight) = capsuleCollider.height × localScale.y 이므로
+    /// localScale.y = targetWorldHeight / capsuleCollider.height 로 역산.
+    /// </summary>
+    private void UpdateCylinderShape()
+    {
+        if (_capsuleCollider == null) return;
+        if (_capsuleCollider.height <= 0f) return;
+
+        _capsuleCollider.direction = 1; // Y축
+
+        float targetWorldHeight = Mathf.Max(0.1f, _queriedMaxY - _queriedMinY);
+        float newScaleY = targetWorldHeight / _capsuleCollider.height;
+
+        Vector3 s = transform.localScale;
+        transform.localScale = new Vector3(s.x, newScaleY, s.z);
     }
 
     /// <summary>쿼리된 스폰 범위 (읽기 전용)</summary>
@@ -141,22 +169,30 @@ public class Goal : MonoBehaviour
     /// <summary>랜덤화 반경 (읽기 전용 API).</summary>
     public float RandomizeRadius => _randomizeRadius;
 
-    /// <summary>에피소드 시작 시 호출. SpawnCenter 범위 또는 GetCenter() 기준 XZ 평면 원 안에서 랜덤 이동.</summary>
+    /// <summary>
+    /// 에피소드 시작 시 호출.
+    /// SpawnCenter가 있으면 XZ는 쿼리된 Radius 안에서 랜덤, Y는 (minY+maxY)/2 중점으로 고정.
+    /// 실린더 높이도 함께 갱신한다.
+    /// </summary>
     public void RandomizePosition()
     {
-        // SpawnCenter가 있으면 쿼리 갱신 후 해당 범위 사용
+        // SpawnCenter가 있으면 쿼리 갱신 후 실린더 방식으로 배치
         if (SpawnCenter.Current != null)
         {
-            QuerySpawnCenter();
-            var range = SpawnCenter.Current.GetGoalSpawnRange();
-            transform.position = SpawnCenter.Current.GetRandomPosition(range);
+            QuerySpawnCenter(); // _queriedMinY/MaxY/Radius 갱신 + 높이 조절
+
+            Vector3 center = SpawnCenter.Current.GetCenter();
+            Vector2 xzOffset = UnityEngine.Random.insideUnitCircle * _queriedRadius;
+            float   midY     = (_queriedMinY + _queriedMaxY) * 0.5f;
+
+            transform.position = center + new Vector3(xzOffset.x, midY, xzOffset.y);
             return;
         }
 
-        // 폴백: 기존 방식
+        // 폴백: SpawnCenter 없을 때 기존 방식
         Vector2 offset = UnityEngine.Random.insideUnitCircle * _randomizeRadius;
-        Vector3 center = GetCenter();
-        transform.position = center + new Vector3(offset.x, 0f, offset.y);
+        Vector3 c = GetCenter();
+        transform.position = c + new Vector3(offset.x, 0f, offset.y);
     }
 
     /// <summary>OnArrival 이벤트 발생. OnTriggerEnter에서 자동 호출.</summary>
@@ -186,11 +222,26 @@ public class Goal : MonoBehaviour
             Gizmos.DrawLine(center, transform.position);
         }
 
-        // Trigger Collider 범위 (녹색 구)
-        if (_sphereCollider != null)
+        // Trigger Collider 범위 — 실린더 (녹색 두 원 + 수직선)
+        if (_capsuleCollider != null)
         {
+            float r      = _capsuleCollider.radius * transform.lossyScale.x;
+            float halfH  = _capsuleCollider.height * transform.lossyScale.y * 0.5f;
+            Vector3 pos  = transform.position;
+            Vector3 top  = pos + Vector3.up * halfH;
+            Vector3 bot  = pos - Vector3.up * halfH;
+
             Gizmos.color = new Color(0f, 1f, 0f, 0.4f);
-            Gizmos.DrawSphere(transform.position, _sphereCollider.radius * transform.lossyScale.x);
+            DrawCircleXZ(top, r, 32);
+            DrawCircleXZ(bot, r, 32);
+
+            // 4방향 수직 연결선
+            for (int i = 0; i < 4; i++)
+            {
+                float angle = i * 90f * Mathf.Deg2Rad;
+                Vector3 edge = new(Mathf.Cos(angle) * r, 0f, Mathf.Sin(angle) * r);
+                Gizmos.DrawLine(bot + edge, top + edge);
+            }
         }
     }
 
