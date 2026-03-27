@@ -33,9 +33,19 @@ public class GoalEditor : Editor
         EditorGUILayout.Space(4);
         EditorGUILayout.LabelField("SpawnCenter 쿼리 결과 (읽기 전용)", EditorStyles.boldLabel);
         GUI.enabled = false;
-        DrawProp("_queriedMinY",   "Queried Min Y");
-        DrawProp("_queriedMaxY",   "Queried Max Y");
-        DrawProp("_queriedRadius", "Queried Radius");
+        DrawProp("_queriedMinY", "Queried Min Y");
+        DrawProp("_queriedMaxY", "Queried Max Y");
+        bool isRect = SpawnCenter.Current != null &&
+                      SpawnCenter.Current.ShapeMode == SpawnCenter.RangeMode.Rectangle;
+        if (isRect)
+        {
+            DrawProp("_queriedWidth", "Queried Width  (X 반폭)");
+            DrawProp("_queriedDepth", "Queried Depth  (Z 반폭)");
+        }
+        else
+        {
+            DrawProp("_queriedRadius", "Queried Radius");
+        }
         GUI.enabled = true;
 
         serializedObject.ApplyModifiedProperties();

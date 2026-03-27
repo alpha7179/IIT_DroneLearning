@@ -6,14 +6,19 @@ using System;
 ///
 /// 빈 GameObject에 부착하여 골존·추적자·도망자의 스폰 범위를 중앙 집중 관리한다.
 ///
-/// 모드:
-///   Synchronized   : 세 객체가 동일한 범위(minY, maxY, Radius)를 공유. 기즈모 1개.
+/// SyncMode:
+///   Synchronized   : 세 객체가 동일한 범위를 공유. 기즈모 1개.
 ///   Desynchronized : 골존·추적자·도망자 각각 별도 범위. 기즈모 3개.
+///
+/// RangeMode:
+///   Radius    : XZ 평면을 원형 반경으로 지정.
+///   Rectangle : XZ 평면을 너비(Width, X축)·깊이(Depth, Z축)로 지정.
 ///
 /// API:
 ///   GetGoalSpawnRange()    → SpawnRange (골존용)
 ///   GetPursuerSpawnRange() → SpawnRange (추적자용)
 ///   GetEvaderSpawnRange()  → SpawnRange (도망자용)
+///   GetRandomPosition()    → RangeMode에 따라 원형 또는 직사각형 내 랜덤 위치
 ///
 /// </summary>
 public class SpawnCenter : MonoBehaviour
@@ -26,14 +31,32 @@ public class SpawnCenter : MonoBehaviour
         public float MinY;
         [Tooltip("최대 높이 (Y축)")]
         public float MaxY;
-        [Tooltip("XZ 평면 반경")]
+        [Tooltip("XZ 평면 반경 (RangeMode.Radius 시 사용)")]
         public float Radius;
+        [Tooltip("X축 반폭 (RangeMode.Rectangle 시 사용)")]
+        public float Width;
+        [Tooltip("Z축 반폭 (RangeMode.Rectangle 시 사용)")]
+        public float Depth;
 
+        /// <summary>Radius 모드용 생성자</summary>
         public SpawnRange(float minY, float maxY, float radius)
         {
             MinY   = minY;
             MaxY   = maxY;
             Radius = Mathf.Max(0f, radius);
+            Width  = radius;
+            Depth  = radius;
+            ValidateMinMax(ref MinY, ref MaxY);
+        }
+
+        /// <summary>Rectangle 모드용 생성자</summary>
+        public SpawnRange(float minY, float maxY, float width, float depth)
+        {
+            MinY   = minY;
+            MaxY   = maxY;
+            Radius = Mathf.Max(width, depth);
+            Width  = Mathf.Max(0f, width);
+            Depth  = Mathf.Max(0f, depth);
             ValidateMinMax(ref MinY, ref MaxY);
         }
 
@@ -58,13 +81,23 @@ public class SpawnCenter : MonoBehaviour
         Desynchronized,
     }
 
+    // ───────── 범위 형태 모드 ─────────────────────────────────────────────
+    public enum RangeMode
+    {
+        [Tooltip("XZ 평면을 원형 반경으로 지정")]
+        Radius,
+        [Tooltip("XZ 평면을 너비(Width)·깊이(Depth)로 지정")]
+        Rectangle,
+    }
+
     // ───────── 자동 등록 (Static) ─────────────────────────────────────────
     /// <summary>현재 씬에서 활성화된 SpawnCenter. Enable 시 자동 등록.</summary>
     public static SpawnCenter Current { get; private set; }
 
     // ───────── Inspector 설정 ─────────────────────────────────────────────
     [Header("Spawn Center — Mode")]
-    [SerializeField] private SyncMode _syncMode = SyncMode.Synchronized;
+    [SerializeField] private SyncMode  _syncMode  = SyncMode.Synchronized;
+    [SerializeField] private RangeMode _rangeMode = RangeMode.Radius;
 
     [Header("Synchronized — 공용 범위")]
     [SerializeField] private SpawnRange _sharedRange = new SpawnRange(0f, 10f, 15f);
@@ -79,7 +112,8 @@ public class SpawnCenter : MonoBehaviour
     [SerializeField] private SpawnRange _evaderRange = new SpawnRange(3f, 10f, 15f);
 
     // ───────── 프로퍼티 ───────────────────────────────────────────────────
-    public SyncMode Mode => _syncMode;
+    public SyncMode  Mode      => _syncMode;
+    public RangeMode ShapeMode => _rangeMode;
 
     // ───────── 초기화 ─────────────────────────────────────────────────────
     private void OnEnable()
@@ -106,6 +140,8 @@ public class SpawnCenter : MonoBehaviour
     {
         SpawnRange.ValidateMinMax(ref range.MinY, ref range.MaxY);
         range.Radius = Mathf.Max(0f, range.Radius);
+        range.Width  = Mathf.Max(0f, range.Width);
+        range.Depth  = Mathf.Max(0f, range.Depth);
     }
 
     // ───────── Public API ─────────────────────────────────────────────────
@@ -125,13 +161,27 @@ public class SpawnCenter : MonoBehaviour
     public SpawnRange GetEvaderSpawnRange()
         => _syncMode == SyncMode.Synchronized ? _sharedRange : _evaderRange;
 
-    /// <summary>주어진 SpawnRange 기준으로 랜덤 위치 생성</summary>
+    /// <summary>
+    /// RangeMode에 따라 랜덤 위치를 생성한다.
+    ///   Radius    : XZ 원형 영역 내 균등 분포
+    ///   Rectangle : XZ 직사각형 영역 내 균등 분포
+    /// </summary>
     public Vector3 GetRandomPosition(SpawnRange range)
     {
         Vector3 center = GetCenter();
-        Vector2 offset = UnityEngine.Random.insideUnitCircle * range.Radius;
-        float y = UnityEngine.Random.Range(range.MinY, range.MaxY);
-        return center + new Vector3(offset.x, y, offset.y);
+        float   y      = UnityEngine.Random.Range(range.MinY, range.MaxY);
+
+        if (_rangeMode == RangeMode.Radius)
+        {
+            Vector2 offset = UnityEngine.Random.insideUnitCircle * range.Radius;
+            return center + new Vector3(offset.x, y, offset.y);
+        }
+        else // Rectangle
+        {
+            float x = UnityEngine.Random.Range(-range.Width, range.Width);
+            float z = UnityEngine.Random.Range(-range.Depth, range.Depth);
+            return center + new Vector3(x, y, z);
+        }
     }
 
     // ───────── Editor 디버그 기즈모 ───────────────────────────────────────
@@ -142,17 +192,13 @@ public class SpawnCenter : MonoBehaviour
 
         if (_syncMode == SyncMode.Synchronized)
         {
-            // 공용 범위 — 흰색 1개
             DrawRangeGizmo(center, _sharedRange, new Color(1f, 1f, 1f, 0.8f), "Shared");
         }
         else
         {
-            // 골존 — 노란색
-            DrawRangeGizmo(center, _goalRange, new Color(1f, 1f, 0f, 0.6f), "Goal");
-            // 추적자 — 빨간색
+            DrawRangeGizmo(center, _goalRange,   new Color(1f, 1f, 0f, 0.6f),   "Goal");
             DrawRangeGizmo(center, _pursuerRange, new Color(1f, 0.3f, 0.3f, 0.6f), "Pursuer");
-            // 도망자 — 파란색
-            DrawRangeGizmo(center, _evaderRange, new Color(0.3f, 0.5f, 1f, 0.6f), "Evader");
+            DrawRangeGizmo(center, _evaderRange,  new Color(0.3f, 0.5f, 1f, 0.6f), "Evader");
         }
 
         // 중심점 마커
@@ -164,39 +210,76 @@ public class SpawnCenter : MonoBehaviour
     {
         Gizmos.color = color;
 
-        // minY 높이의 원
         Vector3 minCenter = center + Vector3.up * range.MinY;
-        DrawGizmoCircleXZ(minCenter, range.Radius, 48);
-
-        // maxY 높이의 원
         Vector3 maxCenter = center + Vector3.up * range.MaxY;
-        DrawGizmoCircleXZ(maxCenter, range.Radius, 48);
 
-        // 수직 연결선 (4방향)
-        for (int i = 0; i < 4; i++)
+        if (_rangeMode == RangeMode.Radius)
         {
-            float angle = i * 90f * Mathf.Deg2Rad;
-            Vector3 offset = new Vector3(Mathf.Cos(angle) * range.Radius, 0f, Mathf.Sin(angle) * range.Radius);
-            Gizmos.DrawLine(minCenter + offset, maxCenter + offset);
-        }
+            DrawGizmoCircleXZ(minCenter, range.Radius, 48);
+            DrawGizmoCircleXZ(maxCenter, range.Radius, 48);
 
-        // 라벨
-        UnityEditor.Handles.color = color;
-        UnityEditor.Handles.Label(maxCenter + Vector3.up * 0.5f,
-            $"{label}\nR={range.Radius:F1} Y=[{range.MinY:F1}, {range.MaxY:F1}]");
+            // 수직 연결선 (4방향)
+            for (int i = 0; i < 4; i++)
+            {
+                float   angle  = i * 90f * Mathf.Deg2Rad;
+                Vector3 offset = new Vector3(Mathf.Cos(angle) * range.Radius, 0f, Mathf.Sin(angle) * range.Radius);
+                Gizmos.DrawLine(minCenter + offset, maxCenter + offset);
+            }
+
+            UnityEditor.Handles.color = color;
+            UnityEditor.Handles.Label(maxCenter + Vector3.up * 0.5f,
+                $"{label}\nR={range.Radius:F1} Y=[{range.MinY:F1}, {range.MaxY:F1}]");
+        }
+        else // Rectangle
+        {
+            DrawGizmoRectXZ(minCenter, range.Width, range.Depth);
+            DrawGizmoRectXZ(maxCenter, range.Width, range.Depth);
+
+            // 수직 연결선 (4모서리)
+            Vector3[] corners = GetRectCorners(range.Width, range.Depth);
+            foreach (Vector3 c in corners)
+                Gizmos.DrawLine(minCenter + c, maxCenter + c);
+
+            UnityEditor.Handles.color = color;
+            UnityEditor.Handles.Label(maxCenter + Vector3.up * 0.5f,
+                $"{label}\nW={range.Width:F1} D={range.Depth:F1} Y=[{range.MinY:F1}, {range.MaxY:F1}]");
+        }
     }
 
     private static void DrawGizmoCircleXZ(Vector3 center, float radius, int segments)
     {
-        float step = 360f / segments;
+        float   step = 360f / segments;
         Vector3 prev = center + new Vector3(radius, 0f, 0f);
         for (int i = 1; i <= segments; i++)
         {
-            float angle = i * step * Mathf.Deg2Rad;
-            Vector3 next = center + new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
+            float   angle = i * step * Mathf.Deg2Rad;
+            Vector3 next  = center + new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
             Gizmos.DrawLine(prev, next);
             prev = next;
         }
+    }
+
+    private static void DrawGizmoRectXZ(Vector3 center, float halfW, float halfD)
+    {
+        Vector3 a = center + new Vector3(-halfW, 0f, -halfD);
+        Vector3 b = center + new Vector3( halfW, 0f, -halfD);
+        Vector3 c = center + new Vector3( halfW, 0f,  halfD);
+        Vector3 d = center + new Vector3(-halfW, 0f,  halfD);
+        Gizmos.DrawLine(a, b);
+        Gizmos.DrawLine(b, c);
+        Gizmos.DrawLine(c, d);
+        Gizmos.DrawLine(d, a);
+    }
+
+    private static Vector3[] GetRectCorners(float halfW, float halfD)
+    {
+        return new[]
+        {
+            new Vector3(-halfW, 0f, -halfD),
+            new Vector3( halfW, 0f, -halfD),
+            new Vector3( halfW, 0f,  halfD),
+            new Vector3(-halfW, 0f,  halfD),
+        };
     }
 #endif
 }

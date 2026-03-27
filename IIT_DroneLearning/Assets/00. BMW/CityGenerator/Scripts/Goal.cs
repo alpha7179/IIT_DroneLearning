@@ -38,7 +38,7 @@ public class Goal : MonoBehaviour
     [Tooltip("랜덤화 기준점으로 사용할 Transform. 비워두면 SpawnCenter 또는 자기 자신의 초기 위치를 사용.")]
     [SerializeField] private Transform _centerTransform;
 
-    [Header("Goal — Randomization")]
+    [Header("Goal — Randomization (SpawnCenter 없을 때 폴백)")]
     [Tooltip("에피소드마다 목표가 이동할 수 있는 최대 반경 (m, XZ 평면)")]
     [SerializeField] private float _randomizeRadius = 20f;
 
@@ -46,6 +46,8 @@ public class Goal : MonoBehaviour
     [SerializeField] private float _queriedMinY;
     [SerializeField] private float _queriedMaxY;
     [SerializeField] private float _queriedRadius;
+    [SerializeField] private float _queriedWidth;
+    [SerializeField] private float _queriedDepth;
 
     // ───────── 이벤트 ─────────────────────────────────────────────────────
     /// <summary>"Evader" 태그 객체가 Trigger에 진입하면 발생.</summary>
@@ -101,6 +103,8 @@ public class Goal : MonoBehaviour
             _queriedMinY   = range.MinY;
             _queriedMaxY   = range.MaxY;
             _queriedRadius = range.Radius;
+            _queriedWidth  = range.Width;
+            _queriedDepth  = range.Depth;
 
             // SpawnCenter 기준점을 centerTransform 대신 사용
             _centerTransform = SpawnCenter.Current.transform;
@@ -132,6 +136,8 @@ public class Goal : MonoBehaviour
     public float QueriedMinY   => _queriedMinY;
     public float QueriedMaxY   => _queriedMaxY;
     public float QueriedRadius => _queriedRadius;
+    public float QueriedWidth  => _queriedWidth;
+    public float QueriedDepth  => _queriedDepth;
 
     private void OnEnable()
     {
@@ -171,25 +177,24 @@ public class Goal : MonoBehaviour
 
     /// <summary>
     /// 에피소드 시작 시 호출.
-    /// SpawnCenter가 있으면 XZ는 쿼리된 Radius 안에서 랜덤, Y는 (minY+maxY)/2 중점으로 고정.
-    /// 실린더 높이도 함께 갱신한다.
+    /// SpawnCenter가 있으면 RangeMode에 따라 원형 또는 직사각형 영역 내 랜덤 XZ,
+    /// Y는 (minY+maxY)/2 중점으로 고정. 실린더 높이도 함께 갱신한다.
     /// </summary>
     public void RandomizePosition()
     {
-        // SpawnCenter가 있으면 쿼리 갱신 후 실린더 방식으로 배치
         if (SpawnCenter.Current != null)
         {
-            QuerySpawnCenter(); // _queriedMinY/MaxY/Radius 갱신 + 높이 조절
+            QuerySpawnCenter(); // 범위 갱신 + 실린더 높이 조절
 
-            Vector3 center = SpawnCenter.Current.GetCenter();
-            Vector2 xzOffset = UnityEngine.Random.insideUnitCircle * _queriedRadius;
-            float   midY     = (_queriedMinY + _queriedMaxY) * 0.5f;
+            var     range  = SpawnCenter.Current.GetGoalSpawnRange();
+            Vector3 rndPos = SpawnCenter.Current.GetRandomPosition(range);
+            float   midY   = (_queriedMinY + _queriedMaxY) * 0.5f;
 
-            transform.position = center + new Vector3(xzOffset.x, midY, xzOffset.y);
+            transform.position = new Vector3(rndPos.x, midY, rndPos.z);
             return;
         }
 
-        // 폴백: SpawnCenter 없을 때 기존 방식
+        // 폴백: SpawnCenter 없을 때 반경 기반 랜덤
         Vector2 offset = UnityEngine.Random.insideUnitCircle * _randomizeRadius;
         Vector3 c = GetCenter();
         transform.position = c + new Vector3(offset.x, 0f, offset.y);
@@ -211,9 +216,12 @@ public class Goal : MonoBehaviour
         Gizmos.color = new Color(1f, 1f, 0f, 0.9f);
         Gizmos.DrawSphere(center, 0.4f);
 
-        // 랜덤화 반경 (노란 원, 기준점 기준)
-        Gizmos.color = new Color(1f, 1f, 0f, 0.3f);
-        DrawCircleXZ(center, _randomizeRadius, 32);
+        // 랜덤화 범위 기즈모 (SpawnCenter 없을 때 폴백 반경)
+        if (SpawnCenter.Current == null)
+        {
+            Gizmos.color = new Color(1f, 1f, 0f, 0.3f);
+            DrawCircleXZ(center, _randomizeRadius, 32);
+        }
 
         // 중심점 → 현재 위치 연결선
         if (Application.isPlaying && transform.position != center)
