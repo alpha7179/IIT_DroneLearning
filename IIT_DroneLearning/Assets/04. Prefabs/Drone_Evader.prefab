@@ -162,6 +162,7 @@ GameObject:
   - component: {fileID: 6937456707439104935}
   - component: {fileID: 6930636725449418039}
   - component: {fileID: 7007717446461774919}
+  - component: {fileID: 8868515452629242510}
   m_Layer: 0
   m_Name: Drone_Evader
   m_TagString: Evader
@@ -596,3 +597,22 @@ MonoBehaviour:
   m_Grayscale: 0
   m_ObservationStacks: 1
   m_Compression: 1
+--- !u!114 &8868515452629242510
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2142283407388849524}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cb1361041104a1c49a9aaad7ea091606, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _goalShapingCoeff: 0.3
+  _survivalRewardPerStep: 0
+  _occlusionBonus: 0
+  _yawAlignCoeff: 0.001
+  _velAlignCoeff: 0.01
+  _maxObsSpeed: 10
+  _timePenaltyPerStep: -0.001
