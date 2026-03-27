@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using Unity.MLAgents;
 using Unity.MLAgents.Sensors;
 using Unity.MLAgents.Actuators;
@@ -46,6 +46,24 @@ public class DroneAgent : Agent
     protected override void Awake()
     {
         base.Awake();
+
+        // 서브클래스(EvaderAgent 등)가 같은 객체에 있으면 DroneAgent(베이스)는 비활성화
+        if (GetType() == typeof(DroneAgent))
+        {
+            var agents = GetComponents<DroneAgent>();
+            foreach (var agent in agents)
+            {
+                if (agent != this && agent.GetType() != typeof(DroneAgent))
+                {
+                    Debug.LogWarning(
+                        $"[DroneAgent] '{agent.GetType().Name}'이 같은 객체에 있습니다. " +
+                        $"DroneAgent(베이스)를 비활성화합니다.", this);
+                    enabled = false;
+                    return;
+                }
+            }
+        }
+
         _rb           = GetComponent<Rigidbody>();
         _dronePhysics = GetComponent<DronePhysics>();
         _sensorSystem = GetComponent<DroneSensorSystem>();
