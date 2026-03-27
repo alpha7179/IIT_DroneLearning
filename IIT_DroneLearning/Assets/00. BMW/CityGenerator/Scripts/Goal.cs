@@ -176,9 +176,20 @@ public class Goal : MonoBehaviour
     public float RandomizeRadius => _randomizeRadius;
 
     /// <summary>
-    /// 에피소드 시작 시 호출.
-    /// SpawnCenter가 있으면 RangeMode에 따라 원형 또는 직사각형 영역 내 랜덤 XZ,
-    /// Y는 (minY+maxY)/2 중점으로 고정. 실린더 높이도 함께 갱신한다.
+    /// EpisodeSpawnCoordinator가 ComputeSpawn() 내에서 직접 호출한다.
+    /// 위치를 적용하고 실린더 높이를 갱신한다.
+    /// </summary>
+    public void ApplySpawnPosition(Vector3 worldPosition)
+    {
+        QuerySpawnCenter(); // 실린더 높이 갱신
+        transform.position = worldPosition;
+    }
+
+    /// <summary>
+    /// 에피소드 시작 시 수동 호출용 (EpisodeSpawnCoordinator 없을 때 폴백).
+    /// 우선순위:
+    ///   1. SpawnCenter 범위 내 랜덤
+    ///   2. Fallback: 반경 기반 랜덤
     /// </summary>
     public void RandomizePosition()
     {

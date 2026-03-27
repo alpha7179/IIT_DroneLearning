@@ -606,6 +606,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1382874921}
   - component: {fileID: 1382874922}
+  - component: {fileID: 1382874923}
   m_Layer: 0
   m_Name: Spawn Center
   m_TagString: Untagged
@@ -666,6 +667,28 @@ MonoBehaviour:
     Radius: 9.34
     Width: 15
     Depth: 15
+--- !u!114 &1382874923
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1382874920}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7046ea0fb8968474b91129f7cb2e1056, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _evaderTag: Evader
+  _pursuerTag: Pursuer
+  _strategy: 0
+  _minSeparation: 5
+  _maxRetry: 20
+  _fallbackRange: 10
+  _fallbackHeight: 5
+  _debugEvaderCount: 0
+  _debugPursuerCount: 0
+  _isComputed: 0
 --- !u!1 &1402957252
 GameObject:
   m_ObjectHideFlags: 0

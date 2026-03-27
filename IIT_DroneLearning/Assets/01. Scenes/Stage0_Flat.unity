@@ -294,6 +294,8 @@ MonoBehaviour:
   topViewHeight: 100
   topViewOrthoSize: 25
   topViewPaddingFactor: 1.1
+  pursuerTag: Pursuer
+  evaderTag: Evader
   showCameraLabels: 1
   labelFontSize: 10
   labelBackgroundAlpha: 0.55
@@ -324,6 +326,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1382874921}
   - component: {fileID: 1382874922}
+  - component: {fileID: 1382874923}
   m_Layer: 0
   m_Name: Spawn Center
   m_TagString: Untagged
@@ -359,22 +362,53 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _syncMode: 0
+  _rangeMode: 0
   _sharedRange:
     MinY: 0
     MaxY: 30
     Radius: 25
+    Width: 15
+    Depth: 15
   _goalRange:
     MinY: 0
     MaxY: 5
     Radius: 20
+    Width: 20
+    Depth: 20
   _pursuerRange:
     MinY: 3
     MaxY: 10
     Radius: 15
+    Width: 15
+    Depth: 15
   _evaderRange:
     MinY: 3
     MaxY: 10
     Radius: 9.34
+    Width: 15
+    Depth: 15
+--- !u!114 &1382874923
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1382874920}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 48139a683d3b4ac3a37cd5d24f71acf1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_CastOrigin: {fileID: 1382874921}
+  m_EnableStabilization: 0
+  m_PositionStabilization: 0.25
+  m_AngleStabilization: 20
+  m_AimTargetObject: {fileID: 0}
+  m_PhysicsLayerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_PhysicsTriggerInteraction: 1
+  m_CastRadius: 0.1
 --- !u!1 &1402957252
 GameObject:
   m_ObjectHideFlags: 0
@@ -750,6 +784,8 @@ MonoBehaviour:
   _queriedMinY: 0
   _queriedMaxY: 0
   _queriedRadius: 0
+  _queriedWidth: 0
+  _queriedDepth: 0
 --- !u!136 &1897861054
 CapsuleCollider:
   m_ObjectHideFlags: 0
