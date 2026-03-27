@@ -137,16 +137,15 @@ public class EvaderAgent : DroneAgent
         _goalZone?.RandomizePosition();
     }
 
-    // ───────── 관측 수집 (VectorObs = 18) ────────────────────────────────
-    // 구성: 자기 상태 7 + 목표 4 + 추격자/메모리 7 = 18
+    // ───────── 관측 수집 (VectorObs = 44) ────────────────────────────────
+    // 구성: 자기 상태 7 + 목표 4 + 추격자/메모리 7 + DroneSensorSystem 26 = 44
     // 속도 획득: _dronePhysics API 사용 (DroneAgent와 동일 소스)
-    // Ray: RayPerceptionSensor 컴포넌트에서 별도 처리 (Sensor 담당 배민우)
     public override void CollectObservations(VectorSensor sensor)
     {
         // DroneAgent.IsDroneReady() — null 가드 통일
         if (!IsDroneReady())
         {
-            for (int i = 0; i < 18; i++)
+            for (int i = 0; i < 44; i++)
                 sensor.AddObservation(0f);
             return;
         }
@@ -191,6 +190,18 @@ public class EvaderAgent : DroneAgent
             sensor.AddObservation(GetPursuerRelVelNormalized());        // 3
             sensor.AddObservation(_isPursuerVisible ? 1f : 0f);         // 1
         }
+
+        // DroneSensorSystem (26) — 배민우 팀 거리 센서 연동
+        if (_sensorSystem != null)
+        {
+            foreach (float d in _sensorSystem.GetAllNormalizedDistances())
+                sensor.AddObservation(d);                               // 26
+        }
+        else
+        {
+            for (int i = 0; i < 26; i++)
+                sensor.AddObservation(0f);                              // 26 zeros
+        }
     }
 
     // ───────── 행동 처리 ──────────────────────────────────────────────────
@@ -212,7 +223,8 @@ public class EvaderAgent : DroneAgent
             agentPos:         transform.position,
             goalPos:          _goalZone        != null ? _goalZone.GetPosition()   : Vector3.zero,
             pursuerPos:       TargetTransform  != null ? TargetTransform.position  : Vector3.zero,
-            isPursuerVisible: _isPursuerVisible
+            isPursuerVisible: _isPursuerVisible,
+            agentVel:         _dronePhysics    != null ? _dronePhysics.GetVelocity() : Vector3.zero
         ));
 
         CheckTerminationConditions();
