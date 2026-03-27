@@ -1,17 +1,15 @@
 # evader_s0_flat_template.yaml
 # Stage0: flat env (Stage0_Flat.unity), goal-reach only
 #   - No obstacles, no Pursuer (_goalOnlyMode = true)
-#   - Obs: VectorObs 18 + RayPerceptionSensor 26 = 44 total
+#   - Obs: VectorObs 18 + DroneSensorSystem 26 = 44 total
 #   - Target: goal_reach_rate >= 50%
 #
 # Unity Inspector:
 #   EvaderAgent._goalOnlyMode      = true
 #   EvaderAgent._pursuerTransform  = (empty)
-#   EvaderAgent._goalTransform     = GoalZone
 #   BehaviorParameters.Behavior Name        = Drone_Evader
 #   BehaviorParameters.Continuous Actions   = 4
-#   BehaviorParameters.Vector Obs Size      = 18  (Ray는 자동 합산)
-#   RayPerceptionSensor3D.Rays Per Dir      = (배민우 설정 따름)
+#   BehaviorParameters.Vector Obs Size      = 44
 #   DecisionRequester.Decision Period       = 5
 #
 # Run (local):
@@ -50,7 +48,7 @@ behaviors:
 
 # Reward structure (EvaderReward.cs):
 #   step   = goalShapingCoeff(0.1) * (d_prev - d_now)
-#          + yawAlignCoeff(0.05) * dot(forward, toGoal)   <- 최단 경로 유도
+#          + yawAlignCoeff(0.05) * dot(forward, toGoal)
 #          + timePenaltyPerStep(-0.001)
 #   end    = goal reached: +1.0 / captured: -1.0 / crash: -1.0
 #
