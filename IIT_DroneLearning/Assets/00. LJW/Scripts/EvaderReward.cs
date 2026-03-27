@@ -18,7 +18,7 @@ public class EvaderReward : MonoBehaviour
     // ───────── Inspector 가중치 설정 ──────────────────────────────────────
     [Header("Goal Shaping")]
     [Tooltip("목표 지점 접근에 따른 potential-based shaping 계수")]
-    [SerializeField] private float _goalShapingCoeff = 0.1f;
+    [SerializeField] private float _goalShapingCoeff = 0.3f;
 
     [Header("Survival")]
     [Tooltip("매 스텝 생존 보너스 (Stage0에서는 0 권장 — timePenalty와 상쇄됨)")]
@@ -34,7 +34,7 @@ public class EvaderReward : MonoBehaviour
 
     [Header("Time Penalty")]
     [Tooltip("스텝당 시간 페널티 (음수 유지)")]
-    [SerializeField] private float _timePenaltyPerStep = -0.001f;
+    [SerializeField] private float _timePenaltyPerStep = 0.0f;
 
     // ───────── 내부 상태 ──────────────────────────────────────────────────
     private float _prevGoalDistance = float.MaxValue;
