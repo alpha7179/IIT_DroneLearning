@@ -16,7 +16,9 @@
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,
-    "defineConstraints": [],
+    "defineConstraints": [
+        "ENABLE_XR_SAMPLES"
+    ],
     "versionDefines": [
         {
             "name": "Unity",

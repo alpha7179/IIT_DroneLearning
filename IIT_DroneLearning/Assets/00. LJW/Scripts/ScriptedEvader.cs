@@ -25,7 +25,6 @@ public class ScriptedEvader : MonoBehaviour
 
     [Header("Goal Seeking")]
     [SerializeField] private float _goalSpeed      = 0.6f;  // 목표 방향 추력 [0,1]
-    [SerializeField] private float _arrivalRadius  = 2.0f;  // 도달 판정 거리 (m)
     [SerializeField] private float _targetAltitude = 5.0f;  // 유지할 비행 고도 (m)
 
     [Header("Obstacle Avoidance")]
