@@ -211,10 +211,12 @@ namespace DroneCamera
         {
             foreach (var comp in GetComponents<MonoBehaviour>())
             {
-                if (comp == null || comp.GetType().Name != "DroneAgent") continue;
+                if (comp == null || !IsDroneAgentComponent(comp.GetType())) continue;
 
-                var roleField = comp.GetType().GetField(
-                    "Role", BindingFlags.Public | BindingFlags.Instance);
+                var roleField = FindFieldInHierarchy(
+                    comp.GetType(),
+                    "Role",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                 if (roleField == null) break;
 
                 // DroneRole enum: Pursuer = 0, Evader = 1
@@ -222,6 +224,27 @@ namespace DroneCamera
                 return roleValue == 1 ? DroneRole.Evader : DroneRole.Pursuer;
             }
             return DroneRole.Pursuer; // DroneAgent 미존재 시 기본값
+        }
+
+        private static bool IsDroneAgentComponent(Type type)
+        {
+            while (type != null)
+            {
+                if (type.Name == "DroneAgent") return true;
+                type = type.BaseType;
+            }
+            return false;
+        }
+
+        private static FieldInfo FindFieldInHierarchy(Type type, string fieldName, BindingFlags flags)
+        {
+            while (type != null)
+            {
+                var field = type.GetField(fieldName, flags | BindingFlags.DeclaredOnly);
+                if (field != null) return field;
+                type = type.BaseType;
+            }
+            return null;
         }
     }
 }

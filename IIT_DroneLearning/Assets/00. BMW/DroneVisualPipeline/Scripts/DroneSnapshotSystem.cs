@@ -498,14 +498,18 @@ namespace DroneVisualPipeline
             // DroneAgent 리플렉션 (Assembly-CSharp 직접 참조 불가)
             foreach (var comp in GetComponents<MonoBehaviour>())
             {
-                if (comp == null || comp.GetType().Name != "DroneAgent") continue;
+                if (comp == null || !IsDroneAgentComponent(comp.GetType())) continue;
 
                 _droneAgent = comp;
                 // ML-Agents 4.x Agent 베이스 내부 필드명: m_Reward / m_CumulativeReward
-                _rewardField = comp.GetType().GetField(
-                    "m_Reward", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                _cumulativeRewardField = comp.GetType().GetField(
-                    "m_CumulativeReward", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                _rewardField = FindFieldInHierarchy(
+                    comp.GetType(),
+                    "m_Reward",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                _cumulativeRewardField = FindFieldInHierarchy(
+                    comp.GetType(),
+                    "m_CumulativeReward",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
 
                 if (_rewardField == null)
                 {
@@ -543,8 +547,10 @@ namespace DroneVisualPipeline
             string role = "Drone";
             if (_droneAgent != null)
             {
-                var roleField = _droneAgent.GetType().GetField(
-                    "Role", BindingFlags.Public | BindingFlags.Instance);
+                var roleField = FindFieldInHierarchy(
+                    _droneAgent.GetType(),
+                    "Role",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                 if (roleField != null)
                 {
                     int roleVal = Convert.ToInt32(roleField.GetValue(_droneAgent));
@@ -605,8 +611,10 @@ namespace DroneVisualPipeline
             // DroneAgent에서 target Transform 리플렉션 시도
             if (_droneAgent != null)
             {
-                var targetField = _droneAgent.GetType().GetField(
-                    "Target", BindingFlags.Public | BindingFlags.Instance);
+                var targetField = FindFieldInHierarchy(
+                    _droneAgent.GetType(),
+                    "TargetTransform",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                 if (targetField != null)
                 {
                     var target = targetField.GetValue(_droneAgent) as Transform;
@@ -627,6 +635,27 @@ namespace DroneVisualPipeline
             if (_visionSystem != null && _visionSystem.RenderTexture != null)
                 return _visionSystem.RenderTexture.width;
             return 84;
+        }
+
+        private static bool IsDroneAgentComponent(Type type)
+        {
+            while (type != null)
+            {
+                if (type.Name == "DroneAgent") return true;
+                type = type.BaseType;
+            }
+            return false;
+        }
+
+        private static FieldInfo FindFieldInHierarchy(Type type, string fieldName, BindingFlags flags)
+        {
+            while (type != null)
+            {
+                var field = type.GetField(fieldName, flags | BindingFlags.DeclaredOnly);
+                if (field != null) return field;
+                type = type.BaseType;
+            }
+            return null;
         }
 
         private int GetSourceHeight()

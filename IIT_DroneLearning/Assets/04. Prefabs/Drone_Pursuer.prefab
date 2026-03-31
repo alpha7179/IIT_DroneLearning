@@ -22,6 +22,7 @@ GameObject:
   - component: {fileID: 5019654754672498354}
   - component: {fileID: 4482551604512469273}
   - component: {fileID: 4962517543862715910}
+  - component: {fileID: 6249942861304372141}
   - component: {fileID: 8570746583643374885}
   - component: {fileID: 2208481655503801209}
   - component: {fileID: 2597808953234514227}
@@ -192,9 +193,9 @@ MonoBehaviour:
     VectorActionDescriptions: []
     VectorActionSpaceType: 1
     hasUpgradedBrainParametersWithActionSpec: 1
-  m_Model: {fileID: 0}
+  m_Model: {fileID: 5022602860645237092, guid: 55116c1f6b3f470ea2b384dcfc18b2f4, type: 3}
   m_InferenceDevice: 0
-  m_BehaviorType: 0
+  m_BehaviorType: 2
   m_BehaviorName: Drone_Pursuer
   TeamId: 0
   m_UseChildSensors: 1
@@ -225,7 +226,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 2122550159195634066}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 27a96286a2943c8458addb41a24fedae, type: 3}
+  m_Script: {fileID: 11500000, guid: d61818c6e0124c04b89fa6909f7d5c96, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   agentParameters:
@@ -243,6 +244,19 @@ MonoBehaviour:
   ManualThrottle: 0.5
   ManualAttitude: 0.5
   ManualYawRate: 0.4
+  _goalZone: {fileID: 0}
+  _maxEpisodeSeconds: 25
+  _catchDistance: 2
+  _targetTag: Evader
+  _viewportVisibleMargin: 0.2
+  _lostTargetMemorySeconds: 1.5
+  _spawnFacingJitterDeg: 20
+  _visibilityMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  _maxDistance: 50
+  _maxObsSpeed: 10
+  _maxViewportSpeed: 4
 --- !u!114 &3989681212174470686
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -346,7 +360,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cameraLateralOffset: {x: 0, y: 0}
   cameraDistance: 0.5
-  fieldOfView: 60
+  fieldOfView: 90
   nearClipPlane: 0.1
   farClipPlane: 500
 --- !u!114 &4482551604512469273
@@ -391,7 +405,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5d9f3718451be44abff0748fc35f838, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  enableVisualObservation: 0
+  enableVisualObservation: 1
   textureWidth: 84
   textureHeight: 84
   grayscale: 0
@@ -401,6 +415,35 @@ MonoBehaviour:
   showPreviewOverlay: 0
   previewSize: 0.2
   sensorName: DroneRGB
+--- !u!114 &6249942861304372141
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122550159195634066}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4bd7911f0a8848999dfdb6a8c2f3070b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _distanceShapingCoeff: 0.12
+  _proximityRewardCoeff: 0.025
+  _proximityRewardDistance: 10
+  _nearCatchRewardCoeff: 0.03
+  _nearCatchDistance: 4
+  _closingSpeedCoeff: 0.01
+  _visibilityRewardPerStep: 0.002
+  _viewportCenterCoeff: 0.008
+  _lostTargetPenalty: -0.03
+  _maxObsSpeed: 10
+  _timePenaltyPerStep: -0.0005
+  _maxDistanceDeltaPerStep: 0.5
+  _maxStepRewardMagnitude: 0.06
+  _captureReward: 2
+  _evaderGoalPenalty: -0.35
+  _timeoutPenalty: -0.08
+  _crashPenalty: -1
 --- !u!114 &8570746583643374885
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -430,7 +473,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c26c494eb36973d44898d4b76fa746e9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  enableDepthSensor: 0
+  enableDepthSensor: 1
   depthWidth: 84
   depthHeight: 84
   depthMode: 0

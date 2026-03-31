@@ -259,6 +259,10 @@ public class EvaderAgent : DroneAgent
     /// </summary>
     private void OnGoalArrived(Goal zone)
     {
+        var pursuerAgents = FindObjectsByType<PursuerAgent>(FindObjectsSortMode.None);
+        foreach (var pursuerAgent in pursuerAgents)
+            pursuerAgent.HandleEvaderGoalRespawn();
+
         AddReward(1.0f);
         _episodeLogger?.LogEpisode(EpisodeLogger.TermType.Goal, _episodeSteps);
         EndEpisode();
@@ -276,6 +280,14 @@ public class EvaderAgent : DroneAgent
     {
         AddReward(-1.0f);
         _episodeLogger?.LogEpisode(EpisodeLogger.TermType.Crash, _episodeSteps);
+        EndEpisode();
+    }
+
+    /// <summary>Pursuer가 capture에 성공했을 때 외부에서 호출</summary>
+    public void SetCaptured()
+    {
+        AddReward(-1.0f);
+        _episodeLogger?.LogEpisode(EpisodeLogger.TermType.Captured, _episodeSteps);
         EndEpisode();
     }
 
