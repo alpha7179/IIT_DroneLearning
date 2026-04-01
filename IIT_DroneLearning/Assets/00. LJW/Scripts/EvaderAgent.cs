@@ -107,7 +107,7 @@ public class EvaderAgent : DroneAgent
     }
 
     // ───────── 에피소드 시작 ──────────────────────────────────────────────
-    // DroneAgent.OnEpisodeBegin()의 CityDataAPI 스폰 대신 반경·고도 기반 스폰 사용
+    // EpisodeSpawnCoordinator 우선, 없으면 SpawnCenter 직접 사용 폴백
     public override void OnEpisodeBegin()
     {
         _episodeTimer             = 0f;
@@ -116,25 +116,33 @@ public class EvaderAgent : DroneAgent
         _isPursuerVisible         = false;
         _lastKnownPursuerPos      = Vector3.zero;
 
-        // 드론 랜덤 스폰 — SpawnCenter 우선, 없으면 초기 위치 기반 폴백
-        if (SpawnCenter.Current != null)
+        // 코디네이터에 전체 스폰 계산 위임 (Evader/Pursuer/Goal 위치 모두 내부에서 처리)
+        if (EpisodeSpawnCoordinator.Instance != null)
         {
-            QuerySpawnCenter();
-            var range = SpawnCenter.Current.GetEvaderSpawnRange();
-            transform.position = SpawnCenter.Current.GetRandomPosition(range);
+            EpisodeSpawnCoordinator.Instance.ComputeSpawn();
+            transform.position = EpisodeSpawnCoordinator.Instance.GetSpawnPosition(gameObject);
         }
         else
         {
-            // SpawnCenter 없음 — 초기 위치에서 스폰
-            transform.position = _spawnCenter;
+            // 폴백: SpawnCenter 직접 사용
+            if (SpawnCenter.Current != null)
+            {
+                QuerySpawnCenter();
+                var range = SpawnCenter.Current.GetEvaderSpawnRange();
+                transform.position = SpawnCenter.Current.GetRandomPosition(range);
+            }
+            else
+            {
+                transform.position = _spawnCenter;
+            }
+            // 코디네이터 없을 때만 Goal 수동 랜덤화
+            _goalZone?.RandomizePosition();
         }
+
         transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
 
         // 물리 초기화 — DroneAgent.ResetPhysicsState() 위임 (Rigidbody + DronePhysics 일괄 초기화)
         ResetPhysicsState();
-
-        // 목표 지점 랜덤 이동 — Goal에 위임
-        _goalZone?.RandomizePosition();
     }
 
     // ───────── 관측 수집 (VectorObs = 44) ────────────────────────────────

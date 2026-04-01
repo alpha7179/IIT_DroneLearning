@@ -69,6 +69,7 @@ namespace DroneCamera
             soloGO.transform.localRotation = Quaternion.identity;
             _cameraTransform = soloGO.transform;
             Camera = soloGO.AddComponent<Camera>();
+            ExcludeMarkLayer(Camera);
             ApplyCameraSettings();
 
             // 다중뷰(Display 1) 분할용 카메라
@@ -79,9 +80,18 @@ namespace DroneCamera
             MultiViewCamera = multiGO.AddComponent<Camera>();
             MultiViewCamera.targetDisplay = 0;
             MultiViewCamera.enabled = false;
+            ExcludeMarkLayer(MultiViewCamera);
             ApplyCameraSettingsTo(MultiViewCamera);
 
             ApplyCameraPosition();
+        }
+
+        /// <summary>"Mark" 레이어를 카메라 cullingMask에서 제거한다.</summary>
+        private static void ExcludeMarkLayer(Camera cam)
+        {
+            int markLayer = LayerMask.NameToLayer("Mark");
+            if (markLayer < 0) return;  // 레이어 미존재 시 무시
+            cam.cullingMask &= ~(1 << markLayer);
         }
 
         private void LateUpdate()

@@ -108,7 +108,7 @@ namespace CityGenerator
 
         [Header("Spawn Configuration")]
         [Tooltip("도시 생성 시 스폰/타겟 포인트를 자동으로 배치합니다.")]
-        public bool autoGenerateSpawns = true;
+        public bool autoGenerateSpawns = false;
 
         [Tooltip("스폰 포인트 간 최소 거리 (월드 단위)")]
         [Range(1f, 200f)]
@@ -146,6 +146,7 @@ namespace CityGenerator
         private GameObject wallsRoot;
         private GameObject floorObject;
         private SpawnConfiguration spawnConfiguration;
+        private GameObject spawnSystemRoot;
 
         #endregion
 
@@ -171,7 +172,44 @@ namespace CityGenerator
         /// </summary>
         private void Start()
         {
-            // 필요한 경우 여기서 추가 초기화를 수행할 수 있습니다.
+            // Play 모드 진입 시 내부 참조(cityGraph 등)가 직렬화되지 않아 null이 됨.
+            // 씬에 도시 건물이 존재하면 CityMetadata를 재구축하여 등록한다.
+            // cityGroupRoot는 private 비직렬화 필드이므로, 자식 오브젝트로 복원 시도
+            if (cityGroupRoot == null)
+            {
+                // transform 하위에서 CityGroup_ 이름의 자식을 찾아 복원
+                foreach (Transform child in transform)
+                {
+                    if (child.name.StartsWith("CityGroup_"))
+                    {
+                        cityGroupRoot = child.gameObject;
+                        break;
+                    }
+                }
+            }
+
+            // 도시 그룹이 존재하지만 cityGraph가 없으면 도시를 재생성
+            if (cityGroupRoot != null && cityGraph == null)
+            {
+                Debug.Log("CityGenerator.Start: 기존 도시가 감지되었으나 내부 참조가 없습니다. 도시를 재생성합니다.");
+                ClearCity();
+                GenerateCity();
+            }
+            else if (cityGroupRoot != null && cityGraph != null)
+            {
+                // 내부 참조가 모두 유효하면 CityMetadata만 재등록
+                CityMetadata metadata = BuildCityMetadata();
+                if (CityDataAPI.Instance != null)
+                {
+                    CityDataAPI.Instance.SetCityMetadata(metadata);
+                    Debug.Log("CityGenerator.Start: CityMetadata를 CityDataAPI에 재등록했습니다.");
+                }
+                if (SpawnCenter.Current != null && SpawnCenter.Current.AutoSyncFromCity)
+                {
+                    SpawnCenter.Current.SyncFromCityMetadata();
+                }
+            }
+
             Debug.Log("CityGenerator.Start: 초기화 완료");
         }
 
@@ -258,18 +296,38 @@ namespace CityGenerator
                 result.edgeCount = cityGraph.EdgeCount;
                 result.graph = cityGraph;
 
+                // Requirement 2.1, 2.2: CityMetadata 생성 및 CityDataAPI 등록
+                CityMetadata metadata = BuildCityMetadata();
+                if (CityDataAPI.Instance != null)
+                    CityDataAPI.Instance.SetCityMetadata(metadata);
+
+                // Requirement 2.3, 2.4: autoGenerateSpawns 조건부 스폰 구성 생성
+                if (autoGenerateSpawns)
+                {
+                    GenerateSpawnConfiguration();
+                    if (CityDataAPI.Instance != null)
+                    {
+                        CityDataAPI.Instance.SetSpawnConfiguration(spawnConfiguration);
+                        Debug.Log("CityGenerator.GenerateCity: SpawnConfiguration CityDataAPI에 등록 완료");
+                    }
+                }
+
                 // 벽 / 바닥 생성 (OnValidate와 동일한 경로로 상태 적용)
                 ApplyWallsState();
                 ApplyFloorState();
 
                 // 미니맵 생성 (탑뷰 이미지 자동 생성 및 PNG 저장)
                 // suppressFileExport == true 이면 PNG 파일 저장 없이 텍스처만 생성
+                // Requirement 2.10: autoGenerateSpawns가 true인 경우에만 고정 스폰 마커 포함
                 result.minimap = GenerateMinimap();
 
                 // 그래프 데이터 내보내기 (JSON + CSV) — 도망자 드론 오프라인 지형 분석용
                 // suppressFileExport == true 이면 파일 저장을 건너뜁니다
                 if (!suppressFileExport)
                     ExportGraphData();
+
+                // Requirement 2.6, 8.2: SpawnSystem 자동 생성
+                CreateSpawnSystem();
 
                 // 생성 성공
                 result.success = true;
@@ -302,7 +360,7 @@ namespace CityGenerator
 
         /// <summary>
         /// 생성된 모든 건물을 제거합니다.
-        /// Requirements: 6.3, 13.1, 13.2, 13.5
+        /// Requirements: 6.3, 8.8, 13.1, 13.2, 13.5
         /// </summary>
         public void ClearCity()
         {
@@ -370,6 +428,21 @@ namespace CityGenerator
             // 스폰 구성 초기화
             spawnConfiguration = new SpawnConfiguration();
 
+            // SpawnSystem 제거 (Requirement 8.8)
+            // cityGroupRoot 제거 시 자식으로 함께 파괴되지만, 참조를 명시적으로 정리
+            if (spawnSystemRoot != null)
+            {
+                if (Application.isPlaying)
+                    Destroy(spawnSystemRoot);
+                else
+                    DestroyImmediate(spawnSystemRoot);
+                spawnSystemRoot = null;
+            }
+
+            // CityDataAPI 메타데이터 초기화
+            if (CityDataAPI.Instance != null)
+                CityDataAPI.Instance.SetCityMetadata(null);
+
             Debug.Log("CityGenerator.ClearCity: 도시 제거 완료");
         }
 
@@ -414,11 +487,16 @@ namespace CityGenerator
             minimapGenerator = new MinimapGenerator(resolutionInt, cityBounds);
 
             // 탑뷰 이미지 생성 (건물 높이별 등고선 색상 + 전략적 위치 마커 + 스폰 마커)
+            // Requirement 2.10: autoGenerateSpawns가 true인 경우에만 고정 스폰 마커 포함
+            // 동적 스폰 마커는 에피소드 시작 시 MinimapRenderer가 갱신한다.
+            SpawnConfiguration? spawnMarkerConfig = (autoGenerateSpawns && spawnConfiguration.isValid)
+                ? (SpawnConfiguration?)spawnConfiguration
+                : null;
             Texture2D minimap = minimapGenerator.GenerateMinimap(
                 buildings.ToArray(),
                 cityGraph,
                 strategicLocations,
-                spawnConfiguration.isValid ? (SpawnConfiguration?)spawnConfiguration : null
+                spawnMarkerConfig
             );
 
             // Assets/CityMaps/ 폴더에 PNG 자동 저장 (파일명에 레이아웃 모드 포함)
@@ -1167,16 +1245,6 @@ namespace CityGenerator
                 Debug.LogWarning("CityGenerator.BuildCityGraph: CityDataAPI 인스턴스를 찾을 수 없습니다. 런타임 쿼리 API를 사용하려면 씬에 CityDataAPI 컴포넌트를 추가하세요.");
             }
 
-            // 스폰/타겟 포인트 자동 생성
-            if (autoGenerateSpawns)
-            {
-                GenerateSpawnConfiguration();
-                if (CityDataAPI.Instance != null)
-                {
-                    CityDataAPI.Instance.SetSpawnConfiguration(spawnConfiguration);
-                    Debug.Log("CityGenerator.BuildCityGraph: SpawnConfiguration CityDataAPI에 등록 완료");
-                }
-            }
         }
 
         // ─────────────────────────────────────────────────────────────────
@@ -1444,6 +1512,132 @@ namespace CityGenerator
             cell.hasBuilding  = false;
             cell.buildingHeight = 0f;
             grid[x, z] = cell;
+        }
+
+        /// <summary>
+        /// 내부 상태에서 CityMetadata 객체를 조립합니다.
+        /// Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.1
+        /// </summary>
+        /// <returns>조립된 CityMetadata 객체</returns>
+        private CityMetadata BuildCityMetadata()
+        {
+            CityMetadata metadata = new CityMetadata();
+
+            // Requirement 1.2: 격자 크기
+            metadata.actualCityWidth = actualCityWidth;
+            metadata.actualCityDepth = actualCityDepth;
+
+            // Requirement 1.3: 건물 높이 범위
+            metadata.minBuildingHeight = minBuildingHeight;
+            metadata.maxBuildingHeight = maxBuildingHeight;
+
+            // Requirement 1.4: 건물 목록 참조
+            metadata.buildings = buildings;
+
+            // Requirement 1.5: 도로 그래프 참조
+            metadata.cityGraph = cityGraph;
+
+            // Requirement 1.6: 전략적 위치 목록 참조
+            metadata.strategicLocations = strategicLocations;
+
+            // Requirement 1.8: 사용된 랜덤 시드
+            metadata.usedRandomSeed = usedRandomSeed;
+
+            // Requirement 1.9: 레이아웃 모드
+            metadata.layoutMode = layoutMode;
+
+            // Requirement 1.1: 도시 경계(Bounds) 계산 — GenerateMinimap()과 동일한 로직
+            float cellW = (buildingWidth + buildingSpacing) * unitDistance;
+            float cellD = (buildingDepth + buildingSpacing) * unitDistance;
+            metadata.cityBounds = new Bounds(
+                new Vector3(transform.position.x, 0f, transform.position.z),
+                new Vector3(actualCityWidth * cellW, 1f, actualCityDepth * cellD)
+            );
+
+            // Requirement 1.7: 유효 스폰 후보 노드 필터링 (캐싱)
+            // GenerateSpawnConfiguration()과 동일한 필터링 로직:
+            // OpenSpace/Intersection 타입, 엣지 존재, 건물 Bounds 내부 아닌 노드
+            metadata.validSpawnCandidates = new List<GraphNode>();
+            if (cityGraph != null)
+            {
+                foreach (GraphNode node in cityGraph.GetAllNodes())
+                {
+                    if (node.nodeType != NodeType.OpenSpace && node.nodeType != NodeType.Intersection)
+                        continue;
+
+                    List<GraphEdge> edges = cityGraph.GetEdges(node.nodeId);
+                    if (edges == null || edges.Count == 0)
+                        continue;
+
+                    bool insideBuilding = false;
+                    if (buildings != null)
+                    {
+                        foreach (Building b in buildings)
+                        {
+                            if (b.bounds.Contains(node.position))
+                            {
+                                insideBuilding = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!insideBuilding)
+                        metadata.validSpawnCandidates.Add(node);
+                }
+            }
+
+            Debug.Log($"CityGenerator.BuildCityMetadata: CityMetadata 생성 완료. " +
+                      $"유효 스폰 후보: {metadata.validSpawnCandidates.Count}개, " +
+                      $"건물: {metadata.buildings?.Count ?? 0}개, " +
+                      $"시드: {metadata.usedRandomSeed}");
+
+            return metadata;
+        }
+
+        /// <summary>
+        /// SpawnSystem GameObject를 생성하고 SpawnCenter + EpisodeSpawnCoordinator를 부착합니다.
+        /// Requirements: 2.6, 2.7, 2.8, 2.9
+        /// </summary>
+        private void CreateSpawnSystem()
+        {
+            // 씬에 이미 EpisodeSpawnCoordinator가 존재하면 중복 생성 건너뜀
+            // (수동 배치된 SpawnCenter/EpisodeSpawnCoordinator 우선)
+            if (EpisodeSpawnCoordinator.Instance != null)
+            {
+                Debug.Log("[CityGenerator] 씬에 EpisodeSpawnCoordinator가 이미 존재합니다. SpawnSystem 자동 생성을 건너뜁니다. " +
+                          "기존 코디네이터에 CityMetadata를 동기화합니다.");
+
+                // 기존 SpawnCenter가 있으면 도시 크기 동기화
+                if (SpawnCenter.Current != null && SpawnCenter.Current.AutoSyncFromCity)
+                {
+                    SpawnCenter.Current.SyncFromCityMetadata();
+                }
+                return;
+            }
+
+            // "SpawnSystem" 빈 GameObject 생성
+            spawnSystemRoot = new GameObject("SpawnSystem");
+
+            // cityGroupRoot 하위에 배치 (ClearCity() 시 함께 제거)
+            spawnSystemRoot.transform.SetParent(cityGroupRoot.transform, false);
+
+            // 도시 중앙(cityGroupRoot 위치)에 배치
+            spawnSystemRoot.transform.position = cityGroupRoot.transform.position;
+
+            // SpawnCenter 컴포넌트 부착 + AutoSyncFromCity 활성화
+            SpawnCenter spawnCenter = spawnSystemRoot.AddComponent<SpawnCenter>();
+            spawnCenter.AutoSyncFromCity = true;
+
+            // 도시 크기를 공용 범위에 즉시 반영 (ComputeSpawn() 호출 전에도 올바른 범위 보장)
+            spawnCenter.SyncFromCityMetadata();
+
+            // EpisodeSpawnCoordinator 컴포넌트 부착 + Strategy = CityMetadata
+            EpisodeSpawnCoordinator coordinator = spawnSystemRoot.AddComponent<EpisodeSpawnCoordinator>();
+            coordinator.Strategy = EpisodeSpawnCoordinator.SpawnStrategy.CityMetadata;
+
+            Debug.Log("CityGenerator.CreateSpawnSystem: SpawnSystem 자동 생성 완료 " +
+                      $"(위치: {spawnSystemRoot.transform.position}, " +
+                      $"AutoSyncFromCity: true, Strategy: CityMetadata)");
         }
 
         /// <summary>

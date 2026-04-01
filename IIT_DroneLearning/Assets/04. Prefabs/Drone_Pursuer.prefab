@@ -16,16 +16,17 @@ GameObject:
   - component: {fileID: 5169550826760657835}
   - component: {fileID: 5911044939866958618}
   - component: {fileID: 3228643152767864806}
-  - component: {fileID: 8296188788099626490}
   - component: {fileID: 3989681212174470686}
   - component: {fileID: 7364901567956186541}
   - component: {fileID: 5019654754672498354}
   - component: {fileID: 4482551604512469273}
   - component: {fileID: 4962517543862715910}
-  - component: {fileID: 6249942861304372141}
   - component: {fileID: 8570746583643374885}
   - component: {fileID: 2208481655503801209}
   - component: {fileID: 2597808953234514227}
+  - component: {fileID: 8296188788099626490}
+  - component: {fileID: 6249942861304372141}
+  - component: {fileID: 1804533257203389816}
   m_Layer: 0
   m_Name: Drone_Pursuer
   m_TagString: Pursuer
@@ -45,8 +46,7 @@ Transform:
   m_LocalPosition: {x: 0, y: 4, z: 1}
   m_LocalScale: {x: 0.5, y: 0.2, z: 0.5}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 5378212065559446703}
+  m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &4605023639661063068
@@ -217,46 +217,6 @@ MonoBehaviour:
   DecisionPeriod: 5
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
---- !u!114 &8296188788099626490
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2122550159195634066}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d61818c6e0124c04b89fa6909f7d5c96, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  agentParameters:
-    maxStep: 0
-  hasUpgradedFromAgentParameters: 1
-  MaxStep: 0
-  TargetTransform: {fileID: 0}
-  GoalTransform: {fileID: 0}
-  Role: 0
-  SpawnRangeX: 8
-  SpawnRangeZ: 8
-  SpawnHeight: 3
-  SpawnYawMaxDeg: 180
-  StepPenalty: -0.001
-  ManualThrottle: 0.5
-  ManualAttitude: 0.5
-  ManualYawRate: 0.4
-  _goalZone: {fileID: 0}
-  _maxEpisodeSeconds: 25
-  _catchDistance: 2
-  _targetTag: Evader
-  _viewportVisibleMargin: 0.2
-  _lostTargetMemorySeconds: 1.5
-  _spawnFacingJitterDeg: 20
-  _visibilityMask:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  _maxDistance: 50
-  _maxObsSpeed: 10
-  _maxViewportSpeed: 4
 --- !u!114 &3989681212174470686
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -415,35 +375,6 @@ MonoBehaviour:
   showPreviewOverlay: 0
   previewSize: 0.2
   sensorName: DroneRGB
---- !u!114 &6249942861304372141
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2122550159195634066}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4bd7911f0a8848999dfdb6a8c2f3070b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _distanceShapingCoeff: 0.12
-  _proximityRewardCoeff: 0.025
-  _proximityRewardDistance: 10
-  _nearCatchRewardCoeff: 0.03
-  _nearCatchDistance: 4
-  _closingSpeedCoeff: 0.01
-  _visibilityRewardPerStep: 0.002
-  _viewportCenterCoeff: 0.008
-  _lostTargetPenalty: -0.03
-  _maxObsSpeed: 10
-  _timePenaltyPerStep: -0.0005
-  _maxDistanceDeltaPerStep: 0.5
-  _maxStepRewardMagnitude: 0.06
-  _captureReward: 2
-  _evaderGoalPenalty: -0.35
-  _timeoutPenalty: -0.08
-  _crashPenalty: -1
 --- !u!114 &8570746583643374885
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -502,77 +433,87 @@ MonoBehaviour:
   m_Grayscale: 0
   m_ObservationStacks: 1
   m_Compression: 1
---- !u!1001 &1307849061396588111
-PrefabInstance:
+--- !u!114 &8296188788099626490
+MonoBehaviour:
   m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 8226592382589048873}
-    m_Modifications:
-    - target: {fileID: 6091359780857480971, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_Name
-      value: AllowMark
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 3
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 1.2
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 3
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 1.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
---- !u!4 &5378212065559446703 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-  m_PrefabInstance: {fileID: 1307849061396588111}
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122550159195634066}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d61818c6e0124c04b89fa6909f7d5c96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  agentParameters:
+    maxStep: 0
+  hasUpgradedFromAgentParameters: 1
+  MaxStep: 0
+  TargetTransform: {fileID: 0}
+  GoalTransform: {fileID: 0}
+  Role: 0
+  SpawnRangeX: 8
+  SpawnRangeZ: 8
+  SpawnHeight: 3
+  SpawnYawMaxDeg: 180
+  StepPenalty: -0.001
+  ManualThrottle: 0.5
+  ManualAttitude: 0.5
+  ManualYawRate: 0.4
+  _goalZone: {fileID: 0}
+  _maxEpisodeSeconds: 25
+  _catchDistance: 2
+  _targetTag: Evader
+  _viewportVisibleMargin: 0.2
+  _lostTargetMemorySeconds: 1.5
+  _spawnFacingJitterDeg: 20
+  _visibilityMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  _maxDistance: 50
+  _maxObsSpeed: 10
+  _maxViewportSpeed: 4
+--- !u!114 &6249942861304372141
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122550159195634066}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4bd7911f0a8848999dfdb6a8c2f3070b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _distanceShapingCoeff: 0.12
+  _proximityRewardCoeff: 0.025
+  _proximityRewardDistance: 10
+  _nearCatchRewardCoeff: 0.03
+  _nearCatchDistance: 4
+  _closingSpeedCoeff: 0.01
+  _visibilityRewardPerStep: 0.002
+  _viewportCenterCoeff: 0.008
+  _lostTargetPenalty: -0.03
+  _maxObsSpeed: 10
+  _timePenaltyPerStep: -0.0005
+  _maxDistanceDeltaPerStep: 0.5
+  _maxStepRewardMagnitude: 0.06
+  _captureReward: 2
+  _evaderGoalPenalty: -0.35
+  _timeoutPenalty: -0.08
+  _crashPenalty: -1
+--- !u!114 &1804533257203389816
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122550159195634066}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 787f925086a4c784a9c814ecd29b0764, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  markerPrefab: {fileID: 2134145453705049197, guid: 4323f8845a9e5874eb78ca6b907b743e, type: 3}
+  markerHeight: 50
+  markerName: 

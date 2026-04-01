@@ -1,5 +1,6 @@
 using UnityEngine;
 using System;
+using CityGenerator;
 
 /// <summary>
 /// SpawnCenter — 중점 기반 스폰 범위 관리 컴포넌트
@@ -95,25 +96,30 @@ public class SpawnCenter : MonoBehaviour
     public static SpawnCenter Current { get; private set; }
 
     // ───────── Inspector 설정 ─────────────────────────────────────────────
+    [Header("Spawn Center — City Sync")]
+    [Tooltip("활성화 시 ComputeSpawn() 호출 시 도시 메타데이터로 SpawnRange를 자동 동기화")]
+    [SerializeField] private bool _autoSyncFromCity = false;
+
     [Header("Spawn Center — Mode")]
     [SerializeField] private SyncMode  _syncMode  = SyncMode.Synchronized;
-    [SerializeField] private RangeMode _rangeMode = RangeMode.Radius;
+    [SerializeField] private RangeMode _rangeMode = RangeMode.Rectangle;
 
     [Header("Synchronized — 공용 범위")]
-    [SerializeField] private SpawnRange _sharedRange = new SpawnRange(0f, 10f, 15f);
+    [SerializeField] private SpawnRange _sharedRange = new SpawnRange(5f, 25f, 50f);
 
     [Header("Desynchronized — 골존 범위")]
-    [SerializeField] private SpawnRange _goalRange = new SpawnRange(0f, 5f, 20f);
+    [SerializeField] private SpawnRange _goalRange = new SpawnRange(0f, 30f, 50f);
 
     [Header("Desynchronized — 추적자 범위")]
-    [SerializeField] private SpawnRange _pursuerRange = new SpawnRange(3f, 10f, 15f);
+    [SerializeField] private SpawnRange _pursuerRange = new SpawnRange(5f, 25f, 50f);
 
     [Header("Desynchronized — 도망자 범위")]
-    [SerializeField] private SpawnRange _evaderRange = new SpawnRange(3f, 10f, 15f);
+    [SerializeField] private SpawnRange _evaderRange = new SpawnRange(5f, 25f, 50f);
 
     // ───────── 프로퍼티 ───────────────────────────────────────────────────
     public SyncMode  Mode      => _syncMode;
     public RangeMode ShapeMode => _rangeMode;
+    public bool AutoSyncFromCity { get => _autoSyncFromCity; set => _autoSyncFromCity = value; }
 
     // ───────── 초기화 ─────────────────────────────────────────────────────
     private void OnEnable()
@@ -182,6 +188,62 @@ public class SpawnCenter : MonoBehaviour
             float z = UnityEngine.Random.Range(-range.Depth, range.Depth);
             return center + new Vector3(x, y, z);
         }
+    }
+
+    // ───────── City Metadata 동기화 ──────────────────────────────────────
+
+    /// <summary>
+    /// CityDataAPI에서 CityMetadata를 조회하여 SpawnRange를 자동 설정한다.
+    /// 메타데이터가 없으면 기존 SpawnRange를 유지하고 경고를 출력한다.
+    /// </summary>
+    public void SyncFromCityMetadata()
+    {
+        if (CityDataAPI.Instance == null || !CityDataAPI.Instance.HasCityMetadata())
+        {
+            Debug.LogWarning("[SpawnCenter] CityMetadata가 없습니다. 기존 SpawnRange를 유지합니다.", this);
+            return;
+        }
+
+        CityMetadata metadata = CityDataAPI.Instance.GetCityMetadata();
+        Bounds cityBounds = metadata.cityBounds;
+
+        // cityBounds 기반 SpawnRange Width/Depth/Radius 자동 설정
+        float width  = cityBounds.extents.x;
+        float depth  = cityBounds.extents.z;
+        float radius = Mathf.Max(width, depth);
+
+        // 건물 높이 범위 기반 MinY/MaxY 자동 설정
+        float minY = metadata.minBuildingHeight;
+        float maxY = metadata.maxBuildingHeight;
+
+        // 공용 범위 설정
+        _sharedRange.Width  = width;
+        _sharedRange.Depth  = depth;
+        _sharedRange.Radius = radius;
+        _sharedRange.MinY   = minY;
+        _sharedRange.MaxY   = maxY;
+
+        // Desynchronized 모드용 개별 범위도 동기화
+        _goalRange.Width    = width;
+        _goalRange.Depth    = depth;
+        _goalRange.Radius   = radius;
+        _goalRange.MinY     = minY;
+        _goalRange.MaxY     = maxY;
+
+        _pursuerRange.Width  = width;
+        _pursuerRange.Depth  = depth;
+        _pursuerRange.Radius = radius;
+        _pursuerRange.MinY   = minY;
+        _pursuerRange.MaxY   = maxY;
+
+        _evaderRange.Width  = width;
+        _evaderRange.Depth  = depth;
+        _evaderRange.Radius = radius;
+        _evaderRange.MinY   = minY;
+        _evaderRange.MaxY   = maxY;
+
+        // Transform 위치를 cityBounds.center로 이동
+        transform.position = cityBounds.center;
     }
 
     // ───────── Editor 디버그 기즈모 ───────────────────────────────────────

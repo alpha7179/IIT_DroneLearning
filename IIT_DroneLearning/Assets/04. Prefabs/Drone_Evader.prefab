@@ -24,8 +24,9 @@ GameObject:
   - component: {fileID: 7705640526302370794}
   - component: {fileID: 575102615393296454}
   - component: {fileID: 1038574732006788123}
-  - component: {fileID: 843852092141821537}
   - component: {fileID: 228914259581343460}
+  - component: {fileID: 843852092141821537}
+  - component: {fileID: 7913878300365366253}
   m_Layer: 0
   m_Name: Drone_Evader
   m_TagString: Evader
@@ -45,8 +46,7 @@ Transform:
   m_LocalPosition: {x: 0, y: 4, z: 1}
   m_LocalScale: {x: 0.5, y: 0.2, z: 0.5}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 8077858633134505967}
+  m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &4627633348043069059
@@ -433,25 +433,6 @@ MonoBehaviour:
   m_Grayscale: 0
   m_ObservationStacks: 1
   m_Compression: 1
---- !u!114 &843852092141821537
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 204724630800921030}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cb1361041104a1c49a9aaad7ea091606, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _goalShapingCoeff: 0.3
-  _survivalRewardPerStep: 0
-  _occlusionBonus: 0
-  _yawAlignCoeff: 0.001
-  _velAlignCoeff: 0.01
-  _maxObsSpeed: 10
-  _timePenaltyPerStep: -0.001
 --- !u!114 &228914259581343460
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -489,77 +470,37 @@ MonoBehaviour:
   _queriedRadius: 0
   _maxDistance: 50
   _maxObsSpeed: 10
---- !u!1001 &2927066025834241295
-PrefabInstance:
+--- !u!114 &843852092141821537
+MonoBehaviour:
   m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 3682230463806051350}
-    m_Modifications:
-    - target: {fileID: 6091359780857480971, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_Name
-      value: AllowMark
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 3
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 1.2
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 3
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 1.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
---- !u!4 &8077858633134505967 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 6378599736093123296, guid: 2ac203bba62780443b8ecf2638dfc9fc, type: 3}
-  m_PrefabInstance: {fileID: 2927066025834241295}
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 204724630800921030}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cb1361041104a1c49a9aaad7ea091606, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _goalShapingCoeff: 0.3
+  _survivalRewardPerStep: 0
+  _occlusionBonus: 0
+  _yawAlignCoeff: 0.001
+  _velAlignCoeff: 0.01
+  _maxObsSpeed: 10
+  _timePenaltyPerStep: -0.001
+--- !u!114 &7913878300365366253
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 204724630800921030}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 787f925086a4c784a9c814ecd29b0764, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  markerPrefab: {fileID: 2134145453705049197, guid: 57dbc73ad2ef45f4782778a4a87975b5, type: 3}
+  markerHeight: 50
+  markerName: 
