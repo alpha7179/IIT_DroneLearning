@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 namespace DroneCamera
 {
@@ -382,6 +383,13 @@ namespace DroneCamera
         // 카메라 생성
         // ────────────────────────────────────────────
 
+        /// <summary>탑뷰 카메라의 그림자 렌더링을 비활성화해 CPU/GPU 부하를 줄인다.</summary>
+        private static void DisableShadows(Camera cam)
+        {
+            var urpData = cam.GetUniversalAdditionalCameraData();
+            if (urpData != null) urpData.renderShadows = false;
+        }
+
         private void CreateTopViewCameras()
         {
             // 다중뷰 분할용 (Display 1)
@@ -394,6 +402,7 @@ namespace DroneCamera
             _topViewCameraMulti.orthographicSize = topViewOrthoSize;
             _topViewCameraMulti.targetDisplay    = DisplayMultiView;
             _topViewCameraMulti.enabled          = false;
+            DisableShadows(_topViewCameraMulti);
 
             // 탑뷰 단독 전체 화면 (Display 3)
             var goSolo = new GameObject("TopView_Camera_Solo");
@@ -405,6 +414,7 @@ namespace DroneCamera
             _topViewCameraSolo.orthographicSize = topViewOrthoSize;
             _topViewCameraSolo.targetDisplay    = DisplayTopView;
             _topViewCameraSolo.enabled          = false;
+            DisableShadows(_topViewCameraSolo);
         }
 
         private void CreateBatchTopViewCamera()
@@ -419,6 +429,7 @@ namespace DroneCamera
             _batchTopViewCamera.orthographicSize = topViewOrthoSize;
             _batchTopViewCamera.targetDisplay    = DisplayMultiView;
             _batchTopViewCamera.enabled          = false;
+            DisableShadows(_batchTopViewCamera);
         }
 
         // ────────────────────────────────────────────

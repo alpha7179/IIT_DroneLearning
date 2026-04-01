@@ -56,6 +56,9 @@ namespace CityGenerator
         // 스폰/타겟 포인트 구성
         private SpawnConfiguration spawnConfiguration;
 
+        // 도시 메타데이터
+        private CityMetadata cityMetadata;
+
         /// <summary>
         /// Unity Awake 메서드
         /// 싱글톤 인스턴스를 설정합니다.
@@ -634,6 +637,64 @@ namespace CityGenerator
         /// 스폰/타겟 포인트 전체 구성을 반환합니다.
         /// </summary>
         public SpawnConfiguration GetSpawnConfiguration() => spawnConfiguration;
+
+        /// <summary>
+        /// 도시 메타데이터를 저장합니다.
+        /// </summary>
+        /// <param name="metadata">저장할 CityMetadata 객체</param>
+        public void SetCityMetadata(CityMetadata metadata)
+        {
+            cityMetadata = metadata;
+        }
+
+        /// <summary>
+        /// 저장된 도시 메타데이터를 반환합니다.
+        /// </summary>
+        /// <returns>저장된 CityMetadata 객체. 없으면 null</returns>
+        public CityMetadata GetCityMetadata()
+        {
+            return cityMetadata;
+        }
+
+        /// <summary>
+        /// 도시 메타데이터가 존재하는지 확인합니다.
+        /// </summary>
+        /// <returns>메타데이터가 존재하면 true</returns>
+        public bool HasCityMetadata()
+        {
+            return cityMetadata != null;
+        }
+
+        /// <summary>
+        /// CityMetadata에 캐싱된 유효 스폰 후보 노드 목록을 반환합니다.
+        /// </summary>
+        /// <returns>유효 스폰 후보 노드 리스트. 메타데이터가 없으면 null</returns>
+        public List<GraphNode> GetValidSpawnCandidates()
+        {
+            return cityMetadata?.validSpawnCandidates;
+        }
+
+        /// <summary>
+        /// 도시 경계 Bounds를 반환합니다.
+        /// </summary>
+        /// <returns>도시 경계 Bounds. 메타데이터가 없으면 기본 Bounds</returns>
+        public Bounds GetCityBounds()
+        {
+            return cityMetadata?.cityBounds ?? default;
+        }
+
+        /// <summary>
+        /// 건물 높이 범위(min, max)를 반환합니다.
+        /// </summary>
+        /// <returns>건물 높이 범위 튜플 (min, max)</returns>
+        public (float min, float max) GetBuildingHeightRange()
+        {
+            if (cityMetadata == null)
+            {
+                return (0f, 0f);
+            }
+            return (cityMetadata.minBuildingHeight, cityMetadata.maxBuildingHeight);
+        }
 
         /// <summary>
         /// 두 위치 간의 가시성을 확인합니다.

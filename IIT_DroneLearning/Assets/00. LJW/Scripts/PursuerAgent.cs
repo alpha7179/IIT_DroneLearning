@@ -127,7 +127,12 @@ public class PursuerAgent : DroneAgent
         ResolveTargetTransform();
         ResolveTrackingCamera();
 
-        if (SpawnCenter.Current != null)
+        // 코디네이터가 이미 계산했으면 결과 사용, 아니면 SpawnCenter 직접 사용
+        if (EpisodeSpawnCoordinator.Instance != null && EpisodeSpawnCoordinator.Instance.IsComputed)
+        {
+            transform.position = EpisodeSpawnCoordinator.Instance.GetSpawnPosition(gameObject);
+        }
+        else if (SpawnCenter.Current != null)
         {
             var range = SpawnCenter.Current.GetPursuerSpawnRange();
             transform.position = SpawnCenter.Current.GetRandomPosition(range);
@@ -352,7 +357,12 @@ public class PursuerAgent : DroneAgent
         ResolveTargetTransform();
         ResolveTrackingCamera();
 
-        if (SpawnCenter.Current != null)
+        // 코디네이터가 이미 계산했으면 결과 사용, 아니면 SpawnCenter 직접 사용
+        if (EpisodeSpawnCoordinator.Instance != null && EpisodeSpawnCoordinator.Instance.IsComputed)
+        {
+            transform.position = EpisodeSpawnCoordinator.Instance.GetSpawnPosition(gameObject);
+        }
+        else if (SpawnCenter.Current != null)
         {
             var range = SpawnCenter.Current.GetPursuerSpawnRange();
             transform.position = SpawnCenter.Current.GetRandomPosition(range);

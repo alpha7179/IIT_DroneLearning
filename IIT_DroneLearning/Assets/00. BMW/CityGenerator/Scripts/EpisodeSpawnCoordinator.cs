@@ -17,7 +17,8 @@ using CityGenerator;
 ///   _pursuerTag : "Pursuer" (기본)
 ///
 /// 스폰 전략 (SpawnStrategy):
-///   SpawnCenterRandom : SpawnCenter 범위 내 랜덤 (기본)
+///   CityMetadata      : CityMetadata 기반 에피소드별 동적 스폰 (기본 권장)
+///   SpawnCenterRandom : SpawnCenter 범위 내 랜덤
 ///   CityDataAPI       : CityDataAPI 스폰 설정 사용 (다수 드론 시 SpawnCenter 폴백)
 ///   Fallback          : Inspector 범위 내 랜덤
 ///
@@ -37,12 +38,14 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
     // ───────── 스폰 전략 ──────────────────────────────────────────────────
     public enum SpawnStrategy
     {
-        [Tooltip("SpawnCenter 범위 내 랜덤 스폰 (기본 권장)")]
-        SpawnCenterRandom,
-        [Tooltip("CityDataAPI 스폰 설정 사용. 다수 드론이면 SpawnCenter 폴백.")]
-        CityDataAPI,
+        [Tooltip("SpawnCenter 범위 내 랜덤 스폰")]
+        SpawnCenterRandom = 0,
+        [Tooltip("CityDataAPI 고정 스폰 설정 사용. 다수 드론이면 SpawnCenter 폴백.")]
+        CityDataAPI = 1,
         [Tooltip("SpawnCenter/CityDataAPI 없을 때 Inspector 설정 범위 내 랜덤")]
-        Fallback,
+        Fallback = 2,
+        [Tooltip("CityMetadata 기반 에피소드별 동적 스폰 (기본 권장)")]
+        CityMetadata = 3,
     }
 
     // ───────── 스폰 결과 구조체 ───────────────────────────────────────────
@@ -68,15 +71,21 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
 
     [Header("Spawn Coordinator — Separation")]
     [Tooltip("이미 배치된 모든 위치로부터 유지해야 할 최소 이격 거리 (m)")]
-    [SerializeField] private float _minSeparation = 5f;
+    [SerializeField] private float _minSeparation = 10f;
     [Tooltip("이격 거리 미충족 시 재시도 최대 횟수")]
     [SerializeField] private int   _maxRetry      = 20;
+
+    [Header("Spawn Coordinator — Spawn Height (CityMetadata 전략)")]
+    [Tooltip("CityMetadata 전략에서 노드 고도(elevation) 기준 최저 스폰 높이 (m)")]
+    [SerializeField] private float _minSpawnHeight = 5f;
+    [Tooltip("CityMetadata 전략에서 노드 고도(elevation) 기준 최고 스폰 높이 (m)")]
+    [SerializeField] private float _maxSpawnHeight = 25f;
 
     [Header("Spawn Coordinator — Fallback Range (SpawnCenter 없을 때)")]
     [Tooltip("폴백 XZ 랜덤 스폰 반폭 (m)")]
     [SerializeField] private float _fallbackRange  = 10f;
     [Tooltip("폴백 스폰 고도 (Y, m)")]
-    [SerializeField] private float _fallbackHeight = 5f;
+    [SerializeField] private float _fallbackHeight = 15f;
 
     [Header("Spawn Coordinator — Debug (읽기 전용)")]
     [SerializeField] private int  _debugEvaderCount;
@@ -104,6 +113,7 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
     public bool IsComputed   => _isComputed;
     public int  EvaderCount  => _evaderObjects.Count;
     public int  PursuerCount => _pursuerObjects.Count;
+    public SpawnStrategy Strategy { get => _strategy; set => _strategy = value; }
 
     // ───────── 초기화 ─────────────────────────────────────────────────────
     private void Awake()
@@ -126,6 +136,8 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
     {
         _minSeparation  = Mathf.Max(0f,  _minSeparation);
         _maxRetry       = Mathf.Max(1,   _maxRetry);
+        _minSpawnHeight = Mathf.Max(0f,  _minSpawnHeight);
+        _maxSpawnHeight = Mathf.Max(_minSpawnHeight, _maxSpawnHeight);
         _fallbackRange  = Mathf.Max(1f,  _fallbackRange);
         _fallbackHeight = Mathf.Max(0f,  _fallbackHeight);
     }
@@ -147,8 +159,20 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
         _spawnMap.Clear();
         _occupiedPositions.Clear();
 
+        // SpawnCenter AutoSyncFromCity 활성화 시 도시 메타데이터 동기화
+        if (SpawnCenter.Current != null && SpawnCenter.Current.AutoSyncFromCity)
+        {
+            SpawnCenter.Current.SyncFromCityMetadata();
+        }
+
+        // CityMetadata 전략은 Goal 위치를 내부에서 처리하므로 별도 플래그로 분기
+        bool goalHandledByStrategy = false;
+
         switch (_strategy)
         {
+            case SpawnStrategy.CityMetadata:
+                goalHandledByStrategy = ComputeCityMetadataWithFallback();
+                break;
             case SpawnStrategy.SpawnCenterRandom:
                 ComputeFromSpawnCenter();
                 break;
@@ -160,9 +184,12 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
                 break;
         }
 
-        // Goal 위치 계산 후 Goal에 직접 적용
-        _goalResult = ComputeGoalPosition();
-        Goal.Current?.ApplySpawnPosition(_goalResult.Position);
+        // CityMetadata 전략이 Goal을 직접 처리하지 않은 경우에만 기존 Goal 로직 실행
+        if (!goalHandledByStrategy)
+        {
+            _goalResult = ComputeGoalPosition();
+            Goal.Current?.ApplySpawnPosition(_goalResult.Position);
+        }
 
         _isComputed        = true;
         _debugEvaderCount  = _evaderObjects.Count;
@@ -244,6 +271,47 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
 
     // ───────── 전략별 계산 ────────────────────────────────────────────────
 
+    /// <summary>
+    /// CityMetadata 전략의 유효성 검사 및 폴백 처리.
+    /// 모든 검증을 통과하면 ComputeFromCityMetadata()를 호출하고 true를 반환한다 (Goal 포함 처리).
+    /// 폴백 발생 시 false를 반환하여 기존 Goal 로직이 실행되도록 한다.
+    /// </summary>
+    /// <returns>true: CityMetadata 전략이 Goal을 포함하여 처리함, false: 폴백 발생</returns>
+    private bool ComputeCityMetadataWithFallback()
+    {
+        // 1. CityDataAPI 인스턴스 존재 여부 확인
+        if (CityDataAPI.Instance == null)
+        {
+            Debug.LogWarning("[EpisodeSpawnCoordinator] CityDataAPI 인스턴스가 없습니다. Fallback으로 전환합니다.", this);
+            ComputeFallback();
+            return false;
+        }
+
+        // 2. CityMetadata 유효성 확인
+        if (!CityDataAPI.Instance.HasCityMetadata())
+        {
+            Debug.LogWarning("[EpisodeSpawnCoordinator] CityMetadata가 유효하지 않습니다. SpawnCenterRandom으로 폴백합니다.", this);
+            ComputeFromSpawnCenter();
+            return false;
+        }
+
+        // 3. validSpawnCandidates 확인
+        var candidates = CityDataAPI.Instance.GetValidSpawnCandidates();
+        int totalDrones = _evaderObjects.Count + _pursuerObjects.Count;
+        int requiredPositions = totalDrones + 1; // +1 for Goal
+
+        if (candidates == null || candidates.Count == 0 || candidates.Count < requiredPositions)
+        {
+            Debug.LogWarning($"[EpisodeSpawnCoordinator] validSpawnCandidates가 부족합니다 ({candidates?.Count ?? 0}개 < {requiredPositions}개 필요). SpawnCenterRandom으로 폴백합니다.", this);
+            ComputeFromSpawnCenter();
+            return false;
+        }
+
+        // 모든 검증 통과 — CityMetadata 전략 실행 (Goal 포함)
+        ComputeFromCityMetadata();
+        return true;
+    }
+
     private void ComputeFromSpawnCenter()
     {
         if (SpawnCenter.Current == null)
@@ -294,6 +362,189 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
             var pos    = CityDataAPI.Instance.GetPursuerSpawnPosition();
             _spawnMap[_pursuerObjects[0]] = new SpawnResult { Position = pos, YawDegrees = RandomYaw() };
             _occupiedPositions.Add(pos);
+        }
+    }
+
+    /// <summary>
+    /// CityMetadata 기반 에피소드별 동적 스폰 계산.
+    /// 유효 스폰 후보 노드에서 경계 후보를 우선 추출하여 Evader/Pursuer를 배치하고,
+    /// 나머지 후보에서 Goal을 선택한다. 모든 위치 간 _minSeparation 이격 거리를 보장한다.
+    /// </summary>
+    private void ComputeFromCityMetadata()
+    {
+        // 1. CityMetadata 조회
+        CityMetadata metadata = CityDataAPI.Instance.GetCityMetadata();
+        List<GraphNode> allCandidates = metadata.validSpawnCandidates;
+
+        int totalDrones = _evaderObjects.Count + _pursuerObjects.Count;
+        int requiredPositions = totalDrones + 1; // +1 for Goal
+
+        if (allCandidates == null || allCandidates.Count < requiredPositions)
+        {
+            Debug.LogWarning($"[EpisodeSpawnCoordinator] CityMetadata 유효 후보 노드가 부족합니다 ({allCandidates?.Count ?? 0}개 < {requiredPositions}개 필요). SpawnCenterRandom으로 폴백합니다.", this);
+            ComputeFromSpawnCenter();
+            return;
+        }
+
+        // 2. 최외각 경계 후보 추출 (GenerateSpawnConfiguration 알고리즘 통합)
+        //    유효 후보 전체의 바운딩 박스 계산 → 경계까지 거리 산출 → 상위 20%(최소 10개)
+        float bMinX = float.MaxValue, bMaxX = float.MinValue;
+        float bMinZ = float.MaxValue, bMaxZ = float.MinValue;
+        foreach (GraphNode n in allCandidates)
+        {
+            if (n.position.x < bMinX) bMinX = n.position.x;
+            if (n.position.x > bMaxX) bMaxX = n.position.x;
+            if (n.position.z < bMinZ) bMinZ = n.position.z;
+            if (n.position.z > bMaxZ) bMaxZ = n.position.z;
+        }
+
+        // 각 노드의 경계까지 최단 거리 (4방향 중 가장 가까운 쪽)
+        List<(GraphNode node, float dist)> byEdgeDist = new List<(GraphNode, float)>(allCandidates.Count);
+        foreach (GraphNode n in allCandidates)
+        {
+            float d = Mathf.Min(
+                Mathf.Min(n.position.x - bMinX, bMaxX - n.position.x),
+                Mathf.Min(n.position.z - bMinZ, bMaxZ - n.position.z)
+            );
+            byEdgeDist.Add((n, d));
+        }
+        byEdgeDist.Sort((a, b) => a.dist.CompareTo(b.dist));
+
+        // 상위 20%, 최소 10개를 경계 후보 풀로 구성
+        int perimCount = Mathf.Clamp(allCandidates.Count / 5, 10, allCandidates.Count);
+        List<GraphNode> perimCandidates = new List<GraphNode>(perimCount);
+        for (int i = 0; i < perimCount; i++)
+            perimCandidates.Add(byEdgeDist[i].node);
+
+        // 3. 경계 후보 풀 셔플 (에피소드마다 다른 결과를 위해 UnityEngine.Random 사용)
+        ShuffleList(perimCandidates);
+
+        // 4. 경계 후보에서 Evader 위치 선택 (각 드론마다 개별 노드 할당)
+        HashSet<int> usedNodeIds = new HashSet<int>();
+        float heightRange = Mathf.Max(0f, _maxSpawnHeight - _minSpawnHeight);
+
+        foreach (var go in _evaderObjects)
+        {
+            GraphNode? selected = SelectCandidateWithSeparation(perimCandidates, usedNodeIds);
+            if (!selected.HasValue)
+            {
+                // 경계 후보 소진 시 전체 후보에서 선택
+                selected = SelectCandidateWithSeparation(allCandidates, usedNodeIds);
+            }
+            if (!selected.HasValue)
+            {
+                // 이격 조건 완화: 아무 미사용 노드 선택
+                selected = SelectAnyUnusedCandidate(allCandidates, usedNodeIds);
+            }
+
+            GraphNode node = selected.Value;
+            usedNodeIds.Add(node.nodeId);
+            float y = node.elevation + _minSpawnHeight + UnityEngine.Random.Range(0f, heightRange);
+            Vector3 pos = new Vector3(node.position.x, y, node.position.z);
+            _spawnMap[go] = new SpawnResult { Position = pos, YawDegrees = RandomYaw() };
+            _occupiedPositions.Add(pos);
+        }
+
+        // 5. 경계 후보에서 Pursuer 위치 선택 (Evader와 _minSeparation 이격 보장)
+        foreach (var go in _pursuerObjects)
+        {
+            GraphNode? selected = SelectCandidateWithSeparation(perimCandidates, usedNodeIds);
+            if (!selected.HasValue)
+            {
+                selected = SelectCandidateWithSeparation(allCandidates, usedNodeIds);
+            }
+            if (!selected.HasValue)
+            {
+                selected = SelectAnyUnusedCandidate(allCandidates, usedNodeIds);
+            }
+
+            GraphNode node = selected.Value;
+            usedNodeIds.Add(node.nodeId);
+            float y = node.elevation + _minSpawnHeight + UnityEngine.Random.Range(0f, heightRange);
+            Vector3 pos = new Vector3(node.position.x, y, node.position.z);
+            _spawnMap[go] = new SpawnResult { Position = pos, YawDegrees = RandomYaw() };
+            _occupiedPositions.Add(pos);
+        }
+
+        // 6. 나머지 후보에서 Goal 위치 선택 (모든 드론과 _minSeparation 이격 보장)
+        //    전체 후보를 셔플하여 경계 후보에 편향되지 않도록 함
+        List<GraphNode> goalCandidates = new List<GraphNode>(allCandidates);
+        ShuffleList(goalCandidates);
+
+        GraphNode? goalNode = SelectCandidateWithSeparation(goalCandidates, usedNodeIds);
+        if (!goalNode.HasValue)
+        {
+            goalNode = SelectAnyUnusedCandidate(goalCandidates, usedNodeIds);
+        }
+        if (!goalNode.HasValue && goalCandidates.Count > 0)
+        {
+            // 최종 폴백: 사용된 노드라도 선택
+            goalNode = goalCandidates[0];
+        }
+
+        if (goalNode.HasValue)
+        {
+            GraphNode gn = goalNode.Value;
+            float goalY = gn.elevation + _minSpawnHeight + UnityEngine.Random.Range(0f, heightRange);
+            _goalResult = new SpawnResult
+            {
+                Position = new Vector3(gn.position.x, goalY, gn.position.z),
+                YawDegrees = 0f
+            };
+            _occupiedPositions.Add(_goalResult.Position);
+        }
+
+        // Goal 위치 적용
+        Goal.Current?.ApplySpawnPosition(_goalResult.Position);
+
+        // 디버그: 스폰 위치와 도시 경계 비교
+        Debug.Log($"[EpisodeSpawnCoordinator] CityMetadata 스폰 완료 — " +
+                  $"도시 경계: center={metadata.cityBounds.center}, size={metadata.cityBounds.size}, " +
+                  $"Evader[0]: {(_evaderObjects.Count > 0 ? GetSpawnPosition(_evaderObjects[0]).ToString() : "없음")}, " +
+                  $"Pursuer[0]: {(_pursuerObjects.Count > 0 ? GetSpawnPosition(_pursuerObjects[0]).ToString() : "없음")}, " +
+                  $"Goal: {_goalResult.Position}, " +
+                  $"후보 노드 수: {allCandidates.Count}");
+    }
+
+    /// <summary>
+    /// 후보 리스트에서 이격 조건을 만족하고 미사용인 노드를 선택한다.
+    /// </summary>
+    private GraphNode? SelectCandidateWithSeparation(List<GraphNode> candidates, HashSet<int> usedNodeIds)
+    {
+        foreach (GraphNode node in candidates)
+        {
+            if (usedNodeIds.Contains(node.nodeId)) continue;
+            Vector3 candidatePos = new Vector3(node.position.x, node.position.y, node.position.z);
+            if (IsFarEnoughFromAll(candidatePos))
+                return node;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// 이격 조건 무시, 미사용 노드 중 첫 번째를 선택한다.
+    /// </summary>
+    private GraphNode? SelectAnyUnusedCandidate(List<GraphNode> candidates, HashSet<int> usedNodeIds)
+    {
+        foreach (GraphNode node in candidates)
+        {
+            if (!usedNodeIds.Contains(node.nodeId))
+                return node;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Fisher-Yates 셔플 (UnityEngine.Random 사용).
+    /// </summary>
+    private static void ShuffleList(List<GraphNode> list)
+    {
+        for (int i = list.Count - 1; i > 0; i--)
+        {
+            int j = UnityEngine.Random.Range(0, i + 1);
+            GraphNode tmp = list[i];
+            list[i] = list[j];
+            list[j] = tmp;
         }
     }
 
