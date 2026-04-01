@@ -68,7 +68,7 @@ public class PursuerAgent : DroneAgent
 
     public override void Initialize()
     {
-        Role = DroneRole.Pursuer;
+        Role = global::DroneRole.Pursuer;
 
         _rewardCalculator = GetComponent<PursuerReward>();
         if (_rewardCalculator == null)

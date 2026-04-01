@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6770589616621649124}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Mark_Evader
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -26,7 +26,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 10.4, y: 5.2, z: 10.4}
+  m_LocalScale: {x: 5, y: 2.5, z: 5}
   m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 3684504690361499298}
@@ -47,7 +47,7 @@ GameObject:
   - component: {fileID: 4344254960252847235}
   - component: {fileID: 3165838139592674866}
   - component: {fileID: 5607652382423145092}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Cube
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -155,7 +155,7 @@ GameObject:
   - component: {fileID: 4025232265117605803}
   - component: {fileID: 338108543049811758}
   - component: {fileID: 6949425735146320256}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Cube (2)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -262,7 +262,7 @@ GameObject:
   - component: {fileID: 6352955451434090524}
   - component: {fileID: 8188015322632328497}
   - component: {fileID: 6453047858411070299}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Cylinder
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -349,7 +349,7 @@ GameObject:
   - component: {fileID: 2853035676189698493}
   - component: {fileID: 7558576662301433342}
   - component: {fileID: 239195521391401625}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Cube (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}

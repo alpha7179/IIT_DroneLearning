@@ -502,5 +502,5 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   markerPrefab: {fileID: 2134145453705049197, guid: 57dbc73ad2ef45f4782778a4a87975b5, type: 3}
-  markerHeight: 150
+  markerHeight: 50
   markerName: 
