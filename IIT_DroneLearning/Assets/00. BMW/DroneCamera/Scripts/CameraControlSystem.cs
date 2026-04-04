@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 namespace DroneCamera
 {
@@ -32,9 +33,9 @@ namespace DroneCamera
     ///   Multi Batch 시: Display 1에 BatchTopView 전체 화면, 나머지 비활성.
     ///
     /// TopView/BatchTopView 카메라는 런타임 Awake()에서 생성한다 (씬 미리 배치 불필요).
-    /// 드론 카메라는 DroneAgent.Role 리플렉션으로 자동 탐색·등록한다.
+    /// 드론 카메라는 GameObject 태그("Pursuer"/"Evader")로 자동 탐색·등록한다.
     ///
-    /// Assembly-CSharp(CityBatchGenerator, CityDataAPI, DroneAgent)는
+    /// Assembly-CSharp(CityBatchGenerator, CityDataAPI)는
     /// named assembly에서 직접 참조 불가 → 리플렉션으로 접근.
     /// </summary>
     public class CameraControlSystem : MonoBehaviour
@@ -54,6 +55,13 @@ namespace DroneCamera
 
         [Tooltip("TopView 투영 범위 여백 배수 (기본 1.1)")]
         public float topViewPaddingFactor = 1.1f;
+
+        [Header("드론 역할 태그 설정")]
+        [Tooltip("Pursuer 역할 드론에 설정된 Unity 태그")]
+        public string pursuerTag = "Pursuer";
+
+        [Tooltip("Evader 역할 드론에 설정된 Unity 태그")]
+        public string evaderTag = "Evader";
 
         [Header("카메라 레이블 설정")]
         [Tooltip("Single Batch 모드에서 각 드론 뷰 우하단에 오브젝트 명 표시")]
@@ -98,7 +106,6 @@ namespace DroneCamera
         // 리플렉션 캐시 (AppDomain 스캔 1회 후 재사용)
         private Type  _batchGenType;
         private Type  _cityGenType;
-        private Type  _droneAgentType;
         private bool  _typesResolved;
 
         // Display 인덱스 상수
@@ -376,6 +383,13 @@ namespace DroneCamera
         // 카메라 생성
         // ────────────────────────────────────────────
 
+        /// <summary>탑뷰 카메라의 그림자 렌더링을 비활성화해 CPU/GPU 부하를 줄인다.</summary>
+        private static void DisableShadows(Camera cam)
+        {
+            var urpData = cam.GetUniversalAdditionalCameraData();
+            if (urpData != null) urpData.renderShadows = false;
+        }
+
         private void CreateTopViewCameras()
         {
             // 다중뷰 분할용 (Display 1)
@@ -388,6 +402,7 @@ namespace DroneCamera
             _topViewCameraMulti.orthographicSize = topViewOrthoSize;
             _topViewCameraMulti.targetDisplay    = DisplayMultiView;
             _topViewCameraMulti.enabled          = false;
+            DisableShadows(_topViewCameraMulti);
 
             // 탑뷰 단독 전체 화면 (Display 3)
             var goSolo = new GameObject("TopView_Camera_Solo");
@@ -399,6 +414,7 @@ namespace DroneCamera
             _topViewCameraSolo.orthographicSize = topViewOrthoSize;
             _topViewCameraSolo.targetDisplay    = DisplayTopView;
             _topViewCameraSolo.enabled          = false;
+            DisableShadows(_topViewCameraSolo);
         }
 
         private void CreateBatchTopViewCamera()
@@ -413,6 +429,7 @@ namespace DroneCamera
             _batchTopViewCamera.orthographicSize = topViewOrthoSize;
             _batchTopViewCamera.targetDisplay    = DisplayMultiView;
             _batchTopViewCamera.enabled          = false;
+            DisableShadows(_batchTopViewCamera);
         }
 
         // ────────────────────────────────────────────
@@ -523,37 +540,25 @@ namespace DroneCamera
         // ────────────────────────────────────────────
 
         /// <summary>
-        /// 씬 내 모든 DroneAgent 컴포넌트를 리플렉션으로 탐색하고,
-        /// 같은 GameObject의 DroneCameraSystem을 역할에 맞게 등록한다.
-        /// DroneCameraSystem.Start()에서 등록한 것은 중복 등록되지 않는다.
+        /// 씬 내 모든 DroneCameraSystem 컴포넌트를 탐색하고,
+        /// GameObject 태그(pursuerTag / evaderTag)를 기준으로 역할을 판별해 등록한다.
+        /// DroneCameraSystem.Start()에서 이미 등록한 것은 중복 등록되지 않는다.
         /// </summary>
         private void ScanAndRegisterDroneAgents()
         {
-            if (_droneAgentType == null) return;
-
-            var roleField = _droneAgentType.GetField(
-                "Role", BindingFlags.Public | BindingFlags.Instance);
-
-            var agents = FindObjectsByType(_droneAgentType, FindObjectsSortMode.None);
-            foreach (UnityEngine.Object agentObj in agents)
+            var allCamSystems = FindObjectsByType<DroneCameraSystem>(FindObjectsSortMode.None);
+            foreach (var camSystem in allCamSystems)
             {
-                var mb = agentObj as MonoBehaviour;
-                if (mb == null) continue;
-
-                var camSystem = mb.GetComponent<DroneCameraSystem>();
-                if (camSystem == null) continue;
-
                 if (_trackerCameras.Contains(camSystem) || _evaderCameras.Contains(camSystem))
                     continue;
 
-                DroneRole role = DroneRole.Pursuer;
-                if (roleField != null)
-                {
-                    int roleValue = Convert.ToInt32(roleField.GetValue(mb));
-                    role = roleValue == 1 ? DroneRole.Evader : DroneRole.Pursuer;
-                }
-
-                RegisterDroneCamera(camSystem, role);
+                string tag = camSystem.gameObject.tag;
+                if (tag == pursuerTag)
+                    RegisterDroneCamera(camSystem, DroneRole.Pursuer);
+                else if (tag == evaderTag)
+                    RegisterDroneCamera(camSystem, DroneRole.Evader);
+                else
+                    Debug.LogWarning($"[CameraControlSystem] '{camSystem.gameObject.name}'의 태그({tag})가 pursuerTag/evaderTag와 일치하지 않아 건너뜀.");
             }
         }
 
@@ -572,9 +577,7 @@ namespace DroneCamera
                     _batchGenType = assembly.GetType("ProceduralCityGenerator.CityBatchGenerator");
                 if (_cityGenType == null)
                     _cityGenType  = assembly.GetType("ProceduralCityGenerator.CityGenerator");
-                if (_droneAgentType == null)
-                    _droneAgentType = assembly.GetType("DroneAgent");
-                if (_batchGenType != null && _cityGenType != null && _droneAgentType != null) break;
+                if (_batchGenType != null && _cityGenType != null) break;
             }
         }
 

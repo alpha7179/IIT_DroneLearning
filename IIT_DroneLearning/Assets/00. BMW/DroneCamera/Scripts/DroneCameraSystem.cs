@@ -69,6 +69,7 @@ namespace DroneCamera
             soloGO.transform.localRotation = Quaternion.identity;
             _cameraTransform = soloGO.transform;
             Camera = soloGO.AddComponent<Camera>();
+            ExcludeMarkLayer(Camera);
             ApplyCameraSettings();
 
             // 다중뷰(Display 1) 분할용 카메라
@@ -79,9 +80,18 @@ namespace DroneCamera
             MultiViewCamera = multiGO.AddComponent<Camera>();
             MultiViewCamera.targetDisplay = 0;
             MultiViewCamera.enabled = false;
+            ExcludeMarkLayer(MultiViewCamera);
             ApplyCameraSettingsTo(MultiViewCamera);
 
             ApplyCameraPosition();
+        }
+
+        /// <summary>"Mark" 레이어를 카메라 cullingMask에서 제거한다.</summary>
+        private static void ExcludeMarkLayer(Camera cam)
+        {
+            int markLayer = LayerMask.NameToLayer("Mark");
+            if (markLayer < 0) return;  // 레이어 미존재 시 무시
+            cam.cullingMask &= ~(1 << markLayer);
         }
 
         private void LateUpdate()
@@ -211,10 +221,12 @@ namespace DroneCamera
         {
             foreach (var comp in GetComponents<MonoBehaviour>())
             {
-                if (comp == null || comp.GetType().Name != "DroneAgent") continue;
+                if (comp == null || !IsDroneAgentComponent(comp.GetType())) continue;
 
-                var roleField = comp.GetType().GetField(
-                    "Role", BindingFlags.Public | BindingFlags.Instance);
+                var roleField = FindFieldInHierarchy(
+                    comp.GetType(),
+                    "Role",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                 if (roleField == null) break;
 
                 // DroneRole enum: Pursuer = 0, Evader = 1
@@ -222,6 +234,27 @@ namespace DroneCamera
                 return roleValue == 1 ? DroneRole.Evader : DroneRole.Pursuer;
             }
             return DroneRole.Pursuer; // DroneAgent 미존재 시 기본값
+        }
+
+        private static bool IsDroneAgentComponent(Type type)
+        {
+            while (type != null)
+            {
+                if (type.Name == "DroneAgent") return true;
+                type = type.BaseType;
+            }
+            return false;
+        }
+
+        private static FieldInfo FindFieldInHierarchy(Type type, string fieldName, BindingFlags flags)
+        {
+            while (type != null)
+            {
+                var field = type.GetField(fieldName, flags | BindingFlags.DeclaredOnly);
+                if (field != null) return field;
+                type = type.BaseType;
+            }
+            return null;
         }
     }
 }

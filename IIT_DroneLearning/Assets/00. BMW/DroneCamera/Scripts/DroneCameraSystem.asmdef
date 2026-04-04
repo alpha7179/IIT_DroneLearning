@@ -2,7 +2,8 @@
     "name": "DroneCameraSystem",
     "rootNamespace": "DroneCamera",
     "references": [
-        "DroneSensorSystem"
+        "DroneSensorSystem",
+        "Unity.RenderPipelines.Universal.Runtime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

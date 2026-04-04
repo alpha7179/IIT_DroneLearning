@@ -1,15 +1,15 @@
-﻿using UnityEngine;
+using UnityEngine;
 using Unity.MLAgents;
 using Unity.MLAgents.Sensors;
 using Unity.MLAgents.Actuators;
 using DroneSensor;
 using CityGenerator;
 
-/// <summary>드론 역할 — Inspector에서 선택</summary>
+/// <summary>?쒕줎 ??븷 ??Inspector?먯꽌 ?좏깮</summary>
 public enum DroneRole
 {
-    Pursuer,  // 추격 드론 — GetPursuerSpawnPosition()
-    Evader,   // 도망 드론 — GetEvaderSpawnPosition()
+    Pursuer,  // 異붽꺽 ?쒕줎 ??GetPursuerSpawnPosition()
+    Evader,   // ?꾨쭩 ?쒕줎 ??GetEvaderSpawnPosition()
 }
 
 /// <summary>
@@ -24,7 +24,7 @@ public class DroneAgent : Agent
     public Transform GoalTransform;
 
     [Header("Role")]
-    [Tooltip("Pursuer: 추격 드론 스폰 위치 사용\nEvader: 도망 드론 스폰 위치 사용")]
+    [Tooltip("Pursuer: 異붽꺽 ?쒕줎 ?ㅽ룿 ?꾩튂 ?ъ슜\nEvader: ?꾨쭩 ?쒕줎 ?ㅽ룿 ?꾩튂 ?ъ슜")]
     public DroneRole Role = DroneRole.Pursuer;
 
     [Header("Episode Spawn")]
@@ -46,15 +46,33 @@ public class DroneAgent : Agent
     protected override void Awake()
     {
         base.Awake();
+
+        // ?쒕툕?대옒??EvaderAgent ??媛 媛숈? 媛앹껜???덉쑝硫?DroneAgent(踰좎씠????鍮꾪솢?깊솕
+        if (GetType() == typeof(DroneAgent))
+        {
+            var agents = GetComponents<DroneAgent>();
+            foreach (var agent in agents)
+            {
+                if (agent != this && agent.GetType() != typeof(DroneAgent))
+                {
+                    Debug.LogWarning(
+                        $"[DroneAgent] '{agent.GetType().Name}'??媛숈? 媛앹껜???덉뒿?덈떎. " +
+                        $"DroneAgent(踰좎씠??瑜?鍮꾪솢?깊솕?⑸땲??", this);
+                    enabled = false;
+                    return;
+                }
+            }
+        }
+
         _rb           = GetComponent<Rigidbody>();
         _dronePhysics = GetComponent<DronePhysics>();
         _sensorSystem = GetComponent<DroneSensorSystem>();
     }
 
-    /// <summary>DronePhysics 컴포넌트가 준비되었는지 확인 — 서브클래스 null 가드용</summary>
+    /// <summary>DronePhysics 而댄룷?뚰듃媛 以鍮꾨릺?덈뒗吏 ?뺤씤 ???쒕툕?대옒??null 媛?쒖슜</summary>
     protected bool IsDroneReady() => _dronePhysics != null;
 
-    /// <summary>Rigidbody 속도 초기화 + DronePhysics 내부 상태 초기화</summary>
+    /// <summary>Rigidbody ?띾룄 珥덇린??+ DronePhysics ?대? ?곹깭 珥덇린??/summary>
     protected void ResetPhysicsState()
     {
         if (_rb != null)
@@ -84,7 +102,7 @@ public class DroneAgent : Agent
 
         _dronePhysics.ResetPhysics();
 
-        // CityGenerator 연동: Role에 따라 스폰 위치 자동 선택
+        // CityGenerator ?곕룞: Role???곕씪 ?ㅽ룿 ?꾩튂 ?먮룞 ?좏깮
         if (CityDataAPI.Instance != null && CityDataAPI.Instance.HasSpawnConfiguration())
         {
             Vector3 spawnPos = Role == DroneRole.Evader
@@ -98,7 +116,7 @@ public class DroneAgent : Agent
             return;
         }
 
-        // 폴백: CityDataAPI 없을 때 랜덤 스폰
+        // ?대갚: CityDataAPI ?놁쓣 ???쒕뜡 ?ㅽ룿
         transform.SetPositionAndRotation(
             new Vector3(
                 Random.Range(-SpawnRangeX, SpawnRangeX),
@@ -177,30 +195,38 @@ public class DroneAgent : Agent
     {
         var ca = actionsOut.ContinuousActions;
 
-        // QE: 상승/하강 (고도 setpoint 조절)
         float thrust = 0f;
         if (Input.GetKey(KeyCode.E)) thrust += ManualThrottle;
         if (Input.GetKey(KeyCode.Q)) thrust -= ManualThrottle;
 
-        // WASD: 월드 기준 동/서/남/북 이동 입력
+        Transform reference = transform;
+        var droneCameraSystem = GetComponent<DroneCamera.DroneCameraSystem>();
+        if (droneCameraSystem != null && droneCameraSystem.Camera != null)
+            reference = droneCameraSystem.Camera.transform;
+
+        Vector3 referenceForward = Vector3.ProjectOnPlane(reference.forward, Vector3.up);
+        Vector3 referenceRight = Vector3.ProjectOnPlane(reference.right, Vector3.up);
+
+        if (referenceForward.sqrMagnitude < 1e-6f) referenceForward = transform.forward;
+        if (referenceRight.sqrMagnitude < 1e-6f) referenceRight = transform.right;
+
+        referenceForward.Normalize();
+        referenceRight.Normalize();
+
         Vector3 worldMove = Vector3.zero;
-        if (Input.GetKey(KeyCode.W)) worldMove += Vector3.forward;   // North(+Z)
-        if (Input.GetKey(KeyCode.S)) worldMove += Vector3.back;      // South(-Z)
-        if (Input.GetKey(KeyCode.D)) worldMove += Vector3.right;      // East(+X)
-        if (Input.GetKey(KeyCode.A)) worldMove += Vector3.left;       // West(-X)
+        if (Input.GetKey(KeyCode.W)) worldMove += referenceForward;
+        if (Input.GetKey(KeyCode.S)) worldMove -= referenceForward;
+        if (Input.GetKey(KeyCode.D)) worldMove += referenceRight;
+        if (Input.GetKey(KeyCode.A)) worldMove -= referenceRight;
 
         if (worldMove.sqrMagnitude > 1f)
             worldMove.Normalize();
 
-        // 드론 헤딩 기준으로 변환해 로컬 롤/피치 입력으로 매핑
-        Vector3 localMove = Quaternion.Euler(0f, -transform.eulerAngles.y, 0f) * worldMove;
+        Vector3 localMove = transform.InverseTransformDirection(worldMove);
 
-        float roll = 0f;
-        float pitch = 0f;
-        roll = Mathf.Clamp(localMove.x * ManualAttitude, -1f, 1f);
-        pitch = Mathf.Clamp(localMove.z * ManualAttitude, -1f, 1f);
+        float roll = Mathf.Clamp(localMove.x * ManualAttitude, -1f, 1f);
+        float pitch = Mathf.Clamp(localMove.z * ManualAttitude, -1f, 1f);
 
-        // 좌우 화살표: yaw 회전
         float yaw = 0f;
         if (Input.GetKey(KeyCode.RightArrow)) yaw += ManualYawRate;
         if (Input.GetKey(KeyCode.LeftArrow)) yaw -= ManualYawRate;

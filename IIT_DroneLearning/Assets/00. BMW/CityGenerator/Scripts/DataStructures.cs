@@ -197,6 +197,47 @@ namespace CityGenerator
     }
 
     /// <summary>
+    /// 도시 생성 결과에서 추출된 구조적 메타데이터.
+    /// 도시 경계, 건물 목록, 도로 그래프, 높이 범위, 전략적 위치 등을 포함한다.
+    /// </summary>
+    [Serializable]
+    public class CityMetadata
+    {
+        /// <summary>도시 전체 경계 박스</summary>
+        public Bounds cityBounds;
+
+        /// <summary>격자 가로 크기</summary>
+        public int actualCityWidth;
+
+        /// <summary>격자 세로 크기</summary>
+        public int actualCityDepth;
+
+        /// <summary>건물 최소 높이</summary>
+        public float minBuildingHeight;
+
+        /// <summary>건물 최대 높이</summary>
+        public float maxBuildingHeight;
+
+        /// <summary>건물 목록 참조</summary>
+        public List<Building> buildings;
+
+        /// <summary>도로 그래프 참조</summary>
+        public CityGraph cityGraph;
+
+        /// <summary>전략적 위치 목록 참조</summary>
+        public List<StrategicLocation> strategicLocations;
+
+        /// <summary>유효 스폰 후보 노드 (캐싱)</summary>
+        public List<GraphNode> validSpawnCandidates;
+
+        /// <summary>도시 생성에 사용된 랜덤 시드</summary>
+        public int usedRandomSeed;
+
+        /// <summary>레이아웃 모드</summary>
+        public CityLayoutMode layoutMode;
+    }
+
+    /// <summary>
     /// 도시 생성 결과를 저장하는 클래스
     /// </summary>
     [Serializable]

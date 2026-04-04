@@ -1,0 +1,519 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &2122550159195634066
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8226592382589048873}
+  - component: {fileID: 4605023639661063068}
+  - component: {fileID: 3970504133613727843}
+  - component: {fileID: 8283801511516845724}
+  - component: {fileID: 3760625830277518473}
+  - component: {fileID: 5169550826760657835}
+  - component: {fileID: 5911044939866958618}
+  - component: {fileID: 3228643152767864806}
+  - component: {fileID: 3989681212174470686}
+  - component: {fileID: 7364901567956186541}
+  - component: {fileID: 5019654754672498354}
+  - component: {fileID: 4482551604512469273}
+  - component: {fileID: 4962517543862715910}
+  - component: {fileID: 8570746583643374885}
+  - component: {fileID: 2208481655503801209}
+  - component: {fileID: 2597808953234514227}
+  - component: {fileID: 8296188788099626490}
+  - component: {fileID: 6249942861304372141}
+  - component: {fileID: 1804533257203389816}
+  m_Layer: 0
+  m_Name: Drone_Pursuer
+  m_TagString: Pursuer
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8226592382589048873
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122550159195634066}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 4, z: 1}
+  m_LocalScale: {x: 0.5, y: 0.2, z: 0.5}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!33 &4605023639661063068
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122550159195634066}
+  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!23 &3970504133613727843
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122550159195634066}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: eb0c735582027684b87e6079d678ce2c, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!65 &8283801511516845724
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122550159195634066}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!65 &3760625830277518473
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122550159195634066}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!54 &5169550826760657835
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122550159195634066}
+  serializedVersion: 4
+  m_Mass: 1
+  m_Drag: 0
+  m_AngularDrag: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 0
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0
+--- !u!114 &5911044939866958618
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122550159195634066}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5d1c4e0b1822b495aa52bc52839ecb30, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_BrainParameters:
+    VectorObservationSize: 44
+    NumStackedVectorObservations: 1
+    m_ActionSpec:
+      m_NumContinuousActions: 4
+      BranchSizes: 
+    VectorActionSize: 04000000
+    VectorActionDescriptions: []
+    VectorActionSpaceType: 1
+    hasUpgradedBrainParametersWithActionSpec: 1
+  m_Model: {fileID: 5022602860645237092, guid: 55116c1f6b3f470ea2b384dcfc18b2f4, type: 3}
+  m_InferenceDevice: 0
+  m_BehaviorType: 2
+  m_BehaviorName: Drone_Pursuer
+  TeamId: 0
+  m_UseChildSensors: 1
+  m_UseChildActuators: 1
+  m_DeterministicInference: 0
+  m_ObservableAttributeHandling: 0
+--- !u!114 &3228643152767864806
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122550159195634066}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  DecisionPeriod: 5
+  DecisionStep: 0
+  TakeActionsBetweenDecisions: 1
+--- !u!114 &3989681212174470686
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122550159195634066}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3fbf460b8a977a543affa53045a7f88a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Mass: 1
+  LinearDrag: 0.3
+  AngularDrag: 1.5
+  MaxAngularVelocityDeg: 720
+  MaxMotorThrust: 6
+  ArmLength: 0.25
+  AutoFitMotorLayoutFromCollider: 1
+  MotorHeightOffset: -0.02
+  MinAltitude: 1
+  MaxAltitude: 30
+  MaxAltitudeStep: 2
+  AltDeadband: 0.03
+  AltVelocityDamping: 1.2
+  MaxHorizontalSpeed: 8
+  MaxVerticalSpeed: 5
+  EnableZeroInputHorizontalDamping: 1
+  ZeroInputCommandDeadzone: 0.05
+  ZeroInputHorizontalDamping: 1.2
+  MaxRollAngle: 20
+  MaxPitchAngle: 20
+  MaxYawRateDeg: 45
+  MaxRollTorque: 5
+  MaxPitchTorque: 5
+  MaxYawTorque: 3
+  AttitudeDeadbandDeg: 0.6
+  YawDeadbandDeg: 0.8
+  RollRateDamping: 0.12
+  PitchRateDamping: 0.12
+  YawRateDamping: 0.03
+  AltKp: 5.5
+  AltKi: 0.25
+  AltKd: 2.4
+  RollKp: 4
+  RollKi: 0.05
+  RollKd: 0.8
+  PitchKp: 4
+  PitchKi: 0.05
+  PitchKd: 0.8
+  YawKp: 3
+  YawKi: 0.02
+  YawKd: 0.5
+  EnableAntiWindup: 1
+  _legacyMaxThrust: 20
+  _legacyThrustGain: 8
+  _legacyMaxRollRate: 3
+  _legacyMaxPitchRate: 3
+  _legacyMaxYawRate: 2
+  _legacySmoothFactor: 0.15
+  _legacyAttitudeKp: 3
+  _legacyMaxAttitudeRateCmd: 2
+  _legacyMigrationVersion: 0
+--- !u!114 &7364901567956186541
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122550159195634066}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10acd633fa6b1e0408524d7b8cdebc1d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  MaxDetectionRange: 50
+  TopMiddleElevation: 45
+  MiddleBottomElevation: -45
+  DetectionLayerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  EnableTop: 1
+  TopMiddleMode: 8
+  MiddleMode: 8
+  MiddleBottomMode: 8
+  EnableBottom: 1
+  ShowDebugRays: 1
+  RayHitColor: {r: 1, g: 0, b: 0, a: 1}
+  RayMissColor: {r: 0, g: 1, b: 0, a: 1}
+--- !u!114 &5019654754672498354
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122550159195634066}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9192412083e7d914eb27b6f826658db0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  cameraLateralOffset: {x: 0, y: 0}
+  cameraDistance: 0.5
+  fieldOfView: 90
+  nearClipPlane: 0.1
+  farClipPlane: 500
+--- !u!114 &4482551604512469273
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122550159195634066}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8ceb6eb63c79c9e4ea60d3269df3eb31, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  enableCapture: 0
+  captureInterval: 5
+  captureRGB: 1
+  captureDepth: 0
+  captureWidth: 720
+  captureHeight: 480
+  captureFovOverride: 120
+  imageFormat: 1
+  jpgQuality: 85
+  basePath: CapturedData
+  filePrefix: 
+  saveMetadata: 1
+  includeRayDistances: 1
+  saveEpisodeSummary: 1
+  maxAsyncRequests: 3
+  deleteOnPlayModeExit: 0
+  logCaptureEvents: 0
+  showCaptureStatus: 0
+--- !u!114 &4962517543862715910
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122550159195634066}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5d9f3718451be44abff0748fc35f838, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  enableVisualObservation: 1
+  textureWidth: 84
+  textureHeight: 84
+  grayscale: 0
+  fovOverride: 0
+  farClipOverride: 0
+  showDebugFrustum: 0
+  showPreviewOverlay: 0
+  previewSize: 0.2
+  sensorName: DroneRGB
+--- !u!114 &8570746583643374885
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122550159195634066}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 132e1194facb64429b007ea1edf562d0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_RenderTexture: {fileID: 8400000, guid: a357149adc2c77a4b911346c0e0c5766, type: 2}
+  m_SensorName: DroneDepth
+  m_Grayscale: 0
+  m_ObservationStacks: 1
+  m_Compression: 1
+--- !u!114 &2208481655503801209
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122550159195634066}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c26c494eb36973d44898d4b76fa746e9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  enableDepthSensor: 1
+  depthWidth: 84
+  depthHeight: 84
+  depthMode: 0
+  maxDepthDistance: 0
+  nearClipOverride: 0
+  farClipOverride: 0
+  colorRamp: 0
+  showDebugFrustum: 0
+  showPreviewOverlay: 0
+  previewSize: 0.2
+  sensorName: DroneDepth
+--- !u!114 &2597808953234514227
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122550159195634066}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 132e1194facb64429b007ea1edf562d0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_RenderTexture: {fileID: 8400000, guid: 468b0f1967f63984282b258f00d83f36, type: 2}
+  m_SensorName: DroneRGB
+  m_Grayscale: 0
+  m_ObservationStacks: 1
+  m_Compression: 1
+--- !u!114 &8296188788099626490
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122550159195634066}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d61818c6e0124c04b89fa6909f7d5c96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  agentParameters:
+    maxStep: 0
+  hasUpgradedFromAgentParameters: 1
+  MaxStep: 0
+  TargetTransform: {fileID: 0}
+  GoalTransform: {fileID: 0}
+  Role: 0
+  SpawnRangeX: 8
+  SpawnRangeZ: 8
+  SpawnHeight: 3
+  SpawnYawMaxDeg: 180
+  StepPenalty: -0.001
+  ManualThrottle: 0.5
+  ManualAttitude: 0.5
+  ManualYawRate: 0.4
+  _goalZone: {fileID: 0}
+  _maxEpisodeSeconds: 25
+  _catchDistance: 2
+  _targetTag: Evader
+  _viewportVisibleMargin: 0.2
+  _lostTargetMemorySeconds: 1.5
+  _spawnFacingJitterDeg: 20
+  _visibilityMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  _maxDistance: 50
+  _maxObsSpeed: 10
+  _maxViewportSpeed: 4
+--- !u!114 &6249942861304372141
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122550159195634066}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4bd7911f0a8848999dfdb6a8c2f3070b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _distanceShapingCoeff: 0.12
+  _proximityRewardCoeff: 0.025
+  _proximityRewardDistance: 10
+  _nearCatchRewardCoeff: 0.03
+  _nearCatchDistance: 4
+  _closingSpeedCoeff: 0.01
+  _visibilityRewardPerStep: 0.002
+  _viewportCenterCoeff: 0.008
+  _lostTargetPenalty: -0.03
+  _maxObsSpeed: 10
+  _timePenaltyPerStep: -0.0005
+  _maxDistanceDeltaPerStep: 0.5
+  _maxStepRewardMagnitude: 0.06
+  _captureReward: 2
+  _evaderGoalPenalty: -0.35
+  _timeoutPenalty: -0.08
+  _crashPenalty: -1
+--- !u!114 &1804533257203389816
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2122550159195634066}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 787f925086a4c784a9c814ecd29b0764, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  markerPrefab: {fileID: 2134145453705049197, guid: 4323f8845a9e5874eb78ca6b907b743e, type: 3}
+  markerHeight: 50
+  markerName: 
