@@ -186,6 +186,32 @@ public class Goal : MonoBehaviour
     }
 
     /// <summary>
+    /// CityMetadata 전략에서 호출. 건물 높이 데이터를 직접 반영하여
+    /// Goal 실린더가 minY~maxY 범위를 Y축으로 완전히 채우도록 설정한다.
+    ///
+    /// ■ 동작
+    ///   1. Y 중앙값 = (minY + maxY) / 2 로 위치 설정
+    ///   2. CapsuleCollider 높이 = maxY - minY 로 스케일 조절
+    ///   3. XZ 위치는 worldPosition에서 가져옴
+    /// </summary>
+    /// <param name="worldPosition">Goal의 XZ 위치 (Y는 무시되고 재계산됨)</param>
+    /// <param name="minY">실린더 하단 Y (보통 0)</param>
+    /// <param name="maxY">실린더 상단 Y (가장 높은 건물의 월드 높이)</param>
+    public void ApplySpawnPositionWithHeightRange(Vector3 worldPosition, float minY, float maxY)
+    {
+        // 쿼리 결과 필드 갱신 (Inspector 디버그용)
+        _queriedMinY = minY;
+        _queriedMaxY = maxY;
+
+        // 실린더 높이 조형
+        UpdateCylinderShape();
+
+        // Y 중앙값으로 위치 설정
+        float centerY = (minY + maxY) * 0.5f;
+        transform.position = new Vector3(worldPosition.x, centerY, worldPosition.z);
+    }
+
+    /// <summary>
     /// 에피소드 시작 시 수동 호출용 (EpisodeSpawnCoordinator 없을 때 폴백).
     /// 우선순위:
     ///   1. SpawnCenter 범위 내 랜덤

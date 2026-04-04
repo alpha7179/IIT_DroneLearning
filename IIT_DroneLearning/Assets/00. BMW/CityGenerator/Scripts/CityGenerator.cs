@@ -367,28 +367,28 @@ namespace CityGenerator
             Debug.Log("CityGenerator.ClearCity: 도시 제거 시작");
 
             // cityGroupRoot 하나를 제거하면 City_Buildings·CityWalls·CityFloor 전체 삭제
+            // ■ DestroyImmediate 사용 이유:
+            //   spawnSystemRoot가 cityGroupRoot의 자식이므로, Destroy()로 예약 파괴하면
+            //   자식의 싱글톤(SpawnCenter.Current 등)이 프레임 끝까지 살아있어
+            //   CreateSpawnSystem()에서 "이미 존재" 판정 → 재생성 안 함 → 프레임 끝 파괴 버그.
             if (cityGroupRoot != null)
             {
-                if (Application.isPlaying) Destroy(cityGroupRoot);
-                else DestroyImmediate(cityGroupRoot);
+                DestroyImmediate(cityGroupRoot);
                 cityGroupRoot = null;
                 Debug.Log("CityGenerator.ClearCity: CityGroup GameObject 제거 완료");
             }
             // 그룹 없이 개별 생성된 경우 안전망
             if (cityRoot != null)
             {
-                if (Application.isPlaying) Destroy(cityRoot);
-                else DestroyImmediate(cityRoot);
+                DestroyImmediate(cityRoot);
             }
             if (wallsRoot != null)
             {
-                if (Application.isPlaying) Destroy(wallsRoot);
-                else DestroyImmediate(wallsRoot);
+                DestroyImmediate(wallsRoot);
             }
             if (floorObject != null)
             {
-                if (Application.isPlaying) Destroy(floorObject);
-                else DestroyImmediate(floorObject);
+                DestroyImmediate(floorObject);
             }
             cityRoot = null;
             wallsRoot = null;
@@ -430,12 +430,15 @@ namespace CityGenerator
 
             // SpawnSystem 제거 (Requirement 8.8)
             // cityGroupRoot 제거 시 자식으로 함께 파괴되지만, 참조를 명시적으로 정리
+            // ■ DestroyImmediate 사용 이유:
+            //   Destroy()는 프레임 끝까지 오브젝트가 살아있어 싱글톤(SpawnCenter.Current,
+            //   EpisodeSpawnCoordinator.Instance)이 null이 아닌 상태로 남는다.
+            //   이후 CreateSpawnSystem()에서 "이미 존재" 판정 → 새로 생성 안 함 →
+            //   프레임 끝에 실제 파괴 → SpawnCenter 객체가 사라지는 버그 발생.
+            //   DestroyImmediate로 즉시 파괴하여 싱글톤 참조를 확실히 정리한다.
             if (spawnSystemRoot != null)
             {
-                if (Application.isPlaying)
-                    Destroy(spawnSystemRoot);
-                else
-                    DestroyImmediate(spawnSystemRoot);
+                DestroyImmediate(spawnSystemRoot);
                 spawnSystemRoot = null;
             }
 
