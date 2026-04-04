@@ -485,17 +485,30 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
         if (goalNode.HasValue)
         {
             GraphNode gn = goalNode.Value;
-            float goalY = gn.elevation + _minSpawnHeight + UnityEngine.Random.Range(0f, heightRange);
+            float cityMaxHeight = GetMaxWorldBuildingHeight(metadata);
+            // Goal 실린더는 0 ~ cityMaxHeight 를 Y축으로 꽉 채움
+            // Y 중앙값 = cityMaxHeight / 2
+            // 건물 데이터 없을 시 기존 랜덤 범위 폴백
+            float goalY = cityMaxHeight > 0f
+                ? cityMaxHeight * 0.5f
+                : gn.elevation + _minSpawnHeight + UnityEngine.Random.Range(0f, heightRange);
             _goalResult = new SpawnResult
             {
                 Position = new Vector3(gn.position.x, goalY, gn.position.z),
                 YawDegrees = 0f
             };
-            _occupiedPositions.Add(_goalResult.Position);
+            _occupiedPositions.Add(new Vector3(gn.position.x, gn.elevation, gn.position.z));
         }
 
-        // Goal 위치 적용
-        Goal.Current?.ApplySpawnPosition(_goalResult.Position);
+        // Goal 위치 적용 — 건물 최대 높이로 실린더가 0~maxHeight를 꽉 채우도록 설정
+        if (Goal.Current != null)
+        {
+            float cityMaxH = GetMaxWorldBuildingHeight(metadata);
+            if (cityMaxH > 0f)
+                Goal.Current.ApplySpawnPositionWithHeightRange(_goalResult.Position, 0f, cityMaxH);
+            else
+                Goal.Current.ApplySpawnPosition(_goalResult.Position);
+        }
 
         // 디버그: 스폰 위치와 도시 경계 비교
         Debug.Log($"[EpisodeSpawnCoordinator] CityMetadata 스폰 완료 — " +
@@ -546,6 +559,20 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
             list[i] = list[j];
             list[j] = tmp;
         }
+    }
+
+    /// <summary>
+    /// CityMetadata의 건물 목록에서 실제 월드 좌표 기준 최대 건물 높이를 반환한다.
+    /// building.size.y = buildingHeight * unitDistance (월드 단위).
+    /// 건물이 없으면 0을 반환한다.
+    /// </summary>
+    private static float GetMaxWorldBuildingHeight(CityMetadata metadata)
+    {
+        if (metadata.buildings == null || metadata.buildings.Count == 0) return 0f;
+        float max = 0f;
+        foreach (var b in metadata.buildings)
+            if (b.size.y > max) max = b.size.y;
+        return max;
     }
 
     private void ComputeFallback()
