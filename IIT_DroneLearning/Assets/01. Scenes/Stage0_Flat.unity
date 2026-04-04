@@ -361,6 +361,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0c8b1c33c437ad34d864274f3019a7ab, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _autoSyncFromCity: 0
   _syncMode: 0
   _rangeMode: 0
   _sharedRange:
@@ -676,6 +677,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1782983030}
+  - component: {fileID: 1782983031}
   m_Layer: 0
   m_Name: Drone
   m_TagString: Untagged
@@ -699,6 +701,30 @@ Transform:
   - {fileID: 3560668907488136291}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1782983031
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1782983029}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b3e35db4fb01a084d971dada3f696d6c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _pursuerTag: Pursuer
+  _evaderTag: Evader
+  _pursuerMarkerPrefab: {fileID: 2134145453705049197, guid: 4323f8845a9e5874eb78ca6b907b743e, type: 3}
+  _evaderMarkerPrefab: {fileID: 2134145453705049197, guid: 57dbc73ad2ef45f4782778a4a87975b5, type: 3}
+  _pursuerDrones: []
+  _evaderDrones:
+  - {fileID: 3720524896394150157}
+  _markerHeight: 90
+  _moveThreshold: 0.05
+  _updateInterval: 0.1
+  _debugPursuerCount: 0
+  _debugEvaderCount: 0
 --- !u!1 &1888900288
 GameObject:
   m_ObjectHideFlags: 0
@@ -923,11 +949,21 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    - target: {fileID: 7913878300365366253, guid: 03db6dc6599c71f4bb3367a1ebce781e, type: 3}
+      propertyPath: moveThreshold
+      value: 0.5
+      objectReference: {fileID: 0}
+    m_RemovedComponents:
+    - {fileID: 7913878300365366253, guid: 03db6dc6599c71f4bb3367a1ebce781e, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 03db6dc6599c71f4bb3367a1ebce781e, type: 3}
+--- !u!1 &3720524896394150157 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 204724630800921030, guid: 03db6dc6599c71f4bb3367a1ebce781e, type: 3}
+  m_PrefabInstance: {fileID: 3720524896394150156}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
