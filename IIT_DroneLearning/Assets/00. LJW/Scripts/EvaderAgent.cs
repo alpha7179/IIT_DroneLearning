@@ -41,6 +41,12 @@ public class EvaderAgent : DroneAgent
     [SerializeField] private float _maxEpisodeSeconds = 25f;
     [SerializeField] private float _catchDistance     = 1.5f;
 
+    [Header("Evader — Boundary Constraints")]
+    [Tooltip("이 고도(m) 초과 시 맵 이탈로 판정 (벽 높이 20m)")]
+    [SerializeField] private float _maxFlightHeight   = 20f;
+    [Tooltip("XZ 절대값이 이 거리(m) 초과 시 맵 이탈로 판정 (도시 반폭 ~72m)")]
+    [SerializeField] private float _boundaryHalfSize  = 72f;
+
     [Header("Evader — Stage Control")]
     [Tooltip("true = Stage0-A (Pursuer 없음, 순수 목표 도달 학습)")]
     [SerializeField] private bool _goalOnlyMode  = true;
@@ -248,6 +254,18 @@ public class EvaderAgent : DroneAgent
         {
             AddReward(-1.0f);
             _episodeLogger?.LogEpisode(EpisodeLogger.TermType.Captured, _episodeSteps);
+            EndEpisode();
+            return;
+        }
+
+        // 2) 맵 이탈 — 벽 위로 탈출하거나 XZ 경계 초과 시 crash 처리
+        Vector3 pos = transform.position;
+        if (pos.y > _maxFlightHeight ||
+            Mathf.Abs(pos.x) > _boundaryHalfSize ||
+            Mathf.Abs(pos.z) > _boundaryHalfSize)
+        {
+            AddReward(-1.0f);
+            _episodeLogger?.LogEpisode(EpisodeLogger.TermType.Crash, _episodeSteps);
             EndEpisode();
             return;
         }

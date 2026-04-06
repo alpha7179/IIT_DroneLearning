@@ -1,27 +1,27 @@
 # evader_s1_obstacle_template.yaml
-# Stage1-A: 장애물 환경, Pursuer 없음 (_goalOnlyMode=true, _currentStage=1)
-# 목표: survival_rate ≥ 50%, crash_rate ≤ 15% (장애물 환경)
+# Stage1-A: Obstacle env, no Pursuer (_goalOnlyMode=true, _currentStage=1)
+# Goal: survival_rate >= 50%, crash_rate <= 15%
 #
-# Unity Inspector 설정 (Stage1.unity > Drone_Evader):
+# Unity Inspector (Stage1.unity > Drone_Evader):
 #   EvaderAgent:
-#     _goalOnlyMode  = true   (Pursuer 없음)
+#     _goalOnlyMode  = true
 #     _currentStage  = 1
 #   EvaderReward:
-#     _velAlignCoeff = 0.005  (장애물 환경 — 직선 압력 완화)
-#     _yawAlignCoeff = 0.0    (비활성)
+#     _velAlignCoeff = 0.005
+#     _yawAlignCoeff = 0.0
 #     _goalShapingCoeff = 0.3
 #     _timePenaltyPerStep = -0.001
 #   BehaviorParameters:
-#     Behavior Name = Drone_Evader  ← 반드시 확인
+#     Behavior Name = Drone_Evader
 #
-# 실행 (Stage0 v5 warm-start):
+# Run (warm-start from v5):
 #   mlagents-learn python/config/evader_s1_obstacle_template.yaml \
 #     --run-id=evader_s1_obstacle_44d_v1_seed42 \
 #     --initialize-from=evader_s0_flat_44d_v5_seed42 \
 #     --force
 
-env_settings:
-  time_scale: 20          # 학습 속도 20배 (기본값 1 → 느림)
+engine_settings:
+  time_scale: 20
   capture_frame_rate: 60
 
 behaviors:
@@ -29,10 +29,10 @@ behaviors:
     trainer_type: ppo
 
     hyperparameters:
-      batch_size: 128          # Stage1은 더 다양한 상황 → 배치 크기 증가
-      buffer_size: 20480       # 환경 복잡도 증가에 따라 버퍼 확대
-      learning_rate: 2.0e-4    # Stage0보다 낮게 (warm-start 안정화)
-      beta: 3.0e-3             # 엔트로피 감소 (탐색 → 활용 전환 시작)
+      batch_size: 128
+      buffer_size: 20480
+      learning_rate: 2.0e-4
+      beta: 3.0e-3
       epsilon: 0.2
       lambd: 0.99
       num_epoch: 3
@@ -48,20 +48,8 @@ behaviors:
         gamma: 0.99
         strength: 1.0
 
-    max_steps: 1000000         # Stage1은 더 많은 학습 필요
-    time_horizon: 128          # 장애물 환경에서 에피소드 길이 증가 고려
+    max_steps: 1000000
+    time_horizon: 128
     summary_freq: 10000
     checkpoint_interval: 50000
     keep_checkpoints: 5
-
-# ============================================================
-# Stage1 보상 함수 가이드라인 (Unity EvaderReward.cs 조정)
-#
-# Stage0 대비 변경:
-#   _occlusionBonus = 0.0 (Stage1에서도 비활성 유지)
-#   _goalShapingCoeff: 0.02 유지 (필요시 0.01로 낮춰 과도한 돌진 방지)
-#
-# 주의: 장애물 환경에서 crash_rate가 높으면
-#   → R_collision 페널티 강화 (-1.5 이상)
-#   → step penalty 약화 (-0.0005)로 조정
-# ============================================================

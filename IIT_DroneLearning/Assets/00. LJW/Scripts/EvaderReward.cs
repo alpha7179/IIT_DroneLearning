@@ -38,6 +38,12 @@ public class EvaderReward : MonoBehaviour
     [Header("Observation Normalization")]
     [SerializeField] private float _maxObsSpeed = 10f;
 
+    [Header("Height Soft Penalty")]
+    [Tooltip("이 고도(m) 초과 시 페널티 시작 (벽 높이 20m 기준, 경고 구간 시작점)")]
+    [SerializeField] private float _heightWarningY = 17f;
+    [Tooltip("고도 경고 구간에서 초과 1m당 페널티 (음수 유지)")]
+    [SerializeField] private float _heightPenaltyCoeff = -0.02f;
+
     [Header("Time Penalty")]
     [Tooltip("스텝당 시간 페널티 (음수 유지)")]
     [SerializeField] private float _timePenaltyPerStep = -0.001f;
@@ -114,6 +120,10 @@ public class EvaderReward : MonoBehaviour
             float velTowardGoal = Vector3.Dot(agentVel, toGoalDir) / _maxObsSpeed;
             reward += _velAlignCoeff * velTowardGoal;
         }
+
+        // ── 고도 소프트 페널티 (벽 상단 접근 억제) ───────────────────────
+        if (agentPos.y > _heightWarningY)
+            reward += _heightPenaltyCoeff * (agentPos.y - _heightWarningY);
 
         // ── 시간 페널티 ──────────────────────────────────────────────────
         reward += _timePenaltyPerStep;
