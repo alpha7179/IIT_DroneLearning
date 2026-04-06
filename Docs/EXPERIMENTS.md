@@ -27,8 +27,10 @@
 
 목표: `survival_rate ≥ 50%`, `crash_rate ≤ 15%`
 
-| 날짜 | commit | config | run-id | seed | survival | goal | capture | crash | 코멘트 |
-|------|--------|--------|--------|------|----------|------|---------|-------|--------|
+| 날짜 | commit | config | run-id | seed | mean_reward | 코멘트 |
+|------|--------|--------|--------|------|-------------|--------|
+| 2026-04-06 | `26b746b` | `evader_s1_obstacle_template` | `evader_s1_obstacle_44d_v1_seed42` | 42 | peak +2.669 (350k), final +2.162 (500k) | goalProximityBonus 존재. 290k 최초 양수. 350k peak 후 진동. 호버링 착취 확인 → v2 warm-start로 사용 |
+| 2026-04-06 | `e43867d` | `evader_s1_obstacle_template` | `evader_s1_obstacle_44d_v2_seed42` | 42 | 학습 예정 | obstacle-aware vel reward + 체크포인트 시스템 + goalProximityBonus 제거 + timePenalty -0.003 |
 
 ---
 
@@ -73,3 +75,147 @@
 ## 메모 / 이슈
 
 - 보상 해킹 사례, 재현 방법, 대응책 등 자유 형식으로 기록
+
+---
+
+## Stage1-A 분석 노트 (2026-04-06)
+
+### 1. 문제: goalProximityBonus 호버링 착취
+
+**현상**: v1 학습에서 500k 스텝 내내 드론이 goal zone 근처에서 가만히 호버링.
+"바로 앞이 goal인데 들어가려 하지 않는다."
+
+**원인 분석**:
+```
+goal 2m 앞 호버링 시 step당 net reward:
+  goalProximityBonus:  +0.005 × (1 - 2/20) = +0.0045
+  timePenalty:                               -0.001
+  net:                                       +0.0035  ← 양수!
+
+에피소드 350 step 기준:
+  goal 2m 호버링 250 step = +0.0035 × 250 = +0.875
+  goal 진입 terminal      =                  +1.0   (겨우 조금 나을 뿐)
+```
+드론 입장에서 "안전한 호버링 ≈ goal 진입"이 되어 리스크 없이 호버링 선택.
+
+**해결**: goalProximityBonus 완전 제거. timePenalty -0.001 → -0.003으로 강화.
+```
+수정 후 시나리오 (350 step 에피소드):
+  goal 도달 (100 step):  shaping + 1.0 - 0.003×100  = +0.7 이상
+  어디서든 호버링 타임아웃: 0       - 0.003×350  = -1.05
+  충돌 (100 step):        -1.0    - 0.003×100  = -1.3
+```
+goal 도달 > 호버링 > 충돌 — 명확한 우선순위 복원.
+
+---
+
+### 2. 문제: 장애물 회피 방향 신호 없음
+
+**현상**: 드론이 장애물을 감지해도 어느 방향으로 회피해야 할지 보상 신호가 없음.
+기존 velAlignCoeff는 단순히 goal 방향 속도를 보상 → 장애물 있는 방향으로 돌진.
+
+**해결**: Obstacle-Aware Velocity Reward 구현 (EvaderReward.cs)
+
+```
+DroneSensorSystem Middle 레이어 인덱스 9~16 사용:
+  9:N / 10:NE / 11:E / 12:SE / 13:S / 14:SW / 15:W / 16:NW (드론 로컬 좌표계)
+
+알고리즘:
+  1. Middle 8개 레이에서 가중 척력 벡터 계산 (로컬)
+     weight = 1 - d/proximityThreshold  (가까울수록 강함)
+     repulsion += -rayDir × weight      (장애물 반대 방향)
+  2. 장애물 강도 = clamp01(repulsion.magnitude / 2)
+  3. 강도 < 0.05: 단순 goal 방향 속도 보상
+     강도 >= 0.05: goal 방향과 척력 방향을 Slerp 블렌드 (강도 비율로)
+  4. Dot(agentVel, targetDir) / maxObsSpeed × velAlignCoeff
+```
+
+**파라미터**: velAlignCoeff 0.003 → 0.005
+
+---
+
+### 3. 문제: 중간 보상 신호 없음 (sparse reward)
+
+**현상**: goal이 50~100m 떨어진 경우 장애물을 피해 도달하면 +1.0이지만,
+도달에 실패하면 중간 진행에 대한 보상이 없어 학습 신호가 너무 희박.
+
+**해결**: 에피소드 체크포인트 시스템 (EvaderAgent.cs)
+
+```
+에피소드 시작 시 스폰→Goal 직선 위에 2개 체크포인트 생성:
+  위치: Lerp(spawnPos, goalPos, t=1/3), Lerp(..., t=2/3)
+  Y축: 스폰 고도 유지 (드론 현재 높이 기준)
+  장애물 회피: Physics.OverlapSphere(radius=2m) → Building/Wall 태그 감지
+              막혀 있으면 8방위 × 4단계 (3m씩) 후보 탐색
+
+도달 판정: 체크포인트 반경 4m 이내 진입 시 +0.3 (순서대로, 1회만)
+```
+
+**Inspector 필드**: `_checkpointCount=2`, `_checkpointRadius=4`, `_checkpointReward=0.3`, `_checkpointClearRadius=2`
+
+---
+
+### 4. 실수: timePenalty와 MaxEpisode 동시 변경으로 발산
+
+**현상**: timePenalty -0.001 → -0.005, MaxEpisodeSeconds 35 → 60 동시 변경 시도.
+결과: Mean Reward -14.3 (이전 대비 급격 악화).
+
+**원인**: 60초 에피소드에서 step 수 ≈ 700. timePenalty만 계산해도 -0.005×700 = -3.5.
+  거기에 MaxEpisode 증가로 crash 기회도 증가 → 복합 발산.
+
+**교훈**: 변수는 한 번에 하나씩 변경. 특히 timePenalty × 에피소드 길이 상호작용에 주의.
+
+즉시 이전 설정으로 롤백 (timePenalty -0.001, MaxEpisode 35초 유지).
+
+---
+
+### 5. 어려웠던 부분: YAML 한글 인코딩 오류
+
+**현상**: YAML 파일에 한글 주석 작성 시 ML-Agents가 cp949로 읽어 UnicodeDecodeError.
+
+**해결**: YAML 파일 내 모든 주석을 ASCII로만 작성. 영어 또는 특수문자만 사용.
+
+**규칙 확정**: `evader_s1_obstacle_template.yaml` 및 이후 모든 YAML 파일 한글 사용 금지.
+
+---
+
+### 6. v1 학습 실행 기록 (500k 스텝)
+
+| 스텝 | Mean Reward | Std | 비고 |
+|------|-------------|-----|------|
+| 10k  | -3.2 ~ -4.0 | 높음 | crash 과다, 탐색 초기 |
+| 100k | -2.8 ~ -3.5 | 높음 | 개선 없음, 호버링 시작 |
+| 200k | -1.5 ~ -2.0 | 감소 | 일부 goal 도달 시작 |
+| 290k | **+0.203**  | -   | 최초 양수 mean reward |
+| 340k | +2.669      | 0.553 | **peak** |
+| 350k | +2.553      | -   | peak 근처 유지 |
+| 450k | +2.162      | -   | 진동 시작 (goalProximityBonus 착취 고착) |
+| 500k | +2.162      | -   | 수렴 실패, v2 warm-start로 활용 |
+
+**결론**: goalProximityBonus가 290k 이후 학습을 견인했으나 350k 이후 호버링 착취 고착.
+최적 체크포인트 450k를 v2 warm-start로 사용.
+
+---
+
+### 7. v2 설계 요약 (2026-04-06 구현 완료)
+
+| 항목 | v1 | v2 |
+|------|----|----|
+| goalProximityBonus | O (착취 원인) | **제거** |
+| timePenalty | -0.001 | **-0.003** |
+| velAlign | goal 방향만 | **obstacle-aware (척력 블렌드)** |
+| 체크포인트 | 없음 | **+0.3 × 2개 / 에피소드** |
+| warm-start | v5 (Stage0) | **v1 450k** |
+
+**예상**: 50k 이내 Mean Reward > 0 (v1은 290k에서 최초 달성).
+
+---
+
+### 8. 개선 검토 사항 (v3 이후)
+
+- **Goal Y축 불일치 확인 필요**: Goal 스폰 높이(`cityMaxHeight × 0.5`)와 드론 비행 고도(5~25m) 불일치 시
+  trigger가 발동 안 될 수 있음. Heuristic 모드로 수동 확인 권장.
+- **체크포인트 반경 조정**: 4m가 너무 좁거나 넓으면 실제 학습 로그 보고 조정.
+- **Beta 스케줄**: 초반 탐색(0.02) → 수렴 후(0.005) 스텝 기반 자동 감소 고려.
+- **거리 커리큘럼**: v2 수렴 후 EpisodeSpawnCoordinator 최대 거리를 점진 확대 (15m → 30m → 100m).
+- **RGB 카메라 오버헤드**: CNN 처리로 학습 속도가 Stage0 대비 느림. 체크포인트 수 / batch_size 튜닝 여지 있음.
