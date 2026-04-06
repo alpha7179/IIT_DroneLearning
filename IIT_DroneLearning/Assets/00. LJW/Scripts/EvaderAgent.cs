@@ -56,6 +56,16 @@ public class EvaderAgent : DroneAgent
     [SerializeField] private bool _goalOnlyMode  = true;
     [SerializeField] private int  _currentStage  = 0;
 
+    [Header("Evader — Episode Checkpoints")]
+    [Tooltip("에피소드당 가상 체크포인트 수 (스폰→Goal 직선 위 균등 배치)")]
+    [SerializeField] private int   _checkpointCount      = 2;
+    [Tooltip("체크포인트 도달 판정 반경 (m)")]
+    [SerializeField] private float _checkpointRadius     = 4f;
+    [Tooltip("체크포인트 도달 시 보상 (순서대로 1개씩)")]
+    [SerializeField] private float _checkpointReward     = 0.3f;
+    [Tooltip("체크포인트 후보 위치의 장애물 검사 반경 (m)")]
+    [SerializeField] private float _checkpointClearRadius = 2f;
+
     [Header("Evader — SpawnCenter 쿼리 결과 (읽기 전용)")]
     [SerializeField] private float _queriedMinY;
     [SerializeField] private float _queriedMaxY;
@@ -74,6 +84,10 @@ public class EvaderAgent : DroneAgent
     private bool          _episodeEnded;  // OnCollisionEnter 중복 호출 방지
 
     private Vector3 _spawnCenter;  // SpawnCenter 미설정 시 폴백용 초기 위치
+
+    // 체크포인트 상태
+    private Vector3[] _episodeCheckpoints;
+    private int       _nextCheckpointIdx;
 
     // 추격자 추적 (Stage1+ 은폐 메모리)
     private Vector3 _lastKnownPursuerPos;
@@ -127,6 +141,7 @@ public class EvaderAgent : DroneAgent
         _timeSincePursuerDetected = 0f;
         _isPursuerVisible         = false;
         _lastKnownPursuerPos      = Vector3.zero;
+        _nextCheckpointIdx        = 0;
 
         // 코디네이터에 전체 스폰 계산 위임 (Evader/Pursuer/Goal 위치 모두 내부에서 처리)
         if (EpisodeSpawnCoordinator.Instance != null)
@@ -155,6 +170,12 @@ public class EvaderAgent : DroneAgent
 
         // 물리 초기화 — DroneAgent.ResetPhysicsState() 위임 (Rigidbody + DronePhysics 일괄 초기화)
         ResetPhysicsState();
+
+        // 체크포인트 생성 (스폰 위치 확정 후)
+        if (_goalZone != null && _checkpointCount > 0)
+            GenerateCheckpoints(transform.position, _goalZone.GetPosition());
+        else
+            _episodeCheckpoints = null;
     }
 
     // ───────── 관측 수집 (VectorObs = 44) ────────────────────────────────
@@ -250,6 +271,9 @@ public class EvaderAgent : DroneAgent
             agentVel:      _dronePhysics   != null ? _dronePhysics.GetVelocity() : Vector3.zero,
             obstacleDists: obstacleDists
         ));
+
+        // 체크포인트 도달 확인 (순서대로, 한 번만)
+        CheckCheckpoints();
 
         CheckTerminationConditions();
     }
@@ -397,8 +421,87 @@ public class EvaderAgent : DroneAgent
         Vector3 center = Application.isPlaying ? _spawnCenter : transform.position;
         Gizmos.color = new Color(0f, 0.5f, 1f, 0.9f);
         Gizmos.DrawSphere(center, 0.4f);
+
+        // 체크포인트 시각화 (Play 모드에서만)
+        if (!Application.isPlaying || _episodeCheckpoints == null) return;
+        for (int i = 0; i < _episodeCheckpoints.Length; i++)
+        {
+            bool reached = i < _nextCheckpointIdx;
+            Gizmos.color = reached
+                ? new Color(0.3f, 1f, 0.3f, 0.5f)   // 도달: 초록
+                : new Color(1f,   0.8f, 0f,  0.7f);  // 미도달: 노랑
+            Gizmos.DrawWireSphere(_episodeCheckpoints[i], _checkpointRadius);
+        }
     }
 #endif
+
+    // ───────── 체크포인트 ────────────────────────────────────────────────
+    /// <summary>
+    /// 스폰~Goal 직선 위에 체크포인트를 균등 배치한다.
+    /// 각 후보 위치가 장애물 내부이면 주변 8방향으로 최대 4회 탐색해 빈 공간을 찾는다.
+    /// </summary>
+    private void GenerateCheckpoints(Vector3 startPos, Vector3 goalPos)
+    {
+        _episodeCheckpoints = new Vector3[_checkpointCount];
+        _nextCheckpointIdx  = 0;
+
+        for (int i = 0; i < _checkpointCount; i++)
+        {
+            float   t         = (i + 1f) / (_checkpointCount + 1f);   // 1/3, 2/3
+            Vector3 candidate = Vector3.Lerp(startPos, goalPos, t);
+            candidate.y       = startPos.y;  // 드론 스폰 고도 유지
+            _episodeCheckpoints[i] = FindOpenCheckpoint(candidate);
+        }
+    }
+
+    /// <summary>
+    /// 후보 위치에 장애물이 없으면 그대로 반환.
+    /// 있으면 주변 8방향 × 4 거리 단계로 열린 위치를 탐색한다.
+    /// </summary>
+    private Vector3 FindOpenCheckpoint(Vector3 candidate)
+    {
+        if (!IsCheckpointBlocked(candidate)) return candidate;
+
+        for (int radius = 1; radius <= 4; radius++)
+        {
+            for (int a = 0; a < 8; a++)
+            {
+                float   angle = a * 45f * Mathf.Deg2Rad;
+                Vector3 pos   = candidate + new Vector3(
+                    Mathf.Sin(angle) * radius * 3f, 0f,
+                    Mathf.Cos(angle) * radius * 3f);
+                if (!IsCheckpointBlocked(pos)) return pos;
+            }
+        }
+        return candidate;  // 폴백: 장애물 내부여도 원래 위치 사용
+    }
+
+    /// <summary>해당 위치가 Building/Wall 태그 오브젝트 내부인지 확인한다.</summary>
+    private bool IsCheckpointBlocked(Vector3 pos)
+    {
+        Collider[] hits = Physics.OverlapSphere(pos, _checkpointClearRadius);
+        foreach (var c in hits)
+            if (c.CompareTag("Building") || c.CompareTag("Wall"))
+                return true;
+        return false;
+    }
+
+    /// <summary>
+    /// 다음 체크포인트와의 거리를 확인해 도달 시 보상 지급 (순서 강제).
+    /// </summary>
+    private void CheckCheckpoints()
+    {
+        if (_episodeCheckpoints == null) return;
+        if (_nextCheckpointIdx >= _episodeCheckpoints.Length) return;
+
+        float dist = Vector3.Distance(transform.position,
+                                      _episodeCheckpoints[_nextCheckpointIdx]);
+        if (dist < _checkpointRadius)
+        {
+            AddReward(_checkpointReward);
+            _nextCheckpointIdx++;
+        }
+    }
 
     // ───────── 헬퍼 ──────────────────────────────────────────────────────
     private Vector3 GetPursuerRelVelNormalized()
