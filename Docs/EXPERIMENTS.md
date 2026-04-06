@@ -19,6 +19,7 @@
 | 2026-03-20 | `166e7da` | `evader_s0_flat_template` | `evader_s0_flat_seed42_v2` | 42 | - | **~60%** | - | - | warm-start 추가 300k. 115k에서 0.5 돌파, 최종 0.637(peak 0.686). M1 goal_reach_rate ≥50% **달성**. |
 | 2026-03-20 | `d12dfa2` | `evader_s0_flat_template` | `evader_s0_flat_seed42_v3` | 42 | - | **~80~90%** | - | - | warm-start v2→v3 300k. 50k부터 0.9 돌파, peak 0.982(230k), 최종 0.768. |
 | 2026-03-21 | `1079846` | `evader_s0_flat_template` | `evader_s0_flat_seed42_v3` | 42 | **100%** | **68%** | **0%** | **0%** | eval 50 eps (EpisodeLogger). survival/goal/M1 전부 달성. timeout 32% → Stage1 전환 준비. |
+| 2026-03-27 | `bbcacb5` | `evader_s0_flat_template` | `evader_s0_flat_44d_v6_seed42` | 42 | **100%** | **68%** | **0%** | **0%** | warm-start v5→v6 500k. velAlign/yawAlign dead zone 0.5→0.1m 수정, goalzone 호버링 해소. peak 6.676(390k), final 6.259. 50eps eval. |
 
 ---
 

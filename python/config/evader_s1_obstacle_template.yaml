@@ -1,21 +1,27 @@
 # evader_s1_obstacle_template.yaml
-# Stage1: 장애물 도입 + Ground-truth Pursuer 힌트 제거
+# Stage1-A: 장애물 환경, Pursuer 없음 (_goalOnlyMode=true, _currentStage=1)
 # 목표: survival_rate ≥ 50%, crash_rate ≤ 15% (장애물 환경)
 #
-# 변경 사항 (Stage0 대비):
-#   - EvaderAgent._currentStage = 1 (Unity Inspector에서 변경)
-#   - Pursuer 상대좌표 힌트 제거 → Ray 기반 추격자 감지만 허용
-#   - buffer_size 증가 (더 복잡한 환경)
-#   - learning_rate 소폭 낮춤 (안정화)
+# Unity Inspector 설정 (Stage1.unity > Drone_Evader):
+#   EvaderAgent:
+#     _goalOnlyMode  = true   (Pursuer 없음)
+#     _currentStage  = 1
+#   EvaderReward:
+#     _velAlignCoeff = 0.005  (장애물 환경 — 직선 압력 완화)
+#     _yawAlignCoeff = 0.0    (비활성)
+#     _goalShapingCoeff = 0.3
+#     _timePenaltyPerStep = -0.001
+#   BehaviorParameters:
+#     Behavior Name = Drone_Evader  ← 반드시 확인
 #
-# 실행 (Stage0 체크포인트에서 warm-start):
+# 실행 (Stage0 v6 warm-start):
 #   mlagents-learn python/config/evader_s1_obstacle_template.yaml \
-#     --run-id=evader_s1_base_seed42 \
-#     --initialize-from=evader_s0_base_seed42 \
+#     --run-id=evader_s1_obstacle_44d_v1_seed42 \
+#     --initialize-from=evader_s0_flat_44d_v6_seed42 \
 #     --force
 
 behaviors:
-  EvaderAgent:
+  Drone_Evader:
     trainer_type: ppo
 
     hyperparameters:
