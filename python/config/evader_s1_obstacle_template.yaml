@@ -14,11 +14,15 @@
 #   BehaviorParameters:
 #     Behavior Name = Drone_Evader  ← 반드시 확인
 #
-# 실행 (Stage0 v6 warm-start):
+# 실행 (Stage0 v5 warm-start):
 #   mlagents-learn python/config/evader_s1_obstacle_template.yaml \
 #     --run-id=evader_s1_obstacle_44d_v1_seed42 \
-#     --initialize-from=evader_s0_flat_44d_v6_seed42 \
+#     --initialize-from=evader_s0_flat_44d_v5_seed42 \
 #     --force
+
+env_settings:
+  time_scale: 20          # 학습 속도 20배 (기본값 1 → 느림)
+  capture_frame_rate: 60
 
 behaviors:
   Drone_Evader:
