@@ -47,6 +47,10 @@ public class EvaderAgent : DroneAgent
     [Tooltip("XZ 절대값이 이 거리(m) 초과 시 맵 이탈로 판정 (도시 반폭 ~72m)")]
     [SerializeField] private float _boundaryHalfSize  = 72f;
 
+    [Header("Evader — Collision Detection")]
+    [Tooltip("이 태그 오브젝트와 충돌 시 Crash 처리 (비우면 모든 충돌에 반응)")]
+    [SerializeField] private string[] _crashTags = { "Building", "Wall" };
+
     [Header("Evader — Stage Control")]
     [Tooltip("true = Stage0-A (Pursuer 없음, 순수 목표 도달 학습)")]
     [SerializeField] private bool _goalOnlyMode  = true;
@@ -67,6 +71,7 @@ public class EvaderAgent : DroneAgent
     private EpisodeLogger _episodeLogger;
     private float         _episodeTimer;
     private int           _episodeSteps;
+    private bool          _episodeEnded;  // OnCollisionEnter 중복 호출 방지
 
     private Vector3 _spawnCenter;  // SpawnCenter 미설정 시 폴백용 초기 위치
 
@@ -118,6 +123,7 @@ public class EvaderAgent : DroneAgent
     {
         _episodeTimer             = 0f;
         _episodeSteps             = 0;
+        _episodeEnded             = false;
         _timeSincePursuerDetected = 0f;
         _isPursuerVisible         = false;
         _lastKnownPursuerPos      = Vector3.zero;
@@ -233,12 +239,16 @@ public class EvaderAgent : DroneAgent
 
         _dronePhysics?.SetCommand(thrust, roll, pitch, yaw);
 
+        // 26D 레이 거리 배열 전달 (합산 근접 페널티용)
+        float[] obstacleDists = _sensorSystem?.GetAllNormalizedDistances();
+
         AddReward(_rewardCalculator.ComputeStepReward(
-            agentPos:         transform.position,
-            goalPos:          _goalZone        != null ? _goalZone.GetPosition()   : Vector3.zero,
-            pursuerPos:       TargetTransform  != null ? TargetTransform.position  : Vector3.zero,
+            agentPos:      transform.position,
+            goalPos:       _goalZone       != null ? _goalZone.GetPosition()     : Vector3.zero,
+            pursuerPos:    TargetTransform != null ? TargetTransform.position    : Vector3.zero,
             isPursuerVisible: _isPursuerVisible,
-            agentVel:         _dronePhysics    != null ? _dronePhysics.GetVelocity() : Vector3.zero
+            agentVel:      _dronePhysics   != null ? _dronePhysics.GetVelocity() : Vector3.zero,
+            obstacleDists: obstacleDists
         ));
 
         CheckTerminationConditions();
@@ -278,6 +288,29 @@ public class EvaderAgent : DroneAgent
         }
     }
 
+    // ───────── 물리 충돌 감지 (자체) ──────────────────────────────────────
+    // 이강민 팀 SetCrash() 외부 API와 이중 감지 방지를 위해 _episodeEnded 플래그 사용
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (_episodeEnded) return;
+
+        bool isCrash = _crashTags.Length == 0;  // 태그 미지정 → 모든 충돌
+        if (!isCrash)
+        {
+            foreach (string tag in _crashTags)
+            {
+                if (collision.gameObject.CompareTag(tag))
+                {
+                    isCrash = true;
+                    break;
+                }
+            }
+        }
+
+        if (isCrash)
+            SetCrash();
+    }
+
     // ───────── Goal 이벤트 ────────────────────────────────────────────
     /// <summary>
     /// Goal.OnTriggerEnter → NotifyArrival() 경로로 호출된다.
@@ -301,9 +334,11 @@ public class EvaderAgent : DroneAgent
     }
 
     // ───────── 외부 API ───────────────────────────────────────────────────
-    /// <summary>World 팀에서 충돌/추락 감지 시 호출</summary>
+    /// <summary>World 팀에서 충돌/추락 감지 시 호출 (내부 OnCollisionEnter도 이 메서드로 수렴)</summary>
     public void SetCrash()
     {
+        if (_episodeEnded) return;
+        _episodeEnded = true;
         AddReward(-1.0f);
         _episodeLogger?.LogEpisode(EpisodeLogger.TermType.Crash, _episodeSteps);
         EndEpisode();

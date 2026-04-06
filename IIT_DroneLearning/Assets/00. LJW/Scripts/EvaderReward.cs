@@ -38,6 +38,12 @@ public class EvaderReward : MonoBehaviour
     [Header("Observation Normalization")]
     [SerializeField] private float _maxObsSpeed = 10f;
 
+    [Header("Obstacle Proximity Penalty")]
+    [Tooltip("이 정규화 거리 미만 레이 감지 시 페널티 합산 시작 (0~1)")]
+    [SerializeField] private float _proximityThreshold = 0.3f;
+    [Tooltip("레이 1개당 최대 페널티 기여값 (코앞 기준). 26개 합산되므로 작게 유지")]
+    [SerializeField] private float _proximityCoeff = 0.02f;
+
     [Header("Height Soft Penalty")]
     [Tooltip("이 고도(m) 초과 시 페널티 시작 (벽 높이 20m 기준, 경고 구간 시작점)")]
     [SerializeField] private float _heightWarningY = 17f;
@@ -75,7 +81,8 @@ public class EvaderReward : MonoBehaviour
         Vector3 goalPos,
         Vector3 pursuerPos,
         bool    isPursuerVisible,
-        Vector3 agentVel)
+        Vector3 agentVel,
+        float[] obstacleDists = null)
     {
         float reward = 0f;
 
@@ -119,6 +126,17 @@ public class EvaderReward : MonoBehaviour
             Vector3 toGoalDir = (goalPos - agentPos).normalized;
             float velTowardGoal = Vector3.Dot(agentVel, toGoalDir) / _maxObsSpeed;
             reward += _velAlignCoeff * velTowardGoal;
+        }
+
+        // ── 장애물 근접 페널티 (26개 레이 합산) ─────────────────────────
+        // 각 레이: 0=장애물 없음, (0,threshold)=가까울수록 penalty 기여 증가
+        if (obstacleDists != null)
+        {
+            float obstacleSum = 0f;
+            foreach (float d in obstacleDists)
+                if (d > 0f && d < _proximityThreshold)
+                    obstacleSum += 1f - d / _proximityThreshold;
+            reward -= _proximityCoeff * obstacleSum;
         }
 
         // ── 고도 소프트 페널티 (벽 상단 접근 억제) ───────────────────────
