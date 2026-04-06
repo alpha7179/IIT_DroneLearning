@@ -141,11 +141,13 @@ public class EvaderReward : MonoBehaviour
                 // 척력 벡터 계산 (로컬 좌표계)
                 Vector3 repulsionLocal = ComputeRepulsionDir(obstacleDists);
 
-                // 장애물 강도: Middle 레이 8개의 누적 척력 크기 (0~8 범위 → 0~1 로 스케일)
-                float obstacleStrength = Mathf.Clamp01(repulsionLocal.magnitude / 2f);
+                // 장애물 강도: /4f 로 정규화해 2개 레이 = 0.5 블렌드 (기존 /2f는 2개만으로 100% 척력)
+                // 최대 0.55 캡: goal 방향 성분 최소 45% 보장 (너무 멀리 후퇴 방지)
+                float rawStrength      = Mathf.Clamp01(repulsionLocal.magnitude / 4f);
+                float obstacleStrength = rawStrength * 0.55f;
 
                 Vector3 targetDir;
-                if (obstacleStrength > 0.05f)
+                if (obstacleStrength > 0.02f)
                 {
                     // 세계 좌표계 goal 방향을 로컬로 변환해 척력과 같은 공간에서 블렌드
                     Vector3 toGoalLocal = _agentTransform.InverseTransformDirection(toGoalWorld);

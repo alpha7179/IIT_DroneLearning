@@ -198,11 +198,12 @@ public class EvaderAgent : DroneAgent
         sensor.AddObservation(localAngVel / _maxObsSpeed);             // 3
         sensor.AddObservation(transform.position.y / _maxDistance);    // 1
 
-        // 목표 지점 (4) — Goal API 사용
+        // 목표 지점 (4) — 로컬 좌표계로 관측 (localVel과 동일 좌표계 → 네트워크 학습 용이)
         if (_goalZone != null)
         {
-            Vector3 toGoal = _goalZone.GetPosition() - transform.position;
-            sensor.AddObservation(toGoal.normalized);                  // 3
+            Vector3 toGoal      = _goalZone.GetPosition() - transform.position;
+            Vector3 toGoalLocal = transform.InverseTransformDirection(toGoal.normalized);
+            sensor.AddObservation(toGoalLocal);                        // 3
             sensor.AddObservation(toGoal.magnitude / _maxDistance);    // 1
         }
         else
