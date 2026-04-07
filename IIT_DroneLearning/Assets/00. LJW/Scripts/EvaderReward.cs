@@ -37,6 +37,8 @@ public class EvaderReward : MonoBehaviour
     [Tooltip("장애물 없을 때 goal 방향 / 장애물 감지 시 회피방향 합산 속도 보상.\n" +
              "Middle 레이(9-16) 척력 벡터와 goal 방향을 장애물 강도에 따라 블렌드.")]
     [SerializeField] private float _velAlignCoeff = 0.005f;
+    [Tooltip("이 거리(m) 이내에서는 척력 블렌드를 무시하고 순수 goal 방향 보상만 적용 (goal 근처 뒤로 물러남 방지)")]
+    [SerializeField] private float _goalPriorityDist = 6f;
 
     [Tooltip("Yaw 정렬 보상 (Stage1+에서는 0 권장)")]
     [SerializeField] private float _yawAlignCoeff = 0.0f;
@@ -130,33 +132,31 @@ public class EvaderReward : MonoBehaviour
         }
 
         // ── Obstacle-Aware Velocity Reward (핵심) ────────────────────────
-        // 장애물 없음 → goal 방향 속도 보상
-        // 장애물 감지 → 척력 방향으로 블렌드: "goal 방향으로 가되, 벽이 있으면 옆으로 꺾어"
+        // goal 근접 구간(< _goalPriorityDist): 척력 무시, 순수 goal 방향 보상
+        // 원거리: 장애물 감지 시 척력 방향으로 블렌드
         if (_velAlignCoeff > 0f && currGoalDist > 0.1f)
         {
             Vector3 toGoalWorld = (goalPos - agentPos).normalized;
 
-            if (obstacleDists != null)
+            bool inGoalPriorityZone = currGoalDist < _goalPriorityDist;
+
+            if (!inGoalPriorityZone && obstacleDists != null)
             {
                 // 척력 벡터 계산 (로컬 좌표계)
                 Vector3 repulsionLocal = ComputeRepulsionDir(obstacleDists);
 
-                // 장애물 강도: /4f 로 정규화해 2개 레이 = 0.5 블렌드 (기존 /2f는 2개만으로 100% 척력)
-                // 최대 0.55 캡: goal 방향 성분 최소 45% 보장 (너무 멀리 후퇴 방지)
                 float rawStrength      = Mathf.Clamp01(repulsionLocal.magnitude / 4f);
                 float obstacleStrength = rawStrength * 0.55f;
 
                 Vector3 targetDir;
                 if (obstacleStrength > 0.02f)
                 {
-                    // 세계 좌표계 goal 방향을 로컬로 변환해 척력과 같은 공간에서 블렌드
                     Vector3 toGoalLocal = _agentTransform.InverseTransformDirection(toGoalWorld);
                     toGoalLocal.y = 0f;
                     Vector3 blended = Vector3.Slerp(
                         toGoalLocal.normalized,
                         repulsionLocal.normalized,
                         obstacleStrength);
-                    // 블렌드된 로컬 방향을 다시 세계 좌표로
                     targetDir = _agentTransform.TransformDirection(blended).normalized;
                 }
                 else
@@ -169,7 +169,7 @@ public class EvaderReward : MonoBehaviour
             }
             else
             {
-                // obstacleDists 없을 때 폴백: 단순 goal 방향 속도
+                // goal 근접 구간 or 센서 없음: 순수 goal 방향 속도 보상
                 float velAlign = Vector3.Dot(agentVel, toGoalWorld) / _maxObsSpeed;
                 reward += _velAlignCoeff * velAlign;
             }
