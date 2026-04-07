@@ -1,5 +1,5 @@
 # evader_s1_obstacle_template.yaml
-# Stage1-A v3: Curriculum Phase1 — near-range (SpawnCenter radius=12m)
+# Stage1-A v3: Curriculum Phase1 - near-range (SpawnCenter radius=12m)
 # Goal: Mean Reward > +1.0 within 100k steps, then expand range
 #
 # CURRICULUM APPROACH:
