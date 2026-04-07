@@ -176,7 +176,9 @@ public class EvaderReward : MonoBehaviour
         }
 
         // ── 장애물 근접 페널티 (26개 레이 합산) ─────────────────────────
-        if (obstacleDists != null)
+        // goal 근접 구간에서는 비활성: Goal CapsuleCollider가 센서에 감지되어
+        // 드론이 goal을 장애물로 학습하는 것을 방지
+        if (obstacleDists != null && currGoalDist >= _goalPriorityDist)
         {
             float obstacleSum = 0f;
             foreach (float d in obstacleDists)
