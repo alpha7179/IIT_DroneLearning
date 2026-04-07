@@ -1,6 +1,7 @@
 using UnityEngine;
 using Unity.MLAgents.Sensors;
 using Unity.MLAgents.Actuators;
+using DroneSensor;
 
 /// <summary>
 /// EvaderAgent — DroneAgent 기반 회피 드론 에이전트
@@ -37,9 +38,42 @@ public class EvaderAgent : DroneAgent
     [Tooltip("Goal GameObject에 부착된 Goal 컴포넌트")]
     [SerializeField] private Goal _goalZone;
 
+    [Header("Evader — Goal Placement Validation")]
+    [Tooltip("Goal이 Building/Wall에 너무 가까우면 에피소드 시작 시 재샘플링")]
+    [SerializeField] private bool _validateGoalPlacement = true;
+    [Tooltip("Goal 중심 주변 이 반경(m) 안에 Building/Wall이 있으면 재샘플링")]
+    [SerializeField] private float _goalObstacleClearanceRadius = 6.0f;
+    [Tooltip("Goal 배치 재샘플링 최대 시도 횟수")]
+    [SerializeField] private int _goalResampleMaxAttempts = 30;
+
+    [Header("Evader — Sensor Hardening")]
+    [Tooltip("true면 Goal을 Ignore Raycast 레이어로 강제해 Goal 오인식 회피")]
+    [SerializeField] private bool _autoSetGoalIgnoreRaycastLayer = true;
+    [Tooltip("true면 센서 DetectionLayerMask에서 Ignore Raycast 레이어를 제외")]
+    [SerializeField] private bool _excludeIgnoreRaycastFromSensorMask = true;
+    [Tooltip("true면 Stage1+에서 Middle-Bottom 레이어를 끄고 하향 회피 과민 반응을 줄임")]
+    [SerializeField] private bool _disableMiddleBottomRaysInStage1 = true;
+    [Tooltip("true면 Stage1+에서 Bottom 레이어를 끄고 저층 건물 상공 통과를 허용")]
+    [SerializeField] private bool _disableBottomRayInStage1 = true;
+
+    [Header("Evader — Reward Hardening")]
+    [Tooltip("true면 Stage1+ 시작 시 EvaderReward를 권장 프로파일로 강제 적용")]
+    [SerializeField] private bool _applyStage1RewardProfile = true;
+    [SerializeField] private EvaderReward.Stage1RewardProfile _stage1RewardProfile = new EvaderReward.Stage1RewardProfile
+    {
+        VelAlignCoeff = 0.012f,
+        GoalPriorityDist = 6.0f,
+        ProximityCoeff = 0.006f,
+        ProximityThreshold = 0.25f,
+        NearGoalObstaclePenaltyScale = 0.35f,
+        MiddleBottomRayPenaltyWeight = 0.15f,
+        BottomRayPenaltyWeight = 0.0f,
+    };
+
     [Header("Evader — Episode Settings")]
-    [SerializeField] private float _maxEpisodeSeconds = 25f;
+    [SerializeField] private float _maxEpisodeSeconds = 40f;
     [SerializeField] private float _catchDistance     = 1.5f;
+    [SerializeField] private float _goalArrivalReward = 3.0f;
 
     [Header("Evader — Boundary Constraints")]
     [Tooltip("이 고도(m) 초과 시 맵 이탈로 판정 (벽 높이 20m)")]
@@ -62,7 +96,11 @@ public class EvaderAgent : DroneAgent
     [Tooltip("체크포인트 도달 판정 반경 (m)")]
     [SerializeField] private float _checkpointRadius     = 4f;
     [Tooltip("체크포인트 도달 시 보상 (순서대로 1개씩)")]
-    [SerializeField] private float _checkpointReward     = 0.3f;
+    [SerializeField] private float _checkpointReward     = 0.1f;
+    [Tooltip("체크포인트 보상의 유효 상한. 씬 값이 더 커도 이 값으로 캡핑")]
+    [SerializeField] private float _checkpointRewardCap  = 0.05f;
+    [Tooltip("체크포인트 인덱스가 증가할수록 보상 감쇠 (1번째는 1.0배)")]
+    [SerializeField] private float _checkpointRewardDecay = 0.35f;
     [Tooltip("체크포인트 후보 위치의 장애물 검사 반경 (m)")]
     [SerializeField] private float _checkpointClearRadius = 2f;
 
@@ -75,6 +113,12 @@ public class EvaderAgent : DroneAgent
     [SerializeField] private float _maxDistance = 50f;
     [SerializeField] private float _maxObsSpeed = 10f;
 
+    [Header("Evader — Reward Debug")]
+    [Tooltip("true면 N step마다 보상 항목 분해 로그를 출력")]
+    [SerializeField] private bool _logRewardBreakdown = false;
+    [Tooltip("보상 분해 로그 출력 주기(step)")]
+    [SerializeField] private int _rewardLogIntervalSteps = 1000;
+
     // ───────── 내부 상태 ──────────────────────────────────────────────────
     // _rb 는 DroneAgent.ResetPhysicsState() 로 위임 — 직접 선언 불필요
     private EvaderReward  _rewardCalculator;
@@ -84,6 +128,7 @@ public class EvaderAgent : DroneAgent
     private bool          _episodeEnded;  // OnCollisionEnter 중복 호출 방지
 
     private Vector3 _spawnCenter;  // SpawnCenter 미설정 시 폴백용 초기 위치
+    private int     _goalResampleAttemptsLast;
 
     // 체크포인트 상태
     private Vector3[] _episodeCheckpoints;
@@ -121,6 +166,8 @@ public class EvaderAgent : DroneAgent
 
         if (_goalZone != null)
             _goalZone.OnArrival += OnGoalArrived;
+
+        ApplyGoalAndSensorHardening();
     }
 
     private void OnValidate()
@@ -129,6 +176,12 @@ public class EvaderAgent : DroneAgent
         _catchDistance     = Mathf.Max(0.1f, _catchDistance);
         _maxDistance       = Mathf.Max(1f,   _maxDistance);
         _maxObsSpeed       = Mathf.Max(0.1f, _maxObsSpeed);
+        _goalObstacleClearanceRadius = Mathf.Max(0.5f, _goalObstacleClearanceRadius);
+        _goalResampleMaxAttempts     = Mathf.Max(1,    _goalResampleMaxAttempts);
+        _rewardLogIntervalSteps      = Mathf.Max(1,    _rewardLogIntervalSteps);
+        _goalArrivalReward           = Mathf.Max(0.1f, _goalArrivalReward);
+        _checkpointRewardCap         = Mathf.Max(0f,   _checkpointRewardCap);
+        _checkpointRewardDecay       = Mathf.Clamp01(_checkpointRewardDecay);
     }
 
     // ───────── 에피소드 시작 ──────────────────────────────────────────────
@@ -166,7 +219,26 @@ public class EvaderAgent : DroneAgent
             _goalZone?.RandomizePosition();
         }
 
-        transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+        // Goal이 건물/벽과 과근접이면 재샘플링하여 도달 불가능 배치를 줄인다.
+        if (_goalZone != null && _validateGoalPlacement)
+            EnsureGoalPlacementClearance();
+
+        ApplyGoalAndSensorHardening();
+
+        if (_goalResampleAttemptsLast > 0)
+            Debug.Log($"[EvaderAgent] Goal placement resampled {_goalResampleAttemptsLast} time(s) for obstacle clearance.", this);
+
+        // 에피소드 시작 시 goal 방향으로 yaw 정렬 (goal 없으면 랜덤)
+        if (_goalZone != null)
+        {
+            Vector3 toGoal = _goalZone.GetPosition() - transform.position;
+            toGoal.y = 0f;
+            transform.rotation = toGoal.sqrMagnitude > 0.01f
+                ? Quaternion.LookRotation(toGoal.normalized, Vector3.up)
+                : Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+        }
+        else
+            transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
 
         // 물리 초기화 — DroneAgent.ResetPhysicsState() 위임 (Rigidbody + DronePhysics 일괄 초기화)
         ResetPhysicsState();
@@ -263,14 +335,21 @@ public class EvaderAgent : DroneAgent
         // 26D 레이 거리 배열 전달 (합산 근접 페널티용)
         float[] obstacleDists = _sensorSystem?.GetAllNormalizedDistances();
 
-        AddReward(_rewardCalculator.ComputeStepReward(
+        EvaderReward.RewardBreakdown breakdown;
+        float stepReward = _rewardCalculator.ComputeStepReward(
             agentPos:      transform.position,
             goalPos:       _goalZone       != null ? _goalZone.GetPosition()     : Vector3.zero,
             pursuerPos:    TargetTransform != null ? TargetTransform.position    : Vector3.zero,
             isPursuerVisible: _isPursuerVisible,
             agentVel:      _dronePhysics   != null ? _dronePhysics.GetVelocity() : Vector3.zero,
-            obstacleDists: obstacleDists
-        ));
+            obstacleDists: obstacleDists,
+            breakdown: out breakdown
+        );
+
+        AddReward(stepReward);
+
+        if (_logRewardBreakdown && (_episodeSteps % _rewardLogIntervalSteps == 0))
+            LogRewardBreakdown(breakdown);
 
         // 체크포인트 도달 확인 (순서대로, 한 번만)
         CheckCheckpoints();
@@ -346,7 +425,7 @@ public class EvaderAgent : DroneAgent
         foreach (var pursuerAgent in pursuerAgents)
             pursuerAgent.HandleEvaderGoalRespawn();
 
-        AddReward(1.0f);
+        AddReward(_goalArrivalReward);
         _episodeLogger?.LogEpisode(EpisodeLogger.TermType.Goal, _episodeSteps);
         EndEpisode();
     }
@@ -487,6 +566,50 @@ public class EvaderAgent : DroneAgent
     }
 
     /// <summary>
+    /// Goal 중심 주변의 Building/Wall 충돌을 검사해 과근접이면 재배치한다.
+    /// EpisodeSpawnCoordinator 사용 여부와 무관하게 Goal.RandomizePosition()을 호출해
+    /// SpawnCenter 제약 내에서 유효 Goal을 찾는다.
+    /// </summary>
+    private void EnsureGoalPlacementClearance()
+    {
+        _goalResampleAttemptsLast = 0;
+        if (_goalZone == null) return;
+
+        for (int i = 0; i < _goalResampleMaxAttempts; i++)
+        {
+            Vector3 goalPos = _goalZone.GetPosition();
+            if (!IsGoalTooCloseToObstacle(goalPos))
+                return;
+
+            _goalZone.RandomizePosition();
+            _goalResampleAttemptsLast++;
+        }
+
+        if (_goalResampleAttemptsLast > 0)
+        {
+            Debug.LogWarning(
+                $"[EvaderAgent] Goal clearance validation failed after {_goalResampleAttemptsLast} attempts. " +
+                "Proceeding with current goal position.",
+                this);
+        }
+    }
+
+    /// <summary>
+    /// Goal 주변에 Building/Wall 태그가 있으면 true를 반환한다.
+    /// </summary>
+    private bool IsGoalTooCloseToObstacle(Vector3 goalPos)
+    {
+        Collider[] hits = Physics.OverlapSphere(goalPos, _goalObstacleClearanceRadius);
+        foreach (var c in hits)
+        {
+            if (c == null) continue;
+            if (c.CompareTag("Building") || c.CompareTag("Wall"))
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
     /// 다음 체크포인트와의 거리를 확인해 도달 시 보상 지급 (순서 강제).
     /// </summary>
     private void CheckCheckpoints()
@@ -498,7 +621,10 @@ public class EvaderAgent : DroneAgent
                                       _episodeCheckpoints[_nextCheckpointIdx]);
         if (dist < _checkpointRadius)
         {
-            AddReward(_checkpointReward);
+            float baseReward = Mathf.Min(_checkpointReward, _checkpointRewardCap);
+            float decayMul   = Mathf.Pow(_checkpointRewardDecay, _nextCheckpointIdx);
+            float reward     = baseReward * decayMul;
+            AddReward(reward);
             _nextCheckpointIdx++;
         }
     }
@@ -511,5 +637,53 @@ public class EvaderAgent : DroneAgent
         return pRb != null
             ? (pRb.linearVelocity - _dronePhysics.GetVelocity()) / _maxObsSpeed
             : Vector3.zero;
+    }
+
+    private void LogRewardBreakdown(EvaderReward.RewardBreakdown b)
+    {
+        string dominantPenalty = b.DominantPenalty();
+        Debug.Log(
+            $"[RewardBreakdown] epStep={_episodeSteps} total={b.Total:+0.000;-0.000} " +
+            $"goal={b.GoalShaping:+0.000;-0.000} vel={b.VelocityAlign:+0.000;-0.000} " +
+            $"obs={b.ObstaclePenalty:+0.000;-0.000}(sum={b.ObstacleSum:0.00}) " +
+            $"height={b.HeightPenalty:+0.000;-0.000} time={b.TimePenalty:+0.000;-0.000} " +
+            $"dist={b.GoalDistance:0.00} nearGoal={b.InGoalPriorityZone} penaltyCause={dominantPenalty}",
+            this);
+    }
+
+    /// <summary>
+    /// Goal 오인식과 하향 레이 과민 반응을 줄이기 위한 런타임 하드닝.
+    /// </summary>
+    private void ApplyGoalAndSensorHardening()
+    {
+        int ignoreRaycastLayer = LayerMask.NameToLayer("Ignore Raycast");
+
+        if (_autoSetGoalIgnoreRaycastLayer && _goalZone != null && ignoreRaycastLayer >= 0)
+        {
+            GameObject goalObject = _goalZone.gameObject;
+            if (goalObject.layer != ignoreRaycastLayer)
+                goalObject.layer = ignoreRaycastLayer;
+        }
+
+        if (_sensorSystem == null)
+            return;
+
+        if (_excludeIgnoreRaycastFromSensorMask && ignoreRaycastLayer >= 0)
+        {
+            int maskWithoutIgnoreRaycast = _sensorSystem.DetectionLayerMask.value & ~(1 << ignoreRaycastLayer);
+            _sensorSystem.DetectionLayerMask = maskWithoutIgnoreRaycast;
+        }
+
+        if (_currentStage >= 1)
+        {
+            if (_applyStage1RewardProfile && _rewardCalculator != null)
+                _rewardCalculator.ApplyStage1Profile(_stage1RewardProfile);
+
+            if (_disableMiddleBottomRaysInStage1)
+                _sensorSystem.SetMiddleBottomMode(DroneSensorSystem.DiagonalLayerMode.Off);
+
+            if (_disableBottomRayInStage1)
+                _sensorSystem.SetBottomEnabled(false);
+        }
     }
 }
