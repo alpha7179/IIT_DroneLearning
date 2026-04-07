@@ -1,42 +1,47 @@
 # evader_s1_obstacle_template.yaml
-# Stage1-A v3: Curriculum Phase1 - near-range (SpawnCenter radius=12m)
-# Goal: Mean Reward > +1.0 within 100k steps, then expand range
+# Stage1-A v4: Clean restart from Stage0 warm-start
+# Goal: Mean Reward > +1.0 within 100k steps
 #
-# CURRICULUM APPROACH:
-#   Phase1 (v3): SpawnCenter radius=12m  -> max spawn-goal dist ~24m
-#   Phase2 (v4): SpawnCenter radius=25m  -> max ~50m (after Phase1 converges)
-#   Phase3 (v5): SpawnCenter radius=50m  -> full city range
+# WHY v4: v1-v3 warm-start encoded "avoid goal" bias (proximity penalty fired
+# on Goal collider -> drone learned goal zone = obstacle). Discarded.
+# Stage0 v6 warm-start: knows goal-seeking, no city obstacle bias.
 #
-# Unity Inspector changes from v2:
+# CURRICULUM:
+#   Phase1 (v4): SpawnCenter radius=12m  -> max spawn-goal dist ~24m
+#   Phase2 (v5): SpawnCenter radius=25m  -> after Phase1 converges
+#   Phase3 (v6): full city range (CityMetadata strategy)
+#
+# Unity Inspector (Stage1.unity):
 #   EpisodeSpawnCoordinator:
-#     Strategy        = SpawnCenterRandom  (was: CityMetadata)
-#     _minSeparation  = 3                  (was: 10)
+#     Strategy        = SpawnCenterRandom
+#     _minSeparation  = 3
 #   SpawnCenter:
-#     Auto Sync From City = OFF            (prevent metadata override)
+#     Auto Sync From City = OFF
 #     Sync Mode       = Synchronized
-#     Shared Range -> Radius = 12          (was: ~50)
+#     Shared Range -> Radius = 12
 #   EvaderAgent:
 #     _goalOnlyMode          = true
 #     _currentStage          = 1
-#     Max Episode Seconds    = 35
+#     Max Episode Seconds    = 25
 #     _checkpointCount       = 2
 #     _checkpointRadius      = 4.0
 #     _checkpointReward      = 0.3
 #     _checkpointClearRadius = 2.0
 #   EvaderReward:
 #     _goalShapingCoeff      = 0.3
-#     _velAlignCoeff         = 0.005
-#     _timePenaltyPerStep    = -0.003
-#   BehaviorParameters:
-#     Behavior Name = Drone_Evader
+#     _velAlignCoeff         = 0.02
+#     _goalPriorityDist      = 6.0
+#     _timePenaltyPerStep    = -0.001
+#     _proximityCoeff        = 0.002
+#     _proximityThreshold    = 0.15
 #
-# Run (warm-start from v1):
+# Run:
 #   mlagents-learn python/config/evader_s1_obstacle_template.yaml \
-#     --run-id=evader_s1_obstacle_44d_v3_seed42 \
-#     --initialize-from=evader_s1_obstacle_44d_v1_seed42 \
+#     --run-id=evader_s1_obstacle_44d_v4_seed42 \
+#     --initialize-from=evader_s0_flat_44d_v6_seed42 \
 #     --force
 #
-# Phase1 -> Phase2 graduation: Mean Reward > +1.0 sustained 3x50k intervals
+# Phase1 -> Phase2: Mean Reward > +1.0 sustained 3x50k intervals
 
 engine_settings:
   time_scale: 20
@@ -50,7 +55,7 @@ behaviors:
       batch_size: 128
       buffer_size: 20480
       learning_rate: 2.0e-4
-      beta: 3.0e-3
+      beta: 1.0e-2
       epsilon: 0.2
       lambd: 0.99
       num_epoch: 3
