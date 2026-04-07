@@ -1,15 +1,16 @@
 # evader_s1_obstacle_template.yaml
-# Stage1-A v4: Clean restart from Stage0 warm-start
-# Goal: Mean Reward > +1.0 within 100k steps
+# Stage1-A v5: Resume from v1-500k (has wall avoidance) + Goal on Ignore Raycast
+# Goal: Mean Reward > +1.0 within 200k steps
 #
-# WHY v4: v1-v3 warm-start encoded "avoid goal" bias (proximity penalty fired
-# on Goal collider -> drone learned goal zone = obstacle). Discarded.
-# Stage0 v6 warm-start: knows goal-seeking, no city obstacle bias.
+# WHY v5: v4 (Stage0 warm-start) had zero obstacle knowledge -> constant crashes.
+# v1-500k knows wall avoidance AND some goal-reaching (peak +2.669 at 340k).
+# CRITICAL FIX: Goal GameObject moved to "Ignore Raycast" layer ->
+#   proximity penalty no longer fires on Goal collider -> goal-avoidance bias gone.
 #
 # CURRICULUM:
-#   Phase1 (v4): SpawnCenter radius=12m  -> max spawn-goal dist ~24m
-#   Phase2 (v5): SpawnCenter radius=25m  -> after Phase1 converges
-#   Phase3 (v6): full city range (CityMetadata strategy)
+#   Phase1 (v5): SpawnCenter radius=12m  -> max spawn-goal dist ~24m
+#   Phase2 (v6): SpawnCenter radius=25m  -> after Phase1 converges
+#   Phase3 (v7): full city range (CityMetadata strategy)
 #
 # Unity Inspector (Stage1.unity):
 #   EpisodeSpawnCoordinator:
@@ -19,26 +20,29 @@
 #     Auto Sync From City = OFF
 #     Sync Mode       = Synchronized
 #     Shared Range -> Radius = 12
+#   Goal:
+#     Layer           = Ignore Raycast  *** REQUIRED - sensors must not see goal ***
 #   EvaderAgent:
 #     _goalOnlyMode          = true
 #     _currentStage          = 1
-#     Max Episode Seconds    = 25
+#     Max Episode Seconds    = 40
+#     _goalArrivalReward     = 3.0
 #     _checkpointCount       = 2
 #     _checkpointRadius      = 4.0
-#     _checkpointReward      = 0.3
+#     _checkpointReward      = 0.10
 #     _checkpointClearRadius = 2.0
 #   EvaderReward:
 #     _goalShapingCoeff      = 0.3
-#     _velAlignCoeff         = 0.02
+#     _velAlignCoeff         = 0.012   # reduced: less goal-rush, allow obstacle detour
 #     _goalPriorityDist      = 6.0
-#     _timePenaltyPerStep    = -0.001
-#     _proximityCoeff        = 0.002
-#     _proximityThreshold    = 0.15
+#     _timePenaltyPerStep    = -0.001  # keep light: large map needs longer exploration
+#     _proximityCoeff        = 0.006   # 3x stronger: clear wall-avoidance signal
+#     _proximityThreshold    = 0.25    # wider: detect walls earlier
 #
 # Run:
 #   mlagents-learn python/config/evader_s1_obstacle_template.yaml \
-#     --run-id=evader_s1_obstacle_44d_v4_seed42 \
-#     --initialize-from=evader_s0_flat_44d_v6_seed42 \
+#     --run-id=evader_s1_obstacle_44d_v5_seed42 \
+#     --initialize-from=evader_s1_obstacle_44d_v1_seed42 \
 #     --force
 #
 # Phase1 -> Phase2: Mean Reward > +1.0 sustained 3x50k intervals
@@ -55,7 +59,7 @@ behaviors:
       batch_size: 128
       buffer_size: 20480
       learning_rate: 2.0e-4
-      beta: 1.0e-2
+      beta: 5.0e-3
       epsilon: 0.2
       lambd: 0.99
       num_epoch: 3

@@ -31,6 +31,7 @@
 |------|--------|--------|--------|------|-------------|--------|
 | 2026-04-06 | `26b746b` | `evader_s1_obstacle_template` | `evader_s1_obstacle_44d_v1_seed42` | 42 | peak +2.669 (350k), final +2.162 (500k) | goalProximityBonus 존재. 290k 최초 양수. 350k peak 후 진동. 호버링 착취 확인 → v2 warm-start로 사용 |
 | 2026-04-06 | `e43867d` | `evader_s1_obstacle_template` | `evader_s1_obstacle_44d_v2_seed42` | 42 | 학습 예정 | obstacle-aware vel reward + 체크포인트 시스템 + goalProximityBonus 제거 + timePenalty -0.003 |
+| 2026-04-07 | `??` | `evader_s1_obstacle_template` | `evader_s1_obstacle_44d_v5_seed42` | 42 | peak +9.542 (960k), final +5.991 (1M) | v2 warm-start 끝나고 v3→v5로 계속 학습. 900k~1M에서 mean reward 2~10 범위 진동. **이슈**: code 변경 후 scene 재저장 누락으로 Inspector에서 MaxEpisodeSeconds 25(old)로 표시. 실제로는 25로 강제되어 장애물 나비게이션에 시간 부족 → timeout 과다발생. 코드는 40으로 변경되었으나 Unity scene 메타데이터 미동기화 문제 → URGENT_FIX_MaxEpisodeSeconds.md 참조. |
 
 ---
 
