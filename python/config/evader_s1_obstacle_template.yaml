@@ -1,8 +1,20 @@
 # evader_s1_obstacle_template.yaml
-# Stage1-A: Obstacle env, no Pursuer (_goalOnlyMode=true, _currentStage=1)
-# Goal: goal_reach_rate >= 30%, crash_rate <= 15%
+# Stage1-A v3: Curriculum Phase1 — near-range (SpawnCenter radius=12m)
+# Goal: Mean Reward > +1.0 within 100k steps, then expand range
 #
-# Unity Inspector (Stage1.unity > Drone_Evader):
+# CURRICULUM APPROACH:
+#   Phase1 (v3): SpawnCenter radius=12m  -> max spawn-goal dist ~24m
+#   Phase2 (v4): SpawnCenter radius=25m  -> max ~50m (after Phase1 converges)
+#   Phase3 (v5): SpawnCenter radius=50m  -> full city range
+#
+# Unity Inspector changes from v2:
+#   EpisodeSpawnCoordinator:
+#     Strategy        = SpawnCenterRandom  (was: CityMetadata)
+#     _minSeparation  = 3                  (was: 10)
+#   SpawnCenter:
+#     Auto Sync From City = OFF            (prevent metadata override)
+#     Sync Mode       = Synchronized
+#     Shared Range -> Radius = 12          (was: ~50)
 #   EvaderAgent:
 #     _goalOnlyMode          = true
 #     _currentStage          = 1
@@ -13,22 +25,18 @@
 #     _checkpointClearRadius = 2.0
 #   EvaderReward:
 #     _goalShapingCoeff      = 0.3
-#     _velAlignCoeff         = 0.005  (obstacle-aware: blends goal-dir and repulsion)
-#     _yawAlignCoeff         = 0.0
-#     _proximityThreshold    = 0.15
-#     _proximityCoeff        = 0.002
-#     _heightWarningY        = 17
-#     _heightPenaltyCoeff    = -0.02
+#     _velAlignCoeff         = 0.005
 #     _timePenaltyPerStep    = -0.003
 #   BehaviorParameters:
 #     Behavior Name = Drone_Evader
-#   DroneDepthSystem: DISABLED / DroneVisionSystem: ENABLED (RGB 3ch)
 #
-# Run (warm-start from v1 best checkpoint):
+# Run (warm-start from v1):
 #   mlagents-learn python/config/evader_s1_obstacle_template.yaml \
-#     --run-id=evader_s1_obstacle_44d_v2_seed42 \
+#     --run-id=evader_s1_obstacle_44d_v3_seed42 \
 #     --initialize-from=evader_s1_obstacle_44d_v1_seed42 \
 #     --force
+#
+# Phase1 -> Phase2 graduation: Mean Reward > +1.0 sustained 3x50k intervals
 
 engine_settings:
   time_scale: 20
@@ -42,7 +50,7 @@ behaviors:
       batch_size: 128
       buffer_size: 20480
       learning_rate: 2.0e-4
-      beta: 5.0e-3
+      beta: 1.0e-2
       epsilon: 0.2
       lambd: 0.99
       num_epoch: 3
