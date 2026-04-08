@@ -12132,6 +12132,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Drone_Evader
       objectReference: {fileID: 0}
+    - target: {fileID: 204724630800921030, guid: 03db6dc6599c71f4bb3367a1ebce781e, type: 3}
+      propertyPath: m_Layer
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 228914259581343460, guid: 03db6dc6599c71f4bb3367a1ebce781e, type: 3}
       propertyPath: _goalZone
       value: 

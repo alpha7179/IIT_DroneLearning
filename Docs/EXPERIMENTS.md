@@ -30,8 +30,21 @@
 | 날짜 | commit | config | run-id | seed | mean_reward | 코멘트 |
 |------|--------|--------|--------|------|-------------|--------|
 | 2026-04-06 | `26b746b` | `evader_s1_obstacle_template` | `evader_s1_obstacle_44d_v1_seed42` | 42 | peak +2.669 (350k), final +2.162 (500k) | goalProximityBonus 존재. 290k 최초 양수. 350k peak 후 진동. 호버링 착취 확인 → v2 warm-start로 사용 |
-| 2026-04-06 | `e43867d` | `evader_s1_obstacle_template` | `evader_s1_obstacle_44d_v2_seed42` | 42 | 학습 예정 | obstacle-aware vel reward + 체크포인트 시스템 + goalProximityBonus 제거 + timePenalty -0.003 |
-| 2026-04-07 | `??` | `evader_s1_obstacle_template` | `evader_s1_obstacle_44d_v5_seed42` | 42 | peak +9.542 (960k), final +5.991 (1M) | v2 warm-start 끝나고 v3→v5로 계속 학습. 900k~1M에서 mean reward 2~10 범위 진동. **이슈**: code 변경 후 scene 재저장 누락으로 Inspector에서 MaxEpisodeSeconds 25(old)로 표시. 실제로는 25로 강제되어 장애물 나비게이션에 시간 부족 → timeout 과다발생. 코드는 40으로 변경되었으나 Unity scene 메타데이터 미동기화 문제 → URGENT_FIX_MaxEpisodeSeconds.md 참조. |
+| 2026-04-06 | `e43867d` | `evader_s1_obstacle_template` | `evader_s1_obstacle_44d_v2_seed42` | 42 | - | obstacle-aware vel reward + 체크포인트 시스템 + goalProximityBonus 제거 + timePenalty -0.003 적용. artifact maxStep=470550 |
+| 2026-04-07 | `??` | `evader_s1_obstacle_template` | `evader_s1_obstacle_44d_v3_seed42` | 42 | - | v2 warm-start 연장 실험. artifact maxStep=783812 |
+| 2026-04-07 | `??` | `evader_s1_obstacle_template` | `evader_s1_obstacle_44d_v4_seed42` | 42 | - | v3 후속 실험(중단/재시작 포함). artifact maxStep=366352 |
+| 2026-04-07 | `??` | `evader_s1_obstacle_template` | `evader_s1_obstacle_44d_v5_seed42` | 42 | peak +9.542 (960k), final +5.991 (1M) | v2 warm-start 끝나고 v3→v5로 계속 학습. 900k~1M에서 mean reward 2~10 범위 진동. **이슈**: code 변경 후 scene 재저장 누락으로 Inspector에서 MaxEpisodeSeconds 25(old)로 표시. 실제로는 25로 강제되어 장애물 나비게이션 시간 부족 → timeout 과다발생. 코드는 40으로 변경되었으나 Unity scene 메타데이터 미동기화 문제 → URGENT_FIX_MaxEpisodeSeconds.md 참조. |
+| 2026-04-07 | `??` | `evader_s1_obstacle_template` | `evader_s1_obstacle_44d_v6_seed42` | 42 | - | v5 이후 안정화 탐색 라운드. artifact maxStep=303555 |
+| 2026-04-07 | `??` | `evader_s1_obstacle_template` | `evader_s1_obstacle_44d_v7_seed42` | 42 | - | Stage1 하드닝/보상 프로파일 강제 반영 라운드. artifact maxStep=884877 |
+| 2026-04-08 | `??` | `evader_s1_obstacle_template` | `evader_s1_obstacle_44d_v8exp_seed42` | 42 | - | exploration profile 라운드. artifact maxStep=599895 (최근 resume 명령은 exit=1) |
+| 2026-04-08 | `??` | `evader_s1_obstacle_template` | `evader_s1_obstacle_44d_v9guard_seed42` | 42 | - | guard profile 라운드. artifact maxStep=599995 (최근 resume 명령은 exit=1) |
+| 2026-04-08 | `??` | `evader_s1_obstacle_template` | `evader_s1_obstacle_44d_v10smooth_seed42` | 42 | - | smoothing profile 라운드. artifact maxStep=299936 |
+| 2026-04-08 | `??` | `evader_s1_obstacle_20260408_v11_dewall.yaml` | `evader_s1_obstacle_44d_v11dewall_seed42` | 42 | - | dewall 설정 라운드. artifact maxStep=249991, run_logs metadata 누락 이슈 확인 |
+| 2026-04-08 | `??` | `evader_s1_obstacle_20260409_v12_wallfix.yaml` | `evader_s1_obstacle_44d_v12wallfix_seed42` | 42 | - | wallfix 설정 라운드. artifact maxStep=99977, notebook output cell 유실 및 외벽 충돌 다수 관찰 |
+| 2026-04-08 | `working-tree` | `evader_s1_obstacle_20260408_v13_wallfocus.yaml` | `evader_s1_obstacle_44d_v13wallfocus_seed42` | 42 | 100k gate final +13.596 (std 20.364) | v12 checkpoint warm-start. target 100k 도달 후 auto-stop 수행, exit=1은 terminate 기반 정상 종료. post-check snapshot_step=99973, artifacts: 24872/49924/74987/99973 |
+| 2026-04-08 | `working-tree` | `evader_s1_obstacle_20260408_v13c_rootfix.yaml` | `evader_s1_obstacle_44d_v13crootfix_seed42` | 42 | resume final +11.684 @250k (peak +14.592 @245k, dip +3.163 @215k) | v13c 추가학습(resume) 99943->250000 완료. auto-stop 정상 동작, 진행 안정적. checkpoint exports: 124962/149950/174890/199908/224886 |
+
+참고: `artifact maxStep`은 `python/results/<run-id>/Drone_Evader/Drone_Evader-*.onnx|*.pt` 파일명 기준으로 기록.
 
 ---
 

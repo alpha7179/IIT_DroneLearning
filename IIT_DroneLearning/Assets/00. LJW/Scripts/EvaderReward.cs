@@ -28,6 +28,10 @@ public class EvaderReward : MonoBehaviour
         public float ProximityCoeff;
         public float ProximityThreshold;
         public float NearGoalObstaclePenaltyScale;
+        public float GoalApproachObstaclePenaltyScale;
+        public float TimePenaltyPerStep;
+        public float SurvivalRewardPerStep;
+        public float NearGoalShapingMultiplier;
         public float MiddleBottomRayPenaltyWeight;
         public float BottomRayPenaltyWeight;
     }
@@ -64,11 +68,19 @@ public class EvaderReward : MonoBehaviour
     // ───────── Inspector 가중치 설정 ──────────────────────────────────────
     [Header("Goal Shaping")]
     [Tooltip("목표 지점 접근에 따른 potential-based shaping 계수")]
-    [SerializeField] private float _goalShapingCoeff = 0.3f;
+    [SerializeField] private float _goalShapingCoeff = 0.28f;
+    [Tooltip("목표가 이 거리(m)보다 멀면 shaping을 증폭해 장거리 구간 정체를 줄인다")]
+    [SerializeField] private float _farGoalShapingBoostDistance = 18f;
+    [Tooltip("원거리 구간 shaping 배수 (1 이상 권장)")]
+    [SerializeField] private float _farGoalShapingBoostMultiplier = 1.6f;
+    [Tooltip("목표 근접 구간 shaping 증폭 시작 거리(m)")]
+    [SerializeField] private float _nearGoalShapingBoostDistance = 3f;
+    [Tooltip("목표 근접 구간 shaping 배수")]
+    [SerializeField] private float _nearGoalShapingBoostMultiplier = 1.8f;
 
     [Header("Survival")]
     [Tooltip("매 스텝 생존 보너스 (0 권장 — timePenalty와 상쇄됨)")]
-    [SerializeField] private float _survivalRewardPerStep = 0.0f;
+    [SerializeField] private float _survivalRewardPerStep = 0.0008f;
 
     [Header("Occlusion (Stage1+)")]
     [Tooltip("Pursuer LOS 차단 성공 시 보너스 (0이면 비활성)")]
@@ -79,7 +91,11 @@ public class EvaderReward : MonoBehaviour
              "Middle 레이(9-16) 척력 벡터와 goal 방향을 장애물 강도에 따라 블렌드.")]
     [SerializeField] private float _velAlignCoeff = 0.005f;
     [Tooltip("이 거리(m) 이내에서는 척력 블렌드를 무시하고 순수 goal 방향 보상만 적용 (goal 근처 뒤로 물러남 방지)")]
-    [SerializeField] private float _goalPriorityDist = 6f;
+    [SerializeField] private float _goalPriorityDist = 7f;
+    [Tooltip("goal priority 구간 중 완전 goal 우선(역방향 clamp)으로 전환하는 임계 near-goal factor (0~1)")]
+    [SerializeField] private float _goalPriorityHardZoneFactor = 0.85f;
+    [Tooltip("goal 근접 구간에서도 유지할 척력 블렌드 최소 비율 (0~1)")]
+    [SerializeField] private float _obstacleBlendNearGoalFloor = 0.20f;
 
     [Tooltip("Yaw 정렬 보상 (Stage1+에서는 0 권장)")]
     [SerializeField] private float _yawAlignCoeff = 0.0f;
@@ -91,9 +107,11 @@ public class EvaderReward : MonoBehaviour
     [Tooltip("이 정규화 거리 미만 레이 감지 시 페널티 합산 시작 (0~1)")]
     [SerializeField] private float _proximityThreshold = 0.15f;
     [Tooltip("레이 1개당 최대 페널티 기여값. 26개 합산되므로 작게 유지")]
-    [SerializeField] private float _proximityCoeff = 0.002f;
+    [SerializeField] private float _proximityCoeff = 0.0035f;
     [Tooltip("goalPriorityDist 이내에서 장애물 페널티 최소 스케일 (0~1). goal 근처 급선회 완화")]
-    [SerializeField] private float _nearGoalObstaclePenaltyScale = 0.35f;
+    [SerializeField] private float _nearGoalObstaclePenaltyScale = 0.75f;
+    [Tooltip("goal 방향으로 전진 중일 때 장애물 페널티 스케일 (0~1). 0 이하 값은 기본 0.45를 사용")]
+    [SerializeField] private float _goalApproachObstaclePenaltyScale = 0.70f;
     [Tooltip("Top 레이(0) 장애물 페널티 가중치")]
     [SerializeField] private float _topRayPenaltyWeight = 0.1f;
     [Tooltip("Top-Middle 레이(1~8) 장애물 페널티 가중치")]
@@ -113,7 +131,7 @@ public class EvaderReward : MonoBehaviour
 
     [Header("Time Penalty")]
     [Tooltip("스텝당 시간 페널티 (음수 유지). 큰 맵에서는 지나친 rushing을 막지 않도록 약하게 유지")]
-    [SerializeField] private float _timePenaltyPerStep = -0.001f;
+    [SerializeField] private float _timePenaltyPerStep = -0.0015f;
 
     // ───────── Middle 레이어 방향 매핑 ────────────────────────────────────
     // DroneSensorSystem 인덱스 9~16: Middle 레이어 (수평 8방위, 드론 로컬 좌표계)
@@ -141,9 +159,24 @@ public class EvaderReward : MonoBehaviour
         _goalPriorityDist = profile.GoalPriorityDist;
         _proximityCoeff = profile.ProximityCoeff;
         _proximityThreshold = profile.ProximityThreshold;
-        _nearGoalObstaclePenaltyScale = profile.NearGoalObstaclePenaltyScale;
+        _nearGoalObstaclePenaltyScale = Mathf.Clamp(profile.NearGoalObstaclePenaltyScale, 0.45f, 1f);
+        _goalApproachObstaclePenaltyScale = Mathf.Clamp(profile.GoalApproachObstaclePenaltyScale, 0.45f, 1f);
+        _timePenaltyPerStep = Mathf.Min(0f, profile.TimePenaltyPerStep);
+        _survivalRewardPerStep = Mathf.Max(0f, profile.SurvivalRewardPerStep);
+        _nearGoalShapingBoostMultiplier = Mathf.Max(1f, profile.NearGoalShapingMultiplier);
         _middleBottomRayPenaltyWeight = profile.MiddleBottomRayPenaltyWeight;
         _bottomRayPenaltyWeight = profile.BottomRayPenaltyWeight;
+    }
+
+    private void OnValidate()
+    {
+        _nearGoalShapingBoostDistance = Mathf.Max(0.1f, _nearGoalShapingBoostDistance);
+        _nearGoalShapingBoostMultiplier = Mathf.Max(1f, _nearGoalShapingBoostMultiplier);
+        _goalPriorityHardZoneFactor = Mathf.Clamp(_goalPriorityHardZoneFactor, 0.5f, 1f);
+        _obstacleBlendNearGoalFloor = Mathf.Clamp01(_obstacleBlendNearGoalFloor);
+        _survivalRewardPerStep = Mathf.Max(0f, _survivalRewardPerStep);
+        _goalApproachObstaclePenaltyScale = Mathf.Clamp(_goalApproachObstaclePenaltyScale, 0.45f, 1f);
+        _timePenaltyPerStep = Mathf.Min(0f, _timePenaltyPerStep);
     }
 
     // ───────── 에피소드 초기화 ────────────────────────────────────────────
@@ -191,9 +224,15 @@ public class EvaderReward : MonoBehaviour
         breakdown = default;
 
         // ── Goal Shaping (potential-based) ───────────────────────────────
-        // Near-goal multiplier: 3m 이내에서 shaping 3x 강화 → orbit → entry 전환 유도
+        // Near-goal multiplier: goal 직전 가속을 완만하게 유지해 충돌 감수 돌진을 줄인다.
+        // Far-goal multiplier : 장거리 구간에서 shaping을 강화해 goal 망각/hovering 완화
         float currGoalDist   = Vector3.Distance(agentPos, goalPos);
-        float shapingMult    = currGoalDist < 3f ? 3f : 1f;
+        float shapingMult = 1f;
+        if (currGoalDist < _nearGoalShapingBoostDistance)
+            shapingMult = _nearGoalShapingBoostMultiplier;
+        else if (currGoalDist > _farGoalShapingBoostDistance)
+            shapingMult = Mathf.Max(1f, _farGoalShapingBoostMultiplier);
+
         if (_prevGoalDistance < float.MaxValue)
         {
             float goalShaping = _goalShapingCoeff * shapingMult * (_prevGoalDistance - currGoalDist);
@@ -238,19 +277,24 @@ public class EvaderReward : MonoBehaviour
         if (_velAlignCoeff > 0f && currGoalDist > 0.1f)
         {
             Vector3 toGoalWorld = (goalPos - agentPos).normalized;
+            float safeGoalPriorityDist = Mathf.Max(0.01f, _goalPriorityDist);
+            float nearGoalFactor = 1f - Mathf.Clamp01(currGoalDist / safeGoalPriorityDist);
+            float obstacleBlendWindow = Mathf.Lerp(_obstacleBlendNearGoalFloor, 1f, 1f - nearGoalFactor);
 
-            bool inGoalPriorityZone = currGoalDist < _goalPriorityDist;
+            bool inGoalPriorityZone = nearGoalFactor > _goalPriorityHardZoneFactor;
             breakdown.InGoalPriorityZone = inGoalPriorityZone;
 
-            if (!inGoalPriorityZone && obstacleDists != null)
+            Vector3 targetDir = toGoalWorld;
+
+            if (obstacleDists != null)
             {
                 // 척력 벡터 계산 (로컬 좌표계)
                 Vector3 repulsionLocal = ComputeRepulsionDir(obstacleDists);
 
                 float rawStrength      = Mathf.Clamp01(repulsionLocal.magnitude / 4f);
-                float obstacleStrength = rawStrength * 0.25f;  // 0.55 -> 0.25: 척력이 goal 방향을 압도 방지
+                // goal 근접 구간에서는 척력 블렌드를 점진적으로 약화해 경계에서의 불연속을 줄인다.
+                float obstacleStrength = rawStrength * 0.40f * obstacleBlendWindow;
 
-                Vector3 targetDir;
                 if (obstacleStrength > 0.02f)
                 {
                     Vector3 toGoalLocal = _agentTransform.InverseTransformDirection(toGoalWorld);
@@ -265,26 +309,23 @@ public class EvaderReward : MonoBehaviour
                 {
                     targetDir = toGoalWorld;
                 }
-
-                float velAlign = Vector3.Dot(agentVel, targetDir) / _maxObsSpeed;
-                float velAlignReward = _velAlignCoeff * velAlign;
-                reward += velAlignReward;
-                breakdown.VelocityAlign = velAlignReward;
             }
-            else
+
+            float velAlign = Vector3.Dot(agentVel, targetDir) / _maxObsSpeed;
+
+            // goal 근접 구간에서는 후진을 완전히 허용하지 않되 경계에서 연속적으로 전환한다.
+            float minBackwardAllowance = Mathf.Lerp(-0.15f, 0f, nearGoalFactor);
+            velAlign = Mathf.Max(minBackwardAllowance, velAlign);
+
+            if (inGoalPriorityZone)
             {
-                // goal 근접 구간 or 센서 없음: 순수 goal 방향 속도 보상
-                float velAlign = Vector3.Dot(agentVel, toGoalWorld) / _maxObsSpeed;
-
-                // goal 근접 구간에서는 후진을 벌점으로 키우기보다 "전진 보상"만 남겨
-                // 골 직전 급선회/후진 루프를 줄인다.
-                if (inGoalPriorityZone)
-                    velAlign = Mathf.Max(0f, velAlign);
-
-                float velAlignReward = _velAlignCoeff * velAlign;
-                reward += velAlignReward;
-                breakdown.VelocityAlign = velAlignReward;
+                // goal 내부에서 미세 진동 완화를 위해 매우 근접한 역방향 성분은 제거한다.
+                velAlign = Mathf.Max(0f, velAlign);
             }
+
+            float velAlignReward = _velAlignCoeff * velAlign;
+            reward += velAlignReward;
+            breakdown.VelocityAlign = velAlignReward;
         }
 
         // ── 장애물 근접 페널티 (26개 레이 가중 합산) ────────────────────
@@ -312,10 +353,23 @@ public class EvaderReward : MonoBehaviour
             if (_goalPriorityDist > 0.01f)
             {
                 float t = Mathf.Clamp01(currGoalDist / _goalPriorityDist);
-                nearGoalScale = Mathf.Lerp(_nearGoalObstaclePenaltyScale, 1f, t);
+                float minNearGoalScale = Mathf.Clamp(_nearGoalObstaclePenaltyScale, 0.45f, 1f);
+                nearGoalScale = Mathf.Lerp(minNearGoalScale, 1f, t);
             }
 
-            float obstaclePenalty = -_proximityCoeff * obstacleSum * nearGoalScale;
+            float approachScale = _goalApproachObstaclePenaltyScale;
+            if (approachScale <= 0f || approachScale > 1f)
+                approachScale = 0.70f;
+
+            float towardGoalScale = 1f;
+            if (currGoalDist > 0.1f && agentVel.sqrMagnitude > 0.0001f)
+            {
+                Vector3 toGoalDir = (goalPos - agentPos).normalized;
+                float towardGoal = Mathf.Max(0f, Vector3.Dot(agentVel.normalized, toGoalDir));
+                towardGoalScale = Mathf.Lerp(1f, approachScale, towardGoal);
+            }
+
+            float obstaclePenalty = -_proximityCoeff * obstacleSum * nearGoalScale * towardGoalScale;
             reward += obstaclePenalty;
             breakdown.ObstacleSum = obstacleSum;
             breakdown.ObstaclePenalty = obstaclePenalty;
