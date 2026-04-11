@@ -1,0 +1,45 @@
+# evader_s1_obstacle_20260408_v13_wallfocus.yaml
+# Stage1-A v13: collision-focused stabilization from v12 warm-start.
+#
+# Intended run:
+#   --run-id=evader_s1_obstacle_44d_v13wallfocus_seed42
+#   --initialize-from=evader_s1_obstacle_44d_v12wallfix_seed42
+#
+# Notes:
+# - Keep model architecture unchanged (44D vector + ray)
+# - Increase adaptation/exploration slightly vs v12
+# - Keep summary/checkpoint cadence from v12 for robust recovery
+
+engine_settings:
+  time_scale: 20
+  capture_frame_rate: 60
+
+behaviors:
+  Drone_Evader:
+    trainer_type: ppo
+
+    hyperparameters:
+      batch_size: 256
+      buffer_size: 28000
+      learning_rate: 1.3e-4
+      beta: 3.0e-3
+      epsilon: 0.14
+      lambd: 0.99
+      num_epoch: 3
+      learning_rate_schedule: linear
+
+    network_settings:
+      normalize: true
+      hidden_units: 256
+      num_layers: 2
+
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+
+    max_steps: 1000000
+    time_horizon: 128
+    summary_freq: 5000
+    checkpoint_interval: 25000
+    keep_checkpoints: 8

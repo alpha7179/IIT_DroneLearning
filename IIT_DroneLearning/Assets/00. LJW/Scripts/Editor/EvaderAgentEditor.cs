@@ -59,10 +59,78 @@ public class EvaderAgentEditor : Editor
         // ─── EvaderAgent 전용 ────────────────────────────────────────────────
         DrawSection("EvaderAgent", ref _evaderFoldout, ColorEvader, () =>
         {
+            DrawProp("_autoApplyStage1Defaults");
+            EditorGUILayout.Space(2);
+
+            EditorGUILayout.LabelField("Goal / Placement", EditorStyles.miniBoldLabel);
+            DrawProp("_goalZone");
+            DrawProp("_validateGoalPlacement");
+            DrawProp("_goalObstacleClearanceRadius");
+            DrawProp("_goalResampleMaxAttempts");
+            EditorGUILayout.Space(2);
+
+            EditorGUILayout.LabelField("Sensor Hardening", EditorStyles.miniBoldLabel);
+            DrawProp("_autoSetGoalIgnoreRaycastLayer");
+            DrawProp("_excludeIgnoreRaycastFromSensorMask");
+            DrawProp("_forceNonEmptyDetectionLayerMask");
+            DrawProp("_disableMiddleBottomRaysInStage1");
+            DrawProp("_disableBottomRayInStage1");
+            EditorGUILayout.Space(2);
+
+            EditorGUILayout.LabelField("Reward Hardening", EditorStyles.miniBoldLabel);
+            DrawProp("_applyStage1RewardProfile");
+            DrawProp("_useStage1RewardPreset");
+            DrawProp("_stage1RewardPreset");
+            DrawProp("_stage1RewardProfileExperimental", "Experimental Profile");
+            DrawProp("_stage1RewardProfileLegacy", "LegacyV7 Profile");
+            DrawProp("_stage1RewardProfile", "Manual Profile");
+            DrawProp("_logActiveStage1RewardProfile");
+            EditorGUILayout.Space(2);
+
             EditorGUILayout.LabelField("Episode Settings", EditorStyles.miniBoldLabel);
             DrawProp("_maxEpisodeSeconds");
             DrawProp("_catchDistance");
+            DrawProp("_goalArrivalReward");
             EditorGUILayout.Space(2);
+
+            EditorGUILayout.LabelField("Checkpoint Settings", EditorStyles.miniBoldLabel);
+            DrawProp("_checkpointCount");
+            DrawProp("_checkpointRadius");
+            DrawProp("_checkpointReward");
+            DrawProp("_checkpointRewardCap");
+            DrawProp("_checkpointRewardDecay");
+            DrawProp("_checkpointClearRadius");
+            EditorGUILayout.Space(2);
+
+            EditorGUILayout.LabelField("Action Smoothing", EditorStyles.miniBoldLabel);
+            DrawProp("_useActionSmoothing");
+            DrawProp("_actionDeadzone");
+            DrawProp("_commandLerpFactor");
+            DrawProp("_maxCommandDeltaPerStep");
+            EditorGUILayout.Space(2);
+
+            EditorGUILayout.LabelField("Wall Proximity Safety", EditorStyles.miniBoldLabel);
+            DrawProp("_enableWallProximitySafety");
+            DrawProp("_wallProximityThreshold");
+            DrawProp("_blockForwardPitchOnWallProximity");
+            DrawProp("_wallAvoidRollAssist");
+            DrawProp("_wallAvoidYawAssist");
+            EditorGUILayout.Space(2);
+
+            EditorGUILayout.LabelField("Anti-Hover", EditorStyles.miniBoldLabel);
+            DrawProp("_enableStagnationPenalty");
+            DrawProp("_stagnationWatchDistance");
+            DrawProp("_stagnationProgressThreshold");
+            DrawProp("_stagnationGraceSteps");
+            DrawProp("_stagnationPenaltyPerStep");
+            EditorGUILayout.Space(2);
+
+            EditorGUILayout.LabelField("Boundary / Collision", EditorStyles.miniBoldLabel);
+            DrawProp("_maxFlightHeight");
+            DrawProp("_boundaryHalfSize");
+            DrawProp("_crashTags");
+            EditorGUILayout.Space(2);
+
             EditorGUILayout.LabelField("Stage Control", EditorStyles.miniBoldLabel);
             DrawProp("_goalOnlyMode");
             DrawProp("_currentStage");
@@ -77,6 +145,11 @@ public class EvaderAgentEditor : Editor
             EditorGUILayout.LabelField("Observation Normalization", EditorStyles.miniBoldLabel);
             DrawProp("_maxDistance");
             DrawProp("_maxObsSpeed");
+            EditorGUILayout.Space(2);
+
+            EditorGUILayout.LabelField("Reward Debug", EditorStyles.miniBoldLabel);
+            DrawProp("_logRewardBreakdown");
+            DrawProp("_rewardLogIntervalSteps");
         });
 
         serializedObject.ApplyModifiedProperties();
