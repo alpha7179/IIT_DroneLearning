@@ -1,0 +1,47 @@
+# evader_s1_obstacle_20260408_v11_dewall.yaml
+# Stage1-A v11: de-wall tuning for stagnation reduction from v10 warm-start.
+#
+# Goals:
+# - keep wall safety behavior from v10
+# - reduce long-horizon stagnation and goal-distance plateau
+# - preserve compatibility with Unity 6000 / ML-Agents 4.0.x / Python 3.10
+#
+# Intended notebook profile:
+# - WORKFLOW_MODE = "train_v11" or "resume_v11"
+# - RUN_ID = evader_s1_obstacle_44d_v11dewall_seed42
+#
+# Inspector recommendations are tracked in stage1_obstacle_local.ipynb checklist.
+
+engine_settings:
+  time_scale: 20
+  capture_frame_rate: 60
+
+behaviors:
+  Drone_Evader:
+    trainer_type: ppo
+
+    hyperparameters:
+      batch_size: 256
+      buffer_size: 20480
+      learning_rate: 1.5e-4
+      beta: 3.0e-3
+      epsilon: 0.15
+      lambd: 0.99
+      num_epoch: 3
+      learning_rate_schedule: linear
+
+    network_settings:
+      normalize: true
+      hidden_units: 256
+      num_layers: 2
+
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+
+    max_steps: 1000000
+    time_horizon: 128
+    summary_freq: 10000
+    checkpoint_interval: 50000
+    keep_checkpoints: 5
