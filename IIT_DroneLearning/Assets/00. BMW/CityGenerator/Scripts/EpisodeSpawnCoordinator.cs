@@ -102,6 +102,10 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
     // 이격 거리 검사용 — 이미 확정된 모든 스폰 위치
     private readonly List<Vector3> _occupiedPositions = new List<Vector3>();
 
+    // 건물 Bounds 캐시 — ComputeSpawn() 시작 시 갱신.
+    // 건물이 없는 환경에서는 빈 리스트 → IsNotOverlappingBuildings()가 항상 true 반환.
+    private readonly List<Bounds> _buildingBounds = new List<Bounds>();
+
     private SpawnResult _goalResult;
     [SerializeField] private bool _isComputed;
 
@@ -158,6 +162,17 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
         // 공유 상태 초기화
         _spawnMap.Clear();
         _occupiedPositions.Clear();
+
+        // 건물 Bounds 캐싱 — CityDataAPI에서 메타데이터를 읽어 건물 Bounds 목록 갱신.
+        // API 없거나 메타데이터 없는 환경(빈 리스트 포함)이면 빈 리스트로 유지.
+        _buildingBounds.Clear();
+        if (CityDataAPI.Instance != null && CityDataAPI.Instance.HasCityMetadata())
+        {
+            var meta = CityDataAPI.Instance.GetCityMetadata();
+            if (meta.buildings != null)
+                foreach (var b in meta.buildings)
+                    _buildingBounds.Add(b.bounds);
+        }
 
         // SpawnCenter AutoSyncFromCity 활성화 시 도시 메타데이터 동기화
         if (SpawnCenter.Current != null && SpawnCenter.Current.AutoSyncFromCity)
@@ -497,7 +512,9 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
                 Position = new Vector3(gn.position.x, goalY, gn.position.z),
                 YawDegrees = 0f
             };
-            _occupiedPositions.Add(new Vector3(gn.position.x, gn.elevation, gn.position.z));
+            // [Fix] 실제 goalY 기준으로 추가하여 드론과의 이격 거리 판정이 올바르게 동작하도록 수정.
+            // 이전 코드는 gn.elevation(지면 높이)을 Y로 사용해 높은 고도 드론과의 이격이 실제보다 짧게 평가됨.
+            _occupiedPositions.Add(_goalResult.Position);
         }
 
         // Goal 위치 적용 — 건물 최대 높이로 실린더가 0~maxHeight를 꽉 채우도록 설정
@@ -520,22 +537,40 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
     }
 
     /// <summary>
-    /// 후보 리스트에서 이격 조건을 만족하고 미사용인 노드를 선택한다.
+    /// 후보 리스트에서 이격 조건 AND 건물 비중첩 조건을 모두 만족하고 미사용인 노드를 선택한다.
+    /// CityMetadata 전략 전용: 실제 스폰 Y는 랜덤 범위에서 결정되므로 이격 검사는 XZ 평면 기준으로 수행한다.
+    /// (_occupiedPositions에는 실제 비행 고도의 Y가 저장되어 있으므로 node.position.y로 3D 검사하면
+    ///  Y 차이가 인위적으로 커져 이격 조건을 잘못 통과할 수 있음)
     /// </summary>
     private GraphNode? SelectCandidateWithSeparation(List<GraphNode> candidates, HashSet<int> usedNodeIds)
     {
         foreach (GraphNode node in candidates)
         {
             if (usedNodeIds.Contains(node.nodeId)) continue;
-            Vector3 candidatePos = new Vector3(node.position.x, node.position.y, node.position.z);
-            if (IsFarEnoughFromAll(candidatePos))
+            if (IsFarEnoughXZ(node.position.x, node.position.z) &&
+                IsNotOverlappingBuildings(new Vector3(node.position.x, node.position.y, node.position.z)))
                 return node;
         }
         return null;
     }
 
+    /// <summary>후보 XZ 좌표가 이미 배치된 모든 위치에서 _minSeparation 이상 떨어져 있는지 XZ 평면 기준으로 확인.</summary>
+    private bool IsFarEnoughXZ(float x, float z)
+    {
+        foreach (var pos in _occupiedPositions)
+        {
+            float dx = x - pos.x;
+            float dz = z - pos.z;
+            if (dx * dx + dz * dz < _minSeparation * _minSeparation)
+                return false;
+        }
+        return true;
+    }
+
     /// <summary>
-    /// 이격 조건 무시, 미사용 노드 중 첫 번째를 선택한다.
+    /// 이격 및 건물 충돌 조건 완화: 아무 미사용 노드를 선택한다.
+    /// SelectCandidateWithSeparation()이 두 번 모두 실패했을 때만 호출되는 최후 폴백.
+    /// 이 경로는 건물 중첩 가능성을 의도적으로 허용한다 (모든 후보가 건물 내부인 극단적 상황).
     /// </summary>
     private GraphNode? SelectAnyUnusedCandidate(List<GraphNode> candidates, HashSet<int> usedNodeIds)
     {
@@ -588,49 +623,135 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
 
     private SpawnResult ComputeGoalPosition()
     {
+        float goalOriginalRadius = (Goal.Current != null) ? Goal.Current.OriginalRadius  : 0f;
+        float goalMinRadius      = (Goal.Current != null) ? Goal.Current.MinShrinkRadius : 0f;
+        float goalShrinkStep     = (Goal.Current != null) ? Goal.Current.ShrinkStep      : 0.5f;
+
         if (SpawnCenter.Current != null)
         {
             var sc        = SpawnCenter.Current;
             var goalRange = sc.GetGoalSpawnRange();
             float midY    = (goalRange.MinY + goalRange.MaxY) * 0.5f;
 
+            // 폴백 추적: 이격은 통과했지만 최소 반경에서도 건물 중첩인 최선 후보
+            Vector3 bestCandidate    = Vector3.zero;
+            float   bestFittedRadius = goalMinRadius;
+            float   bestOverlap      = float.MaxValue;
+            bool    bestFound        = false;
+
             for (int i = 0; i < _maxRetry; i++)
             {
                 Vector3 rnd = sc.GetRandomPosition(goalRange);
                 Vector3 pos = new Vector3(rnd.x, midY, rnd.z);
-                if (IsFarEnoughFromAll(pos))
+
+                if (!IsFarEnoughFromAll(pos)) continue;
+
+                // 이격 통과 → 반경을 줄여가며 건물 겹침 해소 시도
+                if (TryFitGoalAtPosition(pos, goalOriginalRadius, goalMinRadius, goalShrinkStep,
+                                         out float fittedRadius))
                 {
+                    // 겹침 없는 반경 확보 성공 → 이 위치 확정
+                    Goal.Current?.SetColliderRadius(fittedRadius);
                     _occupiedPositions.Add(pos);
                     return new SpawnResult { Position = pos, YawDegrees = 0f };
                 }
+
+                // 최소 반경에서도 겹침 → 폴백 후보로 기록 (overlap 가장 작은 위치 선호)
+                float overlap = BuildingOverlapDepth(pos);
+                if (overlap < bestOverlap)
+                {
+                    bestCandidate    = pos;
+                    bestFittedRadius = goalMinRadius;
+                    bestOverlap      = overlap;
+                    bestFound        = true;
+                }
             }
 
-            // 재시도 초과: 마지막 후보 그대로 사용
-            Vector3 last = sc.GetRandomPosition(goalRange);
-            return new SpawnResult { Position = new Vector3(last.x, midY, last.z), YawDegrees = 0f };
+            // 재시도 초과: 이격 조건은 통과한 최소 중첩 위치 + 최소 반경으로 폴백
+            if (bestFound)
+            {
+                Debug.LogWarning($"[EpisodeSpawnCoordinator] ComputeGoalPosition() _maxRetry({_maxRetry}) 초과: " +
+                                 $"최소 중첩 위치({bestCandidate}) + 최소 반경({bestFittedRadius:F2}m) 사용.", this);
+                Goal.Current?.SetColliderRadius(bestFittedRadius);
+                _occupiedPositions.Add(bestCandidate);
+                return new SpawnResult { Position = bestCandidate, YawDegrees = 0f };
+            }
+
+            // 이격 조건조차 만족하는 위치 없음: 마지막 랜덤 위치로 강제 배치
+            Vector3 last        = sc.GetRandomPosition(goalRange);
+            Vector3 fallbackPos = new Vector3(last.x, midY, last.z);
+            Goal.Current?.SetColliderRadius(goalMinRadius);
+            _occupiedPositions.Add(fallbackPos);
+            return new SpawnResult { Position = fallbackPos, YawDegrees = 0f };
         }
 
-        return new SpawnResult { Position = RandomFallbackPosition(), YawDegrees = 0f };
+        Vector3 fallback = RandomFallbackPosition();
+        _occupiedPositions.Add(fallback);
+        return new SpawnResult { Position = fallback, YawDegrees = 0f };
+    }
+
+    /// <summary>
+    /// 주어진 위치에서 Goal 반경을 originalRadius → minRadius 방향으로 줄여가며 건물 비중첩을 탐색한다.
+    /// 겹침 없는 반경을 찾으면 fittedRadius에 저장하고 true를 반환한다.
+    /// minRadius에서도 여전히 겹치면 false를 반환한다 (위치 이동 필요).
+    /// </summary>
+    private bool TryFitGoalAtPosition(Vector3 pos, float originalRadius, float minRadius,
+                                       float shrinkStep, out float fittedRadius)
+    {
+        fittedRadius = originalRadius;
+        if (_buildingBounds.Count == 0) return true; // 건물 없는 환경: 어떤 반경이든 허용
+
+        float r = originalRadius;
+        while (true)
+        {
+            if (IsNotOverlappingBuildings(pos, r))
+            {
+                fittedRadius = r;
+                return true;
+            }
+            if (r <= minRadius)
+            {
+                fittedRadius = minRadius;
+                return false; // 최소 반경에서도 겹침 → 위치 이동 필요
+            }
+            r = Mathf.Max(minRadius, r - shrinkStep);
+        }
     }
 
     // ───────── 헬퍼 ──────────────────────────────────────────────────────
 
     /// <summary>
     /// 드론 하나에 스폰 위치를 할당한다.
-    /// positionFactory를 최대 _maxRetry번 호출하여 이격 조건을 만족하는 위치를 찾는다.
+    /// positionFactory를 최대 _maxRetry번 호출하여 이격 및 건물 비중첩 조건을 만족하는 위치를 찾는다.
+    /// _maxRetry 초과 시 시도한 위치 중 건물 중첩이 가장 적은(overlap depth 최소) 위치를 사용하고 경고 로그를 출력한다.
     /// </summary>
     private void AssignSpawn(GameObject go, Func<Vector3> positionFactory, float yaw)
     {
-        Vector3 chosen = positionFactory();
+        Vector3 chosen        = positionFactory();
+        float   chosenOverlap = BuildingOverlapDepth(chosen);
+
         for (int i = 0; i < _maxRetry; i++)
         {
             Vector3 candidate = positionFactory();
-            if (IsFarEnoughFromAll(candidate))
+            if (IsFarEnoughFromAll(candidate) && IsNotOverlappingBuildings(candidate))
             {
                 chosen = candidate;
+                chosenOverlap = 0f;
                 break;
             }
+
+            // _maxRetry 초과 대비: 현재까지 최소 중첩 위치를 추적
+            float overlap = BuildingOverlapDepth(candidate);
+            if (IsFarEnoughFromAll(candidate) && overlap < chosenOverlap)
+            {
+                chosen        = candidate;
+                chosenOverlap = overlap;
+            }
         }
+
+        if (chosenOverlap > 0f)
+            Debug.LogWarning($"[EpisodeSpawnCoordinator] AssignSpawn() _maxRetry({_maxRetry}) 초과: " +
+                             $"'{go.name}'에 최소 중첩 위치({chosen}) 사용 (overlap={chosenOverlap:F2}m).", this);
 
         _spawnMap[go] = new SpawnResult { Position = chosen, YawDegrees = yaw };
         _occupiedPositions.Add(chosen);
@@ -643,6 +764,46 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
             if (Vector3.Distance(candidate, pos) < _minSeparation)
                 return false;
         return true;
+    }
+
+    /// <summary>
+    /// 후보 위치가 캐싱된 모든 건물 Bounds와 중첩되지 않는지 확인.
+    /// colliderRadius만큼 건물 Bounds를 확장(각 면 +colliderRadius)한 후 Contains() 검사.
+    /// _buildingBounds가 비어있으면 항상 true 반환 (건물 없는 환경 보존).
+    ///
+    /// [주의] Bounds.Expand(amount)는 size를 amount 늘리므로 각 면이 amount/2씩 확장된다.
+    ///   각 면을 colliderRadius만큼 확장하려면 Expand(colliderRadius * 2f)를 사용한다.
+    /// </summary>
+    private bool IsNotOverlappingBuildings(Vector3 candidate, float colliderRadius = 0f)
+    {
+        if (_buildingBounds.Count == 0) return true;
+
+        float expandAmount = colliderRadius * 2f;
+        foreach (var b in _buildingBounds)
+        {
+            Bounds expanded = b;
+            if (expandAmount > 0f) expanded.Expand(expandAmount);
+            if (expanded.Contains(candidate)) return false;
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// 후보 위치가 건물 Bounds에 얼마나 깊이 들어가 있는지를 반환한다.
+    /// 중첩이 없으면 0, 중첩이 있으면 건물 중심까지의 거리 역수(값이 클수록 깊이 중첩)를 반환한다.
+    /// _maxRetry 초과 시 최소 중첩 위치 선택에 사용한다.
+    /// </summary>
+    private float BuildingOverlapDepth(Vector3 candidate)
+    {
+        float totalDepth = 0f;
+        foreach (var b in _buildingBounds)
+        {
+            if (!b.Contains(candidate)) continue;
+            // 중심까지의 거리가 짧을수록 깊이 중첩 → 역수를 더해 큰 값 = 더 깊은 중첩
+            float dist = Vector3.Distance(candidate, b.center);
+            totalDepth += (dist > 0f) ? (1f / dist) : float.MaxValue * 0.001f;
+        }
+        return totalDepth;
     }
 
     private Vector3 RandomFallbackPosition()
