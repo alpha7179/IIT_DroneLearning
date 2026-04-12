@@ -8,6 +8,8 @@ TagManager:
   - Goal
   - Evader
   - Pursuer
+  - Building
+  - Wall
   layers:
   - Default
   - TransparentFX

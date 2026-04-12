@@ -661,6 +661,7 @@ namespace CityGenerator
         {
             GameObject wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
             wall.name = name;
+            wall.tag = "Wall";
             wall.transform.SetParent(parent, false);
             wall.transform.localPosition = localPosition;
             wall.transform.localScale = size;
