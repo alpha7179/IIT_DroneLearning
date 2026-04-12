@@ -131,6 +131,8 @@ namespace CityGenerator
                 building.AddComponent<BoxCollider>();
             }
 
+            building.tag = "Building";
+
             totalCreated++;
             return building;
         }

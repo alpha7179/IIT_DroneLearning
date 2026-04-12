@@ -13,38 +13,38 @@ public class GoalEditor : Editor
         serializedObject.Update();
         bool hasSpawnCenter = SpawnCenter.Current != null;
 
-        // SpawnCenter가 있으면 Center/Randomization은 SpawnCenter에서 관리되므로 읽기 전용
+        // ── Center & Randomization ───────────────────────────────────────
         if (hasSpawnCenter)
         {
             EditorGUILayout.HelpBox("SpawnCenter가 활성화되어 있습니다. 범위는 SpawnCenter에서 관리됩니다.", MessageType.Info);
             GUI.enabled = false;
         }
 
-        EditorGUILayout.LabelField("Goal — Center", EditorStyles.boldLabel);
-        DrawProp("_centerTransform", "Center Transform");
-
-        EditorGUILayout.Space(2);
-        EditorGUILayout.LabelField("Goal — Randomization", EditorStyles.boldLabel);
-        DrawProp("_randomizeRadius", "Randomize Radius");
+        DrawProp("_centerTransform");
+        DrawProp("_randomizeRadius");
 
         if (hasSpawnCenter)
             GUI.enabled = true;
 
-        EditorGUILayout.Space(4);
-        EditorGUILayout.LabelField("SpawnCenter 쿼리 결과 (읽기 전용)", EditorStyles.boldLabel);
+        // ── Building Overlap Shrink ──────────────────────────────────────
+        DrawProp("_enableShrinkOnOverlap");
+        DrawProp("_minShrinkRadius");
+        DrawProp("_shrinkStep");
+
+        // ── SpawnCenter 쿼리 결과 (읽기 전용) ───────────────────────────
         GUI.enabled = false;
-        DrawProp("_queriedMinY", "Queried Min Y");
-        DrawProp("_queriedMaxY", "Queried Max Y");
+        DrawProp("_queriedMinY");
+        DrawProp("_queriedMaxY");
         bool isRect = SpawnCenter.Current != null &&
                       SpawnCenter.Current.ShapeMode == SpawnCenter.RangeMode.Rectangle;
         if (isRect)
         {
-            DrawProp("_queriedWidth", "Queried Width  (X 반폭)");
-            DrawProp("_queriedDepth", "Queried Depth  (Z 반폭)");
+            DrawProp("_queriedWidth");
+            DrawProp("_queriedDepth");
         }
         else
         {
-            DrawProp("_queriedRadius", "Queried Radius");
+            DrawProp("_queriedRadius");
         }
         GUI.enabled = true;
 
