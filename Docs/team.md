@@ -1,5 +1,5 @@
-<div class="featured-split">
-<div class="featured-split__image featured-split__svg">
+<div class="drone-split">
+<div class="drone-split__media">
 <svg viewBox="0 0 400 320" fill="none" xmlns="http://www.w3.org/2000/svg">
   <circle cx="130" cy="120" r="36" stroke="rgba(244,245,240,0.12)" stroke-width="1"/>
   <circle cx="270" cy="120" r="36" stroke="rgba(244,245,240,0.12)" stroke-width="1"/>
@@ -15,10 +15,10 @@
   <line x1="166" y1="220" x2="234" y2="220" stroke="rgba(244,245,240,0.06)" stroke-width="1"/>
 </svg>
 </div>
-<div class="featured-split__content">
-  <span class="featured-split__tag">Members</span>
-  <div class="featured-split__title">Team</div>
-  <p class="featured-split__desc">아주대학교 2026-1 파란학기. 4인 팀이 World·Sensor·Pursuer·Evader 역할을 분담하여 MARL 시스템을 구축합니다.<br><br>지도교수: 정소이 교수님 (미래모빌리티공학과)</p>
+<div class="drone-split__content">
+  <p class="drone-badge">Members</p>
+  <div class="drone-split__title">Team</div>
+  <p class="drone-split__desc">아주대학교 2026-1 파란학기. 4인 팀이 World·Sensor·Pursuer·Evader 역할을 분담하여 MARL 시스템을 구축합니다.<br><br>지도교수: 정소이 교수님 (미래모빌리티공학과)</p>
 </div>
 </div>
 
