@@ -1,0 +1,308 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Urban Drone Pursuit-Evasion MARL System</title>
+  <meta name="description" content="Urban Occlusion-Aware Multi-Agent Reinforcement Learning landing page">
+  <link rel="stylesheet" href="assets/styles.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script type="module" src="https://unpkg.com/@splinetool/viewer@1.0.94/build/spline-viewer.js"></script>
+  <script defer src="assets/app.js"></script>
+</head>
+<body class="home" data-page="home">
+  <header class="site-header" id="siteHeader">
+    <div class="nav-inner">
+      <a class="brand" href="./">
+        <i data-lucide="crosshair"></i>
+        <span>MARL DRONE</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a class="nav-link" href="#about">About</a>
+        <a class="nav-link" href="#architecture">Architecture</a>
+        <a class="nav-link" href="#system">Business</a>
+        <a class="nav-link" href="#research">PR Center</a>
+        <a class="nav-link" href="system/" data-route="system">System</a>
+        <a class="nav-link" href="analysis/" data-route="analysis">Analysis</a>
+        <a class="nav-link" href="evader/" data-route="evader">Evader</a>
+        <a class="nav-link" href="roadmap/" data-route="roadmap">Roadmap</a>
+        <a class="nav-link" href="team/" data-route="team">Team</a>
+      </nav>
+      <a class="nav-cta" href="https://github.com/zaeee-wang/IIT_DroneLearning" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" id="top">
+      <div class="hero-3d-wrap">
+        <spline-viewer url="https://prod.spline.design/A6ACz6lhqQJ8GkAN/scene.splinecode"></spline-viewer>
+      </div>
+      <div class="hero-overlay"></div>
+      <div class="hero-content reveal">
+        <p class="hero-kicker">Urban Occlusion-Aware</p>
+        <h1 class="hero-title">PURSUIT-EVASION<br><span class="accent">MARL</span> SYSTEM</h1>
+        <p class="hero-desc">
+          도심 속 복잡한 시야 가림(Occlusion) 상황을 학습하는
+          다중 에이전트 강화학습 기반 드론 추적-회피 시스템.
+          3D 시뮬레이션과 실제 제어 계층 사이를 하나의 전략으로 연결합니다.
+        </p>
+        <div class="action-row">
+          <a class="btn btn-primary" href="#architecture">Explore Architecture</a>
+          <a class="btn btn-ghost" href="analysis/">
+            <i data-lucide="line-chart"></i>
+            <span>Benchmark</span>
+          </a>
+          <a class="btn btn-ghost" href="evader/">
+            <i data-lucide="compass"></i>
+            <span>Evader Design</span>
+          </a>
+        </div>
+      </div>
+      <a class="scroll-cue" href="#about" aria-label="Scroll to About">
+        <i data-lucide="chevrons-down"></i>
+      </a>
+    </section>
+
+    <section class="section pattern-section" id="about">
+      <div class="section-inner">
+        <header class="section-head reveal">
+          <p class="eyebrow">Who We Are</p>
+          <h2 class="section-title">우리는 항공산업의 다음 장을 설계합니다.</h2>
+        </header>
+        <p class="about-copy reveal">
+          도심 가림 환경에서 <strong>추적자와 회피자</strong>가 동시에 적응하는
+          학습 구조를 설계하고, 실제 제어 파이프라인으로 확장 가능한
+          Sim2Real 아키텍처를 구축합니다.
+        </p>
+
+        <div class="stats-grid reveal">
+          <article class="stat-item">
+            <p class="stat-value">500×500</p>
+            <p class="stat-label">Urban Grid</p>
+          </article>
+          <article class="stat-item">
+            <p class="stat-value">8</p>
+            <p class="stat-label">Path Algorithms</p>
+          </article>
+          <article class="stat-item">
+            <p class="stat-value">100%</p>
+            <p class="stat-label">Theta* Success</p>
+          </article>
+          <article class="stat-item">
+            <p class="stat-value">16주</p>
+            <p class="stat-label">Project Timeline</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section surface-alt" id="architecture">
+      <div class="section-inner">
+        <header class="section-head reveal">
+          <p class="eyebrow">Architecture Blueprint</p>
+          <h2 class="section-title">Occlusion-aware MARL Core</h2>
+          <p class="lead">
+            3D 환경 인지, 정책 학습, 제어 계층, 분석 파이프라인을 한 구조로 묶어
+            복잡한 도심 추적-회피 시나리오를 안정적으로 학습합니다.
+          </p>
+        </header>
+
+        <div class="arch-grid">
+          <article class="panel lead-card tilt-card reveal">
+            <p class="eyebrow">Core Module</p>
+            <h3>Occlusion-Aware Intelligent Agent</h3>
+            <p>
+              Raycasting 기반 LOS 판별과 상태 기억을 결합해,
+              은폐 가능성과 포획 위험을 동시에 고려하는
+              추적/회피 정책을 학습합니다.
+            </p>
+            <img class="lead-image" src="https://images.unsplash.com/photo-1508614589041-895b88991e3e?auto=format&fit=crop&w=1100&q=80" alt="Drone in city">
+          </article>
+
+          <div class="feature-grid">
+            <article class="panel feature-card tilt-card reveal">
+              <p class="eyebrow">Algorithm</p>
+              <h3>MAPPO System</h3>
+              <div class="feature-avatar">
+                <img src="https://images.unsplash.com/photo-1527011045970-2032549303c3?auto=format&fit=crop&w=600&q=80" alt="Algorithm visual">
+              </div>
+              <p class="feature-desc">협력과 경쟁이 동시에 일어나는 다중 에이전트 정책 최적화.</p>
+            </article>
+
+            <article class="panel feature-card tilt-card reveal">
+              <p class="eyebrow">Scenario</p>
+              <h3>Pursuit-Evasion</h3>
+              <div class="feature-avatar">
+                <img src="https://images.unsplash.com/photo-1579820010410-c10411aaaa88?auto=format&fit=crop&w=600&q=80" alt="Scenario visual">
+              </div>
+              <p class="feature-desc">추적자/회피자 비대칭 보상을 통한 전략적 의사결정 학습.</p>
+            </article>
+
+            <article class="panel feature-card tilt-card reveal">
+              <p class="eyebrow">Environment</p>
+              <h3>Urban Sim</h3>
+              <div class="feature-avatar">
+                <img src="https://images.unsplash.com/photo-1473968512647-3e447244af8f?auto=format&fit=crop&w=600&q=80" alt="City visual">
+              </div>
+              <p class="feature-desc">다층 장애물과 시야 차단이 반영된 3D 디지털 트윈 환경.</p>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section surface-section" id="system">
+      <div class="section-inner">
+        <header class="section-head reveal">
+          <p class="eyebrow">Business</p>
+          <h2 class="section-title">Core Application Domains</h2>
+        </header>
+
+        <div class="business-grid">
+          <article class="panel biz-card tilt-card reveal">
+            <div class="biz-media">
+              <img src="https://images.unsplash.com/photo-1541888062961-18e38d708365?auto=format&fit=crop&w=900&q=80" alt="Security business">
+            </div>
+            <div class="biz-content">
+              <p class="biz-index">Domain 01</p>
+              <h3>도심 보안 및 정찰</h3>
+              <p>사각지대를 줄인 순찰 경로로 도심 치안 대응력을 높입니다.</p>
+            </div>
+          </article>
+
+          <article class="panel biz-card tilt-card reveal">
+            <div class="biz-media">
+              <img src="https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=900&q=80" alt="UAM business">
+            </div>
+            <div class="biz-content">
+              <p class="biz-index">Domain 02</p>
+              <h3>복합 수색 및 구조</h3>
+              <p>재난 현장의 은폐 구역을 빠르게 탐색해 구조 시간을 단축합니다.</p>
+            </div>
+          </article>
+
+          <article class="panel biz-card tilt-card reveal">
+            <div class="biz-media">
+              <img src="https://images.unsplash.com/photo-1551351833-286a147e090b?auto=format&fit=crop&w=900&q=80" alt="Aircraft business">
+            </div>
+            <div class="biz-content">
+              <p class="biz-index">Domain 03</p>
+              <h3>불법 드론 추적·포획</h3>
+              <p>다수 에이전트 협동으로 회피 기동 목표의 포획 확률을 높입니다.</p>
+            </div>
+          </article>
+
+          <article class="panel biz-card tilt-card reveal">
+            <div class="biz-media">
+              <img src="https://images.unsplash.com/photo-1508614589041-895b88991e3e?auto=format&fit=crop&w=900&q=80" alt="Inspection business">
+            </div>
+            <div class="biz-content">
+              <p class="biz-index">Domain 04</p>
+              <h3>인프라 사각지대 점검</h3>
+              <p>대형 구조물 후면 점검 자동화로 유지보수 리스크를 줄입니다.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section research-section" id="research">
+      <div class="section-inner">
+        <header class="section-head reveal">
+          <p class="eyebrow">PR Center</p>
+          <h2 class="section-title">Research Center</h2>
+        </header>
+
+        <div class="research-grid">
+          <article class="paper-card reveal">
+            <p class="eyebrow">Paper & Docs</p>
+            <h3>도심 환경 시야 가림을 고려한 다중 드론 추적-회피 시스템 연구</h3>
+            <p>
+              복잡한 도심 시야 가림을 수학적으로 모델링하고,
+              추적자/회피자 정책을 동시 학습하는 MARL 프레임워크를 제안합니다.
+            </p>
+            <a class="paper-link" href="system/">
+              <span>Read Full Documentation</span>
+              <i data-lucide="arrow-right"></i>
+            </a>
+          </article>
+
+          <ul class="update-list">
+            <li class="update-item reveal">
+              <div>
+                <p class="update-meta">UPDATE</p>
+                <p class="update-text">Raycasting 기반 LOS 판별 모듈 환경 통합 완료</p>
+              </div>
+              <i data-lucide="chevron-right"></i>
+            </li>
+            <li class="update-item reveal">
+              <div>
+                <p class="update-meta">PERFORMANCE</p>
+                <p class="update-text">MAPPO 학습 수렴 속도 30% 향상 (vs Baseline)</p>
+              </div>
+              <i data-lucide="chevron-right"></i>
+            </li>
+            <li class="update-item reveal">
+              <div>
+                <p class="update-meta">ENVIRONMENT</p>
+                <p class="update-text">Procedural City Generator v2.0 공식 배포</p>
+              </div>
+              <i data-lucide="chevron-right"></i>
+            </li>
+            <li class="update-item reveal">
+              <div>
+                <p class="update-meta">RELEASE</p>
+                <p class="update-text">Pursuit-Evasion 시뮬레이션 환경 오픈소스 공개</p>
+              </div>
+              <i data-lucide="chevron-right"></i>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="banner">
+      <div class="section-inner banner-inner reveal">
+        <p>Where Aerospace Goes Next</p>
+        <h2 class="section-title">The Next of Aerospace</h2>
+      </div>
+    </section>
+
+    <section class="section surface-section">
+      <div class="section-inner reveal">
+        <header class="section-head">
+          <p class="eyebrow">Support</p>
+          <h2 class="section-title">보이지 않는 사각지대, 시스템이 먼저 예측하고 추적합니다.</h2>
+          <p class="lead">투명한 정보와 체계적인 실험 문서로 신뢰받는 연구 프로젝트를 운영합니다.</p>
+        </header>
+
+        <div class="cta-grid">
+          <a class="btn btn-primary" href="system/">System Overview</a>
+          <a class="btn" href="analysis/">Algorithm Analysis</a>
+          <a class="btn" href="evader/">Evader Design</a>
+          <a class="btn" href="roadmap/">Roadmap</a>
+          <a class="btn" href="team/">Team</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div>
+        <p class="footer-brand"><i data-lucide="crosshair"></i> MARL DRONE</p>
+        <p>Urban Drone Pursuit-Evasion MARL System · 2026</p>
+      </div>
+      <nav class="footer-nav" aria-label="Footer">
+        <a href="./">Home</a>
+        <a href="system/">System</a>
+        <a href="analysis/">Analysis</a>
+        <a href="evader/">Evader</a>
+        <a href="roadmap/">Roadmap</a>
+        <a href="team/">Team</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

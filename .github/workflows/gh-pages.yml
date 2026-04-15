@@ -1,4 +1,4 @@
-name: Deploy MkDocs to GitHub Pages
+name: Deploy Static Web to GitHub Pages
 
 on:
   push:
@@ -24,25 +24,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install MkDocs Material
+      - name: Validate static web root
         run: |
-          pip install \
-            mkdocs-material==9.5.18 \
-            mkdocs-material-extensions \
-            pymdown-extensions
-
-      - name: Build MkDocs site
-        run: mkdocs build --strict --site-dir _site
+          test -f web/index.html
+          test -f web/system/index.html
+          test -f web/analysis/index.html
+          test -f web/evader/index.html
+          test -f web/roadmap/index.html
+          test -f web/team/index.html
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
-          path: _site
+          path: web
 
   deploy:
     needs: build
