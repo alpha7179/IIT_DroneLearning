@@ -245,6 +245,7 @@ body:not(.home) .nav-cta:hover {
   position: absolute;
   inset: 0;
   z-index: 1;
+  pointer-events: auto;
 }
 
 .hero-3d-wrap spline-viewer {
@@ -261,6 +262,7 @@ body:not(.home) .nav-cta:hover {
   background:
     radial-gradient(circle at 74% 18%, rgba(59, 94, 163, 0.38), transparent 44%),
     linear-gradient(98deg, rgba(2, 6, 23, 0.92) 16%, rgba(2, 6, 23, 0.64) 52%, rgba(2, 6, 23, 0.25) 100%);
+  pointer-events: none;
 }
 
 .hero::after {
@@ -280,6 +282,11 @@ body:not(.home) .nav-cta:hover {
   z-index: 3;
   width: var(--content-width);
   margin: 0 auto;
+  pointer-events: none;
+}
+
+.hero-content .action-row a {
+  pointer-events: auto;
 }
 
 .hero-kicker {
