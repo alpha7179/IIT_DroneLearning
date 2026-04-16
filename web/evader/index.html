@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Evader Design | MARL DRONE</title>
+  <title>Evader Progress | IIT</title>
   <meta name="description" content="Evader RL design, observation, reward, and curriculum">
   <link rel="stylesheet" href="../assets/styles.css">
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -15,7 +15,7 @@
     <div class="nav-inner">
       <a class="brand" href="../">
         <i data-lucide="crosshair"></i>
-        <span>MARL DRONE</span>
+        <span>IIT</span>
       </a>
       <nav class="nav-links" aria-label="Primary">
         <a class="nav-link" href="../" data-route="home">Home</a>
@@ -30,15 +30,15 @@
   </header>
 
   <main>
-    <section class="page-hero" style="--hero-image: url('https://images.unsplash.com/photo-1579820010410-c10411aaaa88?auto=format&fit=crop&w=2000&q=80');">
+    <section class="page-hero" style="--hero-image: url('../assets/images/page-evader-hero.jpg');">
       <div class="section-inner reveal">
-        <p class="eyebrow">RL Design</p>
-        <h1 class="section-title">Evader Design</h1>
-        <p class="lead">회피 드론이 목표 지점에 도달하면서 추격자의 시선(LOS)을 차단하는 전략을 학습하는 PPO 기반 에이전트 설계.</p>
+        <p class="eyebrow">Evader Stream</p>
+        <h1 class="section-title">Evader Progress</h1>
+        <p class="lead">회피 정책 설계 문서와 실제 실험 로그를 연결해 Stage0 달성 결과와 Stage1 진행 현황을 추적합니다.</p>
         <div class="meta-strip">
           <span class="meta-chip">Owner: 이재왕</span>
           <span class="meta-chip">Branch: work/evader</span>
-          <span class="meta-chip">4D Continuous Action</span>
+          <span class="meta-chip">Last Updated: 2026-04-08</span>
         </div>
       </div>
     </section>
@@ -46,79 +46,77 @@
     <section class="section surface-section">
       <div class="section-inner content-grid">
         <article class="panel content-card reveal">
-          <h3>제어 구조</h3>
-          <pre style="margin-top: 0.9rem;">RL Policy Output (4D Continuous)
-    -> (thrust_cmd, roll_rate_cmd, pitch_rate_cmd, yaw_rate_cmd)
-    -> PID Controller (50Hz, World 담당)
-    -> Rigidbody Force / Torque -> 실제 비행</pre>
-          <p style="margin-top: 0.8rem;">RL 정책은 직접 모터를 제어하지 않으므로 실기체 FCU와 동일한 인터페이스로 동작합니다.</p>
-        </article>
-
-        <article class="panel content-card reveal">
-          <h3>행동 공간 (Action Space)</h3>
+          <h3>현재 진행 스냅샷 (2026-04-08)</h3>
           <div class="table-wrap" style="margin-top: 0.9rem;">
             <table>
               <thead>
-                <tr><th>인덱스</th><th>이름</th><th>범위</th><th>역할</th></tr>
+                <tr><th>구간</th><th>상태</th><th>핵심 결과</th></tr>
               </thead>
               <tbody>
-                <tr><td>0</td><td>thrust_cmd</td><td>[0, 1]</td><td>추력 명령</td></tr>
-                <tr><td>1</td><td>roll_rate_cmd</td><td>[-1, 1]</td><td>롤 각속도</td></tr>
-                <tr><td>2</td><td>pitch_rate_cmd</td><td>[-1, 1]</td><td>피치 각속도</td></tr>
-                <tr><td>3</td><td>yaw_rate_cmd</td><td>[-1, 1]</td><td>요 각속도</td></tr>
+                <tr><td>Stage0 (Ray + 힌트)</td><td>완료</td><td>50eps eval: survival 100%, goal 68%, capture 0%</td></tr>
+                <tr><td>Stage1 (장애물 + 힌트 제거)</td><td>진행 중</td><td>v13c rootfix: final +11.684 @250k, peak +14.592 @245k</td></tr>
+                <tr><td>Stage2 (Self-Play)</td><td>다음</td><td>RL Pursuer 연동 및 los_break 계측 자동화 예정</td></tr>
               </tbody>
             </table>
           </div>
         </article>
 
         <article class="panel content-card reveal">
-          <h3>관측 공간 (Observation Space)</h3>
+          <h3>Stage0 달성 결과</h3>
+          <div class="table-wrap" style="margin-top: 0.9rem;">
+            <table>
+              <thead>
+                <tr><th>날짜</th><th>run-id</th><th>지표</th><th>비고</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>2026-03-21</td><td>`evader_s0_flat_seed42_v3`</td><td>survival 100% / goal 68% / capture 0% / crash 0%</td><td>M1 기준 충족</td></tr>
+                <tr><td>2026-03-27</td><td>`evader_s0_flat_44d_v6_seed42`</td><td>50eps eval 유지, peak reward 6.676</td><td>dead-zone 보정 반영</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="margin-top: 0.8rem;">Stage0는 목표 달성과 생존 안정화가 확인되어 Stage1 warm-start의 기반 모델로 고정했습니다.</p>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>Stage1 진행 로그 요약</h3>
           <div class="split-two" style="margin-top: 0.9rem;">
-            <div class="panel content-card" style="box-shadow:none;">
-              <h4>Stage 0 (Ray + 힌트)</h4>
+            <div class="panel content-card" style="box-shadow:none; border-style:dashed;">
+              <h4>안정 구간</h4>
               <div class="table-wrap" style="margin-top: 0.6rem;">
                 <table>
                   <thead>
-                    <tr><th>관측 항목</th><th>차원</th><th>정규화</th></tr>
+                    <tr><th>run-id</th><th>학습 구간</th><th>결과</th></tr>
                   </thead>
                   <tbody>
-                    <tr><td>로컬 속도 (vx, vy, vz)</td><td>3</td><td>/ max_speed (10 m/s)</td></tr>
-                    <tr><td>로컬 각속도</td><td>3</td><td>/ max_speed</td></tr>
-                    <tr><td>고도</td><td>1</td><td>/ max_distance (50m)</td></tr>
-                    <tr><td>목표 상대 방향</td><td>3</td><td>unit vector</td></tr>
-                    <tr><td>목표 거리</td><td>1</td><td>/ max_distance</td></tr>
-                    <tr><td>Pursuer 상대 위치 (힌트)</td><td>3</td><td>/ max_distance</td></tr>
-                    <tr><td>Pursuer 상대 속도 (힌트)</td><td>3</td><td>/ max_speed</td></tr>
-                    <tr><td>Pursuer 가시 여부</td><td>1</td><td>0 or 1</td></tr>
-                    <tr><td>Ray (Sensor 담당)</td><td>별도</td><td>RayPerceptionSensor</td></tr>
+                    <tr><td>`v1`</td><td>500k</td><td>peak +2.669, 호버링 착취 패턴 확인</td></tr>
+                    <tr><td>`v5`</td><td>1M</td><td>peak +9.542, final +5.991</td></tr>
+                    <tr><td>`v13wallfocus`</td><td>100k gate</td><td>final +13.596</td></tr>
+                    <tr><td>`v13crootfix`</td><td>resume to 250k</td><td>final +11.684, peak +14.592</td></tr>
                   </tbody>
                 </table>
               </div>
             </div>
-            <div class="panel content-card" style="box-shadow:none;">
-              <h4>Stage 1+ / Stage 2+</h4>
-              <p style="margin-top: 0.55rem;">Stage 1+에서는 Pursuer 실시간 위치/속도 힌트를 제거하고 구조적 기억으로 대체합니다.</p>
+            <div class="panel content-card" style="box-shadow:none; border-style:dashed;">
+              <h4>핵심 이슈와 조치</h4>
               <div class="table-wrap" style="margin-top: 0.6rem;">
                 <table>
                   <thead>
-                    <tr><th>관측 항목</th><th>차원</th><th>설명</th></tr>
+                    <tr><th>이슈</th><th>영향</th><th>조치</th></tr>
                   </thead>
                   <tbody>
-                    <tr><td>자기 상태 (속도+각속도+고도)</td><td>7</td><td>Stage 0과 동일</td></tr>
-                    <tr><td>목표 방향+거리</td><td>4</td><td>Stage 0과 동일</td></tr>
-                    <tr><td>마지막 추격자 관측 위치</td><td>3</td><td>시야 차단 시 마지막 알려진 위치</td></tr>
-                    <tr><td>추격자 마지막 속도</td><td>3</td><td>추격자 상태 기억</td></tr>
-                    <tr><td>가시 여부</td><td>1</td><td>현재 LOS 여부</td></tr>
+                    <tr><td>goalProximityBonus 착취</td><td>goal 근처 호버링 유도</td><td>해당 보상 제거 + timePenalty 강화</td></tr>
+                    <tr><td>MaxEpisodeSeconds scene 미동기화</td><td>timeout 과다 발생</td><td>scene 재저장/검증 루틴 문서화</td></tr>
+                    <tr><td>장애물 회피 신호 약함</td><td>벽면 충돌 반복</td><td>obstacle-aware velocity reward 적용</td></tr>
                   </tbody>
                 </table>
               </div>
-              <p style="margin-top: 0.65rem;">Stage 2+에서는 84×84 RGB 카메라(CNN 인코더)와 `is_visible_to_pursuer`를 추가합니다.</p>
+              <p style="margin-top: 0.65rem;">기준 문서: `Docs/EXPERIMENTS.md`, `Docs/URGENT_FIX_MaxEpisodeSeconds.md`</p>
             </div>
           </div>
         </article>
 
         <article class="panel content-card reveal">
-          <h3>보상 함수 설계</h3>
+          <h3>현재 정책/인터페이스 확정 항목</h3>
           <pre style="margin-top: 0.9rem;">R_total =
   + w_shaping  * (d_prev - d_now)
   + w_survival * 1
@@ -128,71 +126,48 @@
   + [Captured]     -1.0
   + [Timeout]      +0.2
   + [Crash]        -1.0</pre>
-          <div class="callout warning" style="margin-top: 0.9rem;">
-            <h4>LOS 보너스 설계 주의</h4>
-            <p>LOS 차단 보너스는 전환 시 1회만 지급해야 합니다. 지속 보너스는 국소 최적해를 유발합니다.</p>
+          <div class="callout info" style="margin-top: 0.9rem;">
+            <h4>행동 공간 (고정)</h4>
+            <p>4D continuous action (`thrust`, `roll_rate`, `pitch_rate`, `yaw_rate`) + PID 제어 계층(50Hz) 구조는 유지합니다.</p>
           </div>
         </article>
 
         <article class="panel content-card reveal">
-          <h3>Stage 기반 커리큘럼</h3>
+          <h3>Stage 전환 계획</h3>
           <div class="mermaid-wrap" style="margin-top: 0.8rem;">
             <pre class="mermaid">graph LR
-    S0["Stage 0 Ray + 힌트"] -->|goal_reach >= 50%| S1["Stage 1 장애물 도입 힌트 제거"]
-    S1 -->|survival >= 50%| S2["Stage 2 Self-Play RL Pursuer"]
-    S2 -->|survival >= 60%| S3["Stage 3 Vision + LOS"]
+    S0["Stage 0 완료"] --> S1["Stage 1 하드닝 진행중"]
+    S1 -->|"v13c 기준 안정화"| S2["Stage 2 Self-Play 준비"]
+    S2 -->|"RL Pursuer 연동"| S3["Stage 3 Vision + LOS"]
     S3 --> S4["Stage 4 Domain Random Sim2Real"]</pre>
           </div>
-          <p style="margin-top: 0.8rem;">각 Stage는 이전 Stage 모델을 `--initialize-from`으로 초기화해 학습 효율을 높입니다.</p>
+          <p style="margin-top: 0.8rem;">각 Stage는 이전 Stage 체크포인트를 `--initialize-from`으로 warm-start하여 학습 리스크를 줄입니다.</p>
         </article>
 
         <article class="panel content-card reveal">
-          <h3>평가 지표 (Eval Metrics)</h3>
+          <h3>다음 스프린트 액션</h3>
+          <ol style="margin: 0.9rem 0 0; padding-left: 1.2rem; color: var(--ink-soft);">
+            <li>Stage2 self-play 설정 분리 및 run-id 규칙 고정</li>
+            <li>`los_break_rate`/`occlusion_reacquisition_time` 자동 집계 파이프라인 연결</li>
+            <li>seed 3종 이상에서 Stage1 재현성 확인 후 Stage2 전환</li>
+          </ol>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>평가 지표 기준</h3>
           <div class="table-wrap" style="margin-top: 0.9rem;">
             <table>
               <thead>
-                <tr><th>지표</th><th>설명</th><th>M1 목표</th></tr>
+                <tr><th>지표</th><th>설명</th><th>사용 구간</th></tr>
               </thead>
               <tbody>
-                <tr><td>survival_rate</td><td>timeout까지 생존 비율</td><td>≥ 70%</td></tr>
-                <tr><td>goal_reach_rate</td><td>목표 지점 도달 비율</td><td>≥ 50%</td></tr>
-                <tr><td>capture_rate</td><td>포획된 에피소드 비율</td><td>≤ 30%</td></tr>
-                <tr><td>mean_time_to_capture</td><td>포획 시 평균 경과 시간</td><td>높을수록 좋음</td></tr>
-                <tr><td>los_break_rate</td><td>LOS 차단 성공 비율</td><td>Stage 2+</td></tr>
+                <tr><td>survival_rate</td><td>timeout까지 생존 비율</td><td>Stage0~</td></tr>
+                <tr><td>goal_reach_rate</td><td>목표 지점 도달 비율</td><td>Stage0~</td></tr>
+                <tr><td>capture_rate</td><td>포획 에피소드 비율</td><td>Stage0~</td></tr>
+                <tr><td>mean_time_to_capture</td><td>포획까지 평균 시간</td><td>Stage1~</td></tr>
+                <tr><td>los_break_rate</td><td>LOS 차단 성공 비율</td><td>Stage2+</td></tr>
               </tbody>
             </table>
-          </div>
-        </article>
-
-        <article class="panel content-card reveal">
-          <h3>학습 실행</h3>
-          <pre style="margin-top: 0.8rem;"># Stage 0
-mlagents-learn python/config/evader_s0_template.yaml \
-  --run-id=evader_s0_base_seed42 --force
-
-# Stage 1
-mlagents-learn python/config/evader_s1_obstacle_template.yaml \
-  --run-id=evader_s1_v1 \
-  --initialize-from=evader_s0_base_seed42 --force
-
-tensorboard --logdir python/results/</pre>
-        </article>
-
-        <article class="panel content-card reveal">
-          <h3>C# 구현 구조</h3>
-          <div class="split-two" style="margin-top: 0.8rem;">
-            <div class="callout info">
-              <h4>EvaderAgent.cs</h4>
-              <p>`CollectObservations()`, `OnActionReceived()`, `SetPursuerVisibility()`를 통해 관측·행동·LOS 주입을 담당합니다.</p>
-            </div>
-            <div class="callout success">
-              <h4>EvaderReward.cs</h4>
-              <p>`ComputeStepReward()` 중심으로 보상 함수 분리, Inspector 기반 계수 튜닝을 지원합니다.</p>
-            </div>
-          </div>
-          <div class="callout info" style="margin-top: 0.8rem;">
-            <h4>학습 결과</h4>
-            <p>Stage 0 학습은 Unity 환경 구성 완료 후 시작 예정이며, 수렴 그래프와 Eval 결과를 업데이트합니다.</p>
           </div>
         </article>
       </div>
@@ -202,7 +177,7 @@ tensorboard --logdir python/results/</pre>
   <footer class="footer">
     <div class="footer-inner">
       <div>
-        <p class="footer-brand"><i data-lucide="crosshair"></i> MARL DRONE</p>
+        <p class="footer-brand"><i data-lucide="crosshair"></i> IIT</p>
         <p>Urban Drone Pursuit-Evasion MARL System · 2026</p>
       </div>
       <nav class="footer-nav" aria-label="Footer">
@@ -217,3 +192,4 @@ tensorboard --logdir python/results/</pre>
   </footer>
 </body>
 </html>
+

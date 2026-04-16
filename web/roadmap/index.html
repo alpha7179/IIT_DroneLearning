@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Roadmap | MARL DRONE</title>
+  <title>Roadmap | IIT</title>
   <meta name="description" content="Project roadmap and milestone planning">
   <link rel="stylesheet" href="../assets/styles.css">
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -15,7 +15,7 @@
     <div class="nav-inner">
       <a class="brand" href="../">
         <i data-lucide="crosshair"></i>
-        <span>MARL DRONE</span>
+        <span>IIT</span>
       </a>
       <nav class="nav-links" aria-label="Primary">
         <a class="nav-link" href="../" data-route="home">Home</a>
@@ -30,7 +30,7 @@
   </header>
 
   <main>
-    <section class="page-hero" style="--hero-image: url('https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=2000&q=80');">
+    <section class="page-hero" style="--hero-image: url('../assets/images/page-roadmap-hero.jpg');">
       <div class="section-inner reveal">
         <p class="eyebrow">Planning</p>
         <h1 class="section-title">Roadmap</h1>
@@ -88,18 +88,19 @@
             <li>팀 인터페이스 계약 초안 (`Docs/CONTRACT.md`)</li>
             <li>Python 학습 파이프라인 골격 (`python/scripts/`, `python/config/`)</li>
             <li>C# 에이전트 골격 (`EvaderAgent.cs`, `EvaderReward.cs`)</li>
+            <li>Stage0 목표 달성 (survival 100%, goal 68%, capture 0%)</li>
             <li>8종 경로 탐색 알고리즘 벤치마크 (500×500 도시 그리드, 120 trials)</li>
             <li>GitHub Pages 사이트 구축</li>
           </ul>
         </article>
 
         <article class="panel content-card reveal">
-          <h3>진행 예정</h3>
+          <h3>현재 진행 중</h3>
           <ul style="margin: 0.9rem 0 0; padding-left: 1.2rem; color: var(--ink-soft);">
-            <li>Unity 3D 도심 맵 완성 (World 담당)</li>
-            <li>PID 파이프라인 구현 (World 담당)</li>
-            <li>Stage 0 학습 실행 및 M1 달성</li>
-            <li>Stage 1~4 순차 진행</li>
+            <li>Stage1 하드닝(v13c rootfix) 재현성 검증 및 seed 확장</li>
+            <li>MaxEpisodeSeconds scene sync 체크리스트 운영</li>
+            <li>Stage2 self-play 전환용 설정 분리</li>
+            <li>LOS break / reacquisition metric 자동 집계</li>
           </ul>
         </article>
 
@@ -125,7 +126,7 @@
   <footer class="footer">
     <div class="footer-inner">
       <div>
-        <p class="footer-brand"><i data-lucide="crosshair"></i> MARL DRONE</p>
+        <p class="footer-brand"><i data-lucide="crosshair"></i> IIT</p>
         <p>Urban Drone Pursuit-Evasion MARL System · 2026</p>
       </div>
       <nav class="footer-nav" aria-label="Footer">
@@ -140,3 +141,5 @@
   </footer>
 </body>
 </html>
+
+
