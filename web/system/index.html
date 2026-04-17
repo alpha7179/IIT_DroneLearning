@@ -1,0 +1,190 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>System Overview | IIT</title>
+  <meta name="description" content="System architecture and Sim2Real control pipeline">
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script defer src="../assets/app.js"></script>
+</head>
+<body data-page="system">
+  <header class="site-header" id="siteHeader">
+    <div class="nav-inner">
+      <a class="brand" href="../">
+        <i data-lucide="crosshair"></i>
+        <span>IIT</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a class="nav-link" href="../" data-route="home">Home</a>
+        <a class="nav-link" href="../system/" data-route="system">System</a>
+        <a class="nav-link" href="../analysis/" data-route="analysis">Analysis</a>
+        <a class="nav-link" href="../evader/" data-route="evader">Evader</a>
+        <a class="nav-link" href="../roadmap/" data-route="roadmap">Roadmap</a>
+        <a class="nav-link" href="../team/" data-route="team">Team</a>
+      </nav>
+      <a class="nav-cta" href="https://github.com/zaeee-wang/IIT_DroneLearning" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="page-hero" style="--hero-image: url('../assets/images/page-system-hero.jpg');">
+      <div class="section-inner reveal">
+        <p class="eyebrow">Architecture</p>
+        <h1 class="section-title">System Overview</h1>
+        <p class="lead">Unity Digital Twin 환경과 Python 학습 파이프라인, Sim2Real 제어 계층을 하나의 흐름으로 설명합니다.</p>
+        <div class="meta-strip">
+          <span class="meta-chip">Unity 6</span>
+          <span class="meta-chip">ML-Agents</span>
+          <span class="meta-chip">PyTorch 2.x</span>
+          <span class="meta-chip">50Hz Physics</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section surface-section">
+      <div class="section-inner content-grid">
+        <article class="panel content-card reveal">
+          <h3>전체 아키텍처</h3>
+          <div class="mermaid-wrap">
+            <pre class="mermaid">graph TB
+    subgraph Unity["Unity 6 - Digital Twin"]
+        A[3D Urban Scene] --> B[Drone Physics 6-DOF]
+        B --> C[Sensor System Ray + Camera]
+        C --> D[ML-Agents Communicator]
+    end
+    subgraph Python["Python 학습 파이프라인"]
+        D --> E[State Preprocessing]
+        E --> F[PPO Policy Network PyTorch 2.x]
+        F --> G[Action Output 4D Continuous]
+    end
+    subgraph Infra["인프라"]
+        F --> H[TensorBoard]
+        F --> I[결과 아카이브 JSON CSV]
+    end
+    G --> D</pre>
+          </div>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>Sim2Real 계층형 제어 구조</h3>
+          <p>RL 정책은 직접 모터를 제어하지 않습니다. 항상 PID 추상 계층을 거쳐 실기체 FCU와 동일한 인터페이스로 명령이 전달됩니다.</p>
+          <div class="mermaid-wrap" style="margin-top: 1rem;">
+            <pre class="mermaid">graph TD
+    A["Mission Layer Goal / Intercept Policy"] --> B["Tactical Layer Pursuit-Evasion Decision"]
+    B --> C["Guidance Layer Heading / Speed / Altitude"]
+    C --> D["Low-level Control PID Attitude / Throttle"]
+    D --> E["Unity Physics or Real FCU"]</pre>
+          </div>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>역할 분리 아키텍처</h3>
+          <div class="table-wrap" style="margin-top: 0.9rem;">
+            <table>
+              <thead>
+                <tr><th>모듈</th><th>담당자</th><th>핵심 책임</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>World / Physics</td><td>이강민</td><td>Unity 맵, 장애물, 스폰, PID 파이프라인, 에피소드 Reset</td></tr>
+                <tr><td>Sensor / Rendering</td><td>배민우</td><td>Ray 태그, 카메라, 노이즈 모델, LOS 역방향 Raycast</td></tr>
+                <tr><td>Pursuer RL</td><td>박재현</td><td>타겟 추적·차단, LSTM 예측, Pursuer 정책 학습</td></tr>
+                <tr><td>Evader RL</td><td>이재왕</td><td>목표 도달 + LOS 회피, 보상 설계, 실험 분석</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="split-two" style="margin-top: 1rem;">
+            <div class="callout info">
+              <h4>의존성 원칙</h4>
+              <p>`World`는 에이전트 내부 정책을 알지 못하며, `Sensor`는 보상 계산 로직을 갖지 않습니다.</p>
+            </div>
+            <div class="callout success">
+              <h4>공통 인터페이스</h4>
+              <p>`Evader`와 `Pursuer`는 `Reset / Observe / Act / Reward` 공통 인터페이스를 공유합니다.</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>에피소드 인터페이스 (CONTRACT)</h3>
+          <div class="split-two" style="margin-top: 0.9rem;">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>이벤트</th><th>조건</th><th>제공자</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>Catch</td><td>거리 &lt; 2.0m, 3 step 연속</td><td>World</td></tr>
+                  <tr><td>Crash</td><td>altitude &lt; 0.5m 또는 tilt &gt; 60°</td><td>World</td></tr>
+                  <tr><td>Timeout</td><td>T_max = 20s</td><td>World</td></tr>
+                  <tr><td>Goal Reached</td><td>Evader ↔ Goal 거리 &lt; 2.0m</td><td>World</td></tr>
+                  <tr><td>Out-of-bounds</td><td>맵 경계 이탈</td><td>World</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div>
+              <h4>Reset 순서</h4>
+              <pre>World.ResetEnvironment()
+  -> Pursuer.OnEpisodeBegin()
+  -> Evader.OnEpisodeBegin()
+  -> Sensor.ResetBuffers()</pre>
+              <h4 style="margin-top: 0.9rem;">공통 액션 공간</h4>
+              <div class="table-wrap" style="margin-top: 0.5rem;">
+                <table>
+                  <thead>
+                    <tr><th>인덱스</th><th>이름</th><th>범위</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>0</td><td>thrust_cmd</td><td>[0, 1]</td></tr>
+                    <tr><td>1</td><td>roll_rate_cmd</td><td>[-1, 1]</td></tr>
+                    <tr><td>2</td><td>pitch_rate_cmd</td><td>[-1, 1]</td></tr>
+                    <tr><td>3</td><td>yaw_rate_cmd</td><td>[-1, 1]</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <p style="margin-top: 0.9rem;">Physics 적용 주기: <strong>50Hz</strong> (FixedUpdate 0.02s), Decision Period: 5 steps</p>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>학습 시나리오 흐름</h3>
+          <ol style="margin: 0.9rem 0 0; padding-left: 1.2rem; color: var(--ink-soft);">
+            <li>환경 초기화: 도심 맵에 Pursuer / Evader 무작위 스폰 (초기 거리 ≥ 15m)</li>
+            <li>단일 에이전트 학습: 기본 비행·목표 도달 학습 (Stage 0)</li>
+            <li>장애물 도입: 건물 환경에서 충돌 회피 + 경로 탐색 (Stage 1)</li>
+            <li>경쟁 학습 (Self-Play): 두 에이전트가 서로의 전략을 강화 (Stage 2)</li>
+            <li>Occlusion 전략: LOS 차단 상황에서 LSTM 예측 활성화 (Stage 3)</li>
+            <li>Sim2Real: 도메인 랜덤화 후 미학습 맵 일반화 검증 (Stage 4)</li>
+          </ol>
+          <div class="callout info" style="margin-top: 1rem;">
+            <h4>진행 상황</h4>
+            <p>Stage0 목표 지표는 달성되었고(2026-03-21), 현재는 Stage1 장애물 환경에서 보상 하드닝과 재현성 검증을 진행 중입니다 (2026-04-08 기준).</p>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div>
+        <p class="footer-brand"><i data-lucide="crosshair"></i> IIT</p>
+        <p>Urban Drone Pursuit-Evasion MARL System · 2026</p>
+      </div>
+      <nav class="footer-nav" aria-label="Footer">
+        <a href="../">Home</a>
+        <a href="../system/">System</a>
+        <a href="../analysis/">Analysis</a>
+        <a href="../evader/">Evader</a>
+        <a href="../roadmap/">Roadmap</a>
+        <a href="../team/">Team</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>
+
+

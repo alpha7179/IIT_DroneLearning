@@ -1,0 +1,193 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Algorithm Analysis | IIT</title>
+  <meta name="description" content="Occlusion-aware pathfinding benchmark analysis">
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script defer src="../assets/app.js"></script>
+</head>
+<body data-page="analysis">
+  <header class="site-header" id="siteHeader">
+    <div class="nav-inner">
+      <a class="brand" href="../">
+        <i data-lucide="crosshair"></i>
+        <span>IIT</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a class="nav-link" href="../" data-route="home">Home</a>
+        <a class="nav-link" href="../system/" data-route="system">System</a>
+        <a class="nav-link" href="../analysis/" data-route="analysis">Analysis</a>
+        <a class="nav-link" href="../evader/" data-route="evader">Evader</a>
+        <a class="nav-link" href="../roadmap/" data-route="roadmap">Roadmap</a>
+        <a class="nav-link" href="../team/" data-route="team">Team</a>
+      </nav>
+      <a class="nav-cta" href="https://github.com/zaeee-wang/IIT_DroneLearning" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="page-hero" style="--hero-image: url('../assets/images/page-analysis-hero.jpg');">
+      <div class="section-inner reveal">
+        <p class="eyebrow">Benchmark</p>
+        <h1 class="section-title">Algorithm Analysis</h1>
+        <p class="lead">500×500 도시 그리드에서 8종 경로 탐색 알고리즘을 Occlusion-aware LOS 기준으로 비교 분석했습니다.</p>
+        <div class="meta-strip">
+          <span class="meta-chip">8 Algorithms</span>
+          <span class="meta-chip">500×500 Grid</span>
+          <span class="meta-chip">15 Trials</span>
+          <span class="meta-chip">Theta* Rank #1</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section surface-section">
+      <div class="section-inner content-grid">
+        <article class="panel content-card reveal">
+          <h3>실험 환경</h3>
+          <div class="table-wrap" style="margin-top: 0.9rem;">
+            <table>
+              <thead>
+                <tr><th>항목</th><th>값</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Grid 크기</td><td>500 × 500</td></tr>
+                <tr><td>건물 크기 (urban_block)</td><td>25×25 셀 (gap 10셀)</td></tr>
+                <tr><td>장애물 모드</td><td>urban_block / random / pursuer_centered</td></tr>
+                <tr><td>Trial 수 (모드별)</td><td>5 (시드 42~46)</td></tr>
+                <tr><td>최소 시작-목표 거리</td><td>Manhattan ≥ 250</td></tr>
+                <tr><td>알고리즘 수</td><td>8종</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>평가 지표</h3>
+          <div class="table-wrap" style="margin-top: 0.9rem;">
+            <table>
+              <thead>
+                <tr><th>지표</th><th>설명</th><th>높을수록 좋음</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Composite Score</td><td>가중합 종합 점수</td><td>O</td></tr>
+                <tr><td>Success Rate</td><td>경로 탐색 성공률</td><td>O</td></tr>
+                <tr><td>Path Cost</td><td>경로 유클리드 거리 합</td><td>X</td></tr>
+                <tr><td>LOS Exposure %</td><td>추격자 시야 노출 셀 비율</td><td>X</td></tr>
+                <tr><td>Exec Time (ms)</td><td>알고리즘 실행 시간</td><td>X</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <h4 style="margin: 1rem 0 0.5rem;">Composite Score</h4>
+          <pre>0.30 × (1 - norm_cost)
++ 0.25 × (1 - los_exposure / 100)
++ 0.20 × (1 - norm_time)
++ 0.15 × success_rate
++ 0.10 × (1 - norm_breaks)</pre>
+        </article>
+
+        <article class="panel content-card media-card reveal">
+          <h3>경로 시각화</h3>
+          <p style="margin-top: 0.5rem;">녹색 = LOS 은폐 구역, 적색 = LOS 노출 구역, 파란 선 = 탐색 경로</p>
+          <img style="margin-top: 0.9rem;" src="../assets/grid_comparison.png" alt="Grid comparison">
+        </article>
+
+        <article class="panel content-card media-card reveal">
+          <h3>성능 지표 비교</h3>
+          <img style="margin-top: 0.9rem;" src="../assets/metrics_bar.png" alt="Metrics bar chart">
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>종합 순위 (500×500, 15 trials)</h3>
+          <div class="table-wrap" style="margin-top: 0.9rem;">
+            <table>
+              <thead>
+                <tr>
+                  <th>순위</th><th>알고리즘</th><th>Composite</th><th>Success</th><th>Cost</th><th>LOS Exp%</th><th>Time ms</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>1</td><td>Theta*</td><td>0.888</td><td>100%</td><td>365.0</td><td>0.9%</td><td>1461</td></tr>
+                <tr><td>2</td><td>A* (Octile)</td><td>0.887</td><td>100%</td><td>387.4</td><td>0.5%</td><td>81</td></tr>
+                <tr><td>3</td><td>A*+LOS (w=1.0)</td><td>0.883</td><td>100%</td><td>388.7</td><td>0.2%</td><td>438</td></tr>
+                <tr><td>4</td><td>A*+LOS (w=0.5)</td><td>0.882</td><td>100%</td><td>388.3</td><td>0.5%</td><td>431</td></tr>
+                <tr><td>5</td><td>Dijkstra</td><td>0.882</td><td>100%</td><td>387.4</td><td>0.5%</td><td>550</td></tr>
+                <tr><td>6</td><td>A* (Manhattan)</td><td>0.881</td><td>100%</td><td>394.9</td><td>0.5%</td><td>51</td></tr>
+                <tr><td>7</td><td>Greedy BFS</td><td>0.852</td><td>100%</td><td>435.9</td><td>0.5%</td><td>5</td></tr>
+                <tr><td>8</td><td>RRT*</td><td>0.739</td><td>67%</td><td>356.2</td><td>1.2%</td><td>11667</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>분석 및 결론</h3>
+          <div class="split-two" style="margin-top: 0.9rem;">
+            <div class="callout success">
+              <h4>추천: Theta*</h4>
+              <p>복합 점수 0.888, 성공률 100%, LOS 노출 0.9%. Any-angle 경로로 가장 자연스러운 회피 경로를 생성합니다.</p>
+            </div>
+            <div class="callout info">
+              <h4>실시간 대안</h4>
+              <p>A*(Octile) 81ms, A*(Manhattan) 51ms로 온라인 재계획 루프에 유리합니다.</p>
+            </div>
+            <div class="callout tip">
+              <h4>LOS 최소화 우선</h4>
+              <p>A*+LOS (w=1.0)은 LOS 노출 0.2%로 최저이지만 실행 시간이 길어 오프라인 계획에 적합합니다.</p>
+            </div>
+            <div class="callout warning">
+              <h4>RRT* 주의</h4>
+              <p>성공률 67%로 실패 케이스가 존재합니다. 비교 참고용으로 활용하는 것이 안전합니다.</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>LOS 노출이 0.2~1.2%인 이유</h3>
+          <p style="margin-top: 0.8rem;">
+            500×500 도시 환경에서는 건물 블록(25×25 셀)이 촘촘하게 배치되어
+            추격자 시야가 도로·교차로 구간으로 제한됩니다.
+            경로 대부분이 건물 그림자 구역을 통과하고, 스폰 위치가 trial마다 달라
+            다양한 기하학적 케이스가 반영됩니다.
+          </p>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>재현 방법</h3>
+          <pre style="margin-top: 0.8rem;">git clone https://github.com/alpha7179/IIT_DroneLearning.git
+pip install numpy matplotlib
+
+python python/scripts/run_pathfinding.py \
+  --grid-size 500 \
+  --n-trials 5 \
+  --seed 42 \
+  --out python/results/pathfinding_500/</pre>
+          <p style="margin-top: 0.8rem;">결과 파일: benchmark_results.json, stats_summary.json, grid_comparison.png, metrics_bar.png</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div>
+        <p class="footer-brand"><i data-lucide="crosshair"></i> IIT</p>
+        <p>Urban Drone Pursuit-Evasion MARL System · 2026</p>
+      </div>
+      <nav class="footer-nav" aria-label="Footer">
+        <a href="../">Home</a>
+        <a href="../system/">System</a>
+        <a href="../analysis/">Analysis</a>
+        <a href="../evader/">Evader</a>
+        <a href="../roadmap/">Roadmap</a>
+        <a href="../team/">Team</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>
+
+

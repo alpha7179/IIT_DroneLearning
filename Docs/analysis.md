@@ -1,11 +1,11 @@
-<div class="featured-split">
-<div class="featured-split__image">
+<div class="drone-split">
+<div class="drone-split__media">
 <img src="../assets/grid_comparison.png" alt="Grid Comparison" style="object-fit:cover;width:100%;height:100%;">
 </div>
-<div class="featured-split__content">
-  <span class="featured-split__tag">Benchmark</span>
-  <div class="featured-split__title">Algorithm Analysis</div>
-  <p class="featured-split__desc">500×500 도시 그리드에서 8종 경로 탐색 알고리즘을 Occlusion-aware LOS 기준으로 비교 분석. Theta*가 종합 1위를 달성했습니다.</p>
+<div class="drone-split__content">
+  <p class="drone-badge">Benchmark</p>
+  <div class="drone-split__title">Algorithm Analysis</div>
+  <p class="drone-split__desc">500×500 도시 그리드에서 8종 경로 탐색 알고리즘을 Occlusion-aware LOS 기준으로 비교 분석. Theta*가 종합 1위를 달성했습니다.</p>
 </div>
 </div>
 
