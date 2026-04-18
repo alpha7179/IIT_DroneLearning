@@ -10616,6 +10616,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1872164456}
   - component: {fileID: 1872164455}
+  - component: {fileID: 1872164457}
   m_Layer: 0
   m_Name: CityGenerator
   m_TagString: Untagged
@@ -10680,6 +10681,24 @@ Transform:
   - {fileID: 1852343716}
   m_Father: {fileID: 3229896465107773057}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1872164457
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1872164454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 93ee652158177e64295565a91b7d0475, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _enabled: 1
+  _cityGenerator: {fileID: 1872164455}
+  _triggerMode: 0
+  _rotationInterval: 5
+  _seedStrategy: 0
+  _baseSeed: 9861437
 --- !u!1 &1917098726
 GameObject:
   m_ObjectHideFlags: 0
@@ -11376,14 +11395,16 @@ MonoBehaviour:
   _evaderTag: Evader
   _pursuerTag: Pursuer
   _strategy: 3
-  _minSeparation: 5
+  _minSeparation: 20
   _maxRetry: 20
   _minSpawnHeight: 5
   _maxSpawnHeight: 25
   _fallbackRange: 10
   _fallbackHeight: 15
   _enablePursuerBoundarySpawn: 1
-  _pursuerBoundaryRadius: 10
+  _pursuerBoundaryRadius: 20
+  _enablePursuerBoundaryHeightRange: 1
+  _pursuerBoundaryHeightRange: 2.5
   _debugEvaderCount: 0
   _debugPursuerCount: 0
   _isComputed: 0

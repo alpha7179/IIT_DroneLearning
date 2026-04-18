@@ -94,6 +94,10 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
     [SerializeField] private bool  _enablePursuerBoundarySpawn = false;
     [Tooltip("Pursuer 바운더리 반경 (m). _minSeparation 이상으로 클램핑됩니다.")]
     [SerializeField] private float _pursuerBoundaryRadius = 30f;
+    [Tooltip("활성화 시 Pursuer를 Evader 고도 ± 지정 범위 내에서 랜덤 생성 (물리 고도 제한 최우선 적용). _enablePursuerBoundarySpawn 비활성화 시 자동 무효화.")]
+    [SerializeField] private bool  _enablePursuerBoundaryHeightRange = false;
+    [Tooltip("Pursuer 스폰 고도 범위 (m). Evader 고도 ± 이 값 내에서 랜덤 결정. 드론 물리 고도 제한(MinAltitude~MaxAltitude)으로 클램핑됨.")]
+    [SerializeField] private float _pursuerBoundaryHeightRange = 5f;
 
     [Header("Spawn Coordinator — Debug (읽기 전용)")]
     [SerializeField] private int  _debugEvaderCount;
@@ -145,6 +149,20 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
         set => _pursuerBoundaryRadius = Mathf.Max(_minSeparation, value);
     }
 
+    /// <summary>도시 재생성 시 설정 보존을 위한 고도 범위 토글 프로퍼티.</summary>
+    public bool EnablePursuerBoundaryHeightRange
+    {
+        get => _enablePursuerBoundaryHeightRange;
+        set => _enablePursuerBoundaryHeightRange = value;
+    }
+
+    /// <summary>도시 재생성 시 설정 보존을 위한 고도 범위 프로퍼티.</summary>
+    public float PursuerBoundaryHeightRange
+    {
+        get => _pursuerBoundaryHeightRange;
+        set => _pursuerBoundaryHeightRange = Mathf.Max(0f, value);
+    }
+
     // ───────── 초기화 ─────────────────────────────────────────────────────
     private void Awake()
     {
@@ -170,7 +188,8 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
         _maxSpawnHeight = Mathf.Max(_minSpawnHeight, _maxSpawnHeight);
         _fallbackRange  = Mathf.Max(1f,  _fallbackRange);
         _fallbackHeight = Mathf.Max(0f,  _fallbackHeight);
-        _pursuerBoundaryRadius = Mathf.Max(_minSeparation, _pursuerBoundaryRadius);
+        _pursuerBoundaryRadius      = Mathf.Max(_minSeparation, _pursuerBoundaryRadius);
+        _pursuerBoundaryHeightRange = Mathf.Max(0f, _pursuerBoundaryHeightRange);
     }
 
     // ───────── 핵심 API ───────────────────────────────────────────────────
@@ -1029,6 +1048,24 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
         Vector3 center  = evaderResult.Position;
         float   evaderY = center.y;
 
+        // 고도 범위 사전 계산 (루프 안에서 리플렉션 반복 호출 방지)
+        // _enablePursuerBoundarySpawn이 false면 이 메서드 자체가 호출되지 않으므로
+        // _enablePursuerBoundaryHeightRange만 추가로 확인한다.
+        bool  applyHeightRange = _enablePursuerBoundaryHeightRange && _pursuerBoundaryHeightRange > 0f;
+        float heightMinY       = evaderY;
+        float heightMaxY       = evaderY;
+        if (applyHeightRange)
+        {
+            float droneMinAlt = GetDroneMinAltitude();
+            float droneMaxAlt = GetDroneMaxAltitude();
+            // Evader 고도 ± HeightRange 를 물리 고도 제한으로 클램핑 (물리 제한 최우선)
+            heightMinY = evaderY - _pursuerBoundaryHeightRange;
+            heightMaxY = evaderY + _pursuerBoundaryHeightRange;
+            if (droneMinAlt >= 0f) heightMinY = Mathf.Max(heightMinY, droneMinAlt);
+            if (droneMaxAlt  > 0f) heightMaxY = Mathf.Min(heightMaxY, droneMaxAlt);
+            heightMaxY = Mathf.Max(heightMinY, heightMaxY); // min > max 방지
+        }
+
         // 기존 Pursuer 위치를 _occupiedPositions에서 제거
         foreach (var go in _pursuerObjects)
         {
@@ -1042,18 +1079,25 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
 
         for (int i = 0; i < _pursuerObjects.Count; i++)
         {
-            GameObject go    = _pursuerObjects[i];
-            float      angle = startAngleRad + i * stepRad;
+            GameObject go       = _pursuerObjects[i];
+            float      angle    = startAngleRad + i * stepRad;
+
+            // Pursuer별 스폰 고도 결정
+            // HeightRange 활성화 시: Evader 고도 ± 범위 내 랜덤 (물리 제한 클램핑 완료)
+            // 비활성화 시: Evader와 동일 고도
+            float pursuerY = applyHeightRange
+                ? UnityEngine.Random.Range(heightMinY, heightMaxY)
+                : evaderY;
 
             // 기본 위치 계산
             float   x   = center.x + _pursuerBoundaryRadius * Mathf.Cos(angle);
             float   z   = center.z + _pursuerBoundaryRadius * Mathf.Sin(angle);
-            Vector3 pos = new Vector3(x, evaderY, z);
+            Vector3 pos = new Vector3(x, pursuerY, z);
 
             // 도시 경계 밖이거나 건물 중첩이면 → 같은 반경을 유지하며 각도를 촘촘하게 양방향 탐색
             if (!IsWithinCityBoundsXZ(pos) || !IsNotOverlappingBuildings(pos))
             {
-                Vector3? swept = TrySweepAngleForValidPosition(center, angle, _pursuerBoundaryRadius, evaderY);
+                Vector3? swept = TrySweepAngleForValidPosition(center, angle, _pursuerBoundaryRadius, pursuerY);
                 if (swept.HasValue)
                 {
                     pos = swept.Value;
