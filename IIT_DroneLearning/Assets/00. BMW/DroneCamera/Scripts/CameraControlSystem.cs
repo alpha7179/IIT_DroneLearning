@@ -99,6 +99,9 @@ namespace DroneCamera
         private CameraMode _currentMode = CameraMode.None;
         private int _lastBatchCount = -1;
 
+        // 시작 직후 N프레임 동안 드론 재스캔 (동적 생성 드론이 늦게 초기화되는 경우 대응)
+        private int _startupRescanFrames = 10;
+
         // OnGUI 레이블 렌더링용
         private GUIStyle   _labelStyle;
         private Texture2D  _labelBg;
@@ -107,6 +110,9 @@ namespace DroneCamera
         private Type  _batchGenType;
         private Type  _cityGenType;
         private bool  _typesResolved;
+
+        // FindFirstObjectByType 결과 캐시 — null 시에만 재탐색
+        private MonoBehaviour _batchGenCache;
 
         // Display 인덱스 상수
         private const int DisplayMultiView = 0;  // Display 1 — 다중뷰(분할 + BatchTopView)
@@ -127,15 +133,29 @@ namespace DroneCamera
         private void Start()
         {
             ResolveExternalTypes();
-            ScanAndRegisterDroneAgents();
+            // _lastBatchCount를 먼저 확정: DCS.Start()가 CCS보다 먼저 실행되더라도
+            // RegisterDroneCamera 내에서 올바른 배치 수를 참조할 수 있다.
             int n = GetActiveBatchCount();
             _lastBatchCount = n;
+            ScanAndRegisterDroneAgents();
             ApplyLayout(n);
         }
 
         private void Update()
         {
             int n = GetActiveBatchCount();
+
+            // 시작 직후 N프레임: 동적 생성 드론이 늦게 등록되는 경우를 위해
+            // 매 프레임 재스캔 + 레이아웃 재적용.
+            if (_startupRescanFrames > 0)
+            {
+                _startupRescanFrames--;
+                ScanAndRegisterDroneAgents();
+                _lastBatchCount = n;
+                ApplyLayout(n);
+                return;
+            }
+
             if (n == _lastBatchCount) return;
             _lastBatchCount = n;
             ApplyLayout(n);
@@ -180,6 +200,7 @@ namespace DroneCamera
             cam.SetMultiViewDisplay(DisplayMultiView);
 
             int n = _lastBatchCount >= 0 ? _lastBatchCount : GetActiveBatchCount();
+            if (_lastBatchCount < 0) _lastBatchCount = n; // 최초 등록 시 캐싱
             ApplyLayout(n);
         }
 
@@ -202,7 +223,9 @@ namespace DroneCamera
             ResolveExternalTypes();
             if (_batchGenType == null) return 1;
 
-            var batchGen = FindFirstObjectByType(_batchGenType) as MonoBehaviour;
+            if (_batchGenCache == null)
+                _batchGenCache = FindFirstObjectByType(_batchGenType) as MonoBehaviour;
+            var batchGen = _batchGenCache;
             if (batchGen == null) return 1;
 
             try
@@ -499,7 +522,9 @@ namespace DroneCamera
                 return;
             }
 
-            var batchGen = FindFirstObjectByType(_batchGenType) as MonoBehaviour;
+            if (_batchGenCache == null)
+                _batchGenCache = FindFirstObjectByType(_batchGenType) as MonoBehaviour;
+            var batchGen = _batchGenCache;
             if (batchGen == null)
             {
                 _batchTopViewCamera.orthographicSize = topViewOrthoSize;
@@ -590,7 +615,9 @@ namespace DroneCamera
             ResolveExternalTypes();
             if (_batchGenType == null) return false;
 
-            var batchGen = FindFirstObjectByType(_batchGenType) as MonoBehaviour;
+            if (_batchGenCache == null)
+                _batchGenCache = FindFirstObjectByType(_batchGenType) as MonoBehaviour;
+            var batchGen = _batchGenCache;
             if (batchGen == null) return false;
 
             try

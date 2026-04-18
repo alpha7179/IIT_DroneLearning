@@ -89,6 +89,12 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
     [Tooltip("폴백 스폰 고도 (Y, m)")]
     [SerializeField] private float _fallbackHeight = 15f;
 
+    [Header("Spawn Coordinator — Pursuer Boundary Spawn")]
+    [Tooltip("활성화 시 Pursuer 드론을 첫 번째 Evader 주변 바운더리에 균등 배치")]
+    [SerializeField] private bool  _enablePursuerBoundarySpawn = false;
+    [Tooltip("Pursuer 바운더리 반경 (m). _minSeparation 이상으로 클램핑됩니다.")]
+    [SerializeField] private float _pursuerBoundaryRadius = 30f;
+
     [Header("Spawn Coordinator — Debug (읽기 전용)")]
     [SerializeField] private int  _debugEvaderCount;
     [SerializeField] private int  _debugPursuerCount;
@@ -108,6 +114,10 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
     // 건물이 없는 환경에서는 빈 리스트 → IsNotOverlappingBuildings()가 항상 true 반환.
     private readonly List<Bounds> _buildingBounds = new List<Bounds>();
 
+    // 도시 전체 경계 캐시 — 바운더리 스폰 시 벽 밖 배치 방지용.
+    // CityMetadata 없는 환경에서는 null → 경계 검사 건너뜀.
+    private Bounds? _cityBounds;
+
     private SpawnResult _goalResult;
     [SerializeField] private bool _isComputed;
 
@@ -120,6 +130,20 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
     public int  EvaderCount  => _evaderObjects.Count;
     public int  PursuerCount => _pursuerObjects.Count;
     public SpawnStrategy Strategy { get => _strategy; set => _strategy = value; }
+
+    /// <summary>도시 재생성 시 설정 보존을 위한 바운더리 스폰 토글 프로퍼티.</summary>
+    public bool EnablePursuerBoundarySpawn
+    {
+        get => _enablePursuerBoundarySpawn;
+        set => _enablePursuerBoundarySpawn = value;
+    }
+
+    /// <summary>도시 재생성 시 설정 보존을 위한 바운더리 반경 프로퍼티.</summary>
+    public float PursuerBoundaryRadius
+    {
+        get => _pursuerBoundaryRadius;
+        set => _pursuerBoundaryRadius = Mathf.Max(_minSeparation, value);
+    }
 
     // ───────── 초기화 ─────────────────────────────────────────────────────
     private void Awake()
@@ -146,6 +170,7 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
         _maxSpawnHeight = Mathf.Max(_minSpawnHeight, _maxSpawnHeight);
         _fallbackRange  = Mathf.Max(1f,  _fallbackRange);
         _fallbackHeight = Mathf.Max(0f,  _fallbackHeight);
+        _pursuerBoundaryRadius = Mathf.Max(_minSeparation, _pursuerBoundaryRadius);
     }
 
     // ───────── 핵심 API ───────────────────────────────────────────────────
@@ -165,15 +190,17 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
         _spawnMap.Clear();
         _occupiedPositions.Clear();
 
-        // 건물 Bounds 캐싱 — CityDataAPI에서 메타데이터를 읽어 건물 Bounds 목록 갱신.
-        // API 없거나 메타데이터 없는 환경(빈 리스트 포함)이면 빈 리스트로 유지.
+        // 건물 Bounds 및 도시 경계 캐싱 — CityDataAPI에서 메타데이터를 읽어 갱신.
+        // API 없거나 메타데이터 없는 환경이면 빈 리스트 / null 유지.
         _buildingBounds.Clear();
+        _cityBounds = null;
         if (CityDataAPI.Instance != null && CityDataAPI.Instance.HasCityMetadata())
         {
             var meta = CityDataAPI.Instance.GetCityMetadata();
             if (meta.buildings != null)
                 foreach (var b in meta.buildings)
                     _buildingBounds.Add(b.bounds);
+            _cityBounds = meta.cityBounds;
         }
 
         // SpawnCenter AutoSyncFromCity 활성화 시 도시 메타데이터 동기화
@@ -201,6 +228,16 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
                 break;
         }
 
+        // ── Pursuer 바운더리 스폰 후처리 ──
+        // 전략별 계산 완료 후 Pursuer 위치를 원형 경계 배치로 오버라이드한다.
+        if (_enablePursuerBoundarySpawn && _pursuerObjects.Count > 0)
+        {
+            if (_evaderObjects.Count > 0)
+                ComputePursuerBoundarySpawn();
+            else
+                Debug.LogWarning("[EpisodeSpawnCoordinator] 바운더리 스폰 활성화되었지만 Evader 드론이 없습니다. 기존 전략 유지.", this);
+        }
+
         // CityMetadata 전략이 Goal을 직접 처리하지 않은 경우에만 기존 Goal 로직 실행
         if (!goalHandledByStrategy)
         {
@@ -211,6 +248,16 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
         _isComputed        = true;
         _debugEvaderCount  = _evaderObjects.Count;
         _debugPursuerCount = _pursuerObjects.Count;
+
+        // ML-Agents는 OnEpisodeBegin() 호출 순서를 보장하지 않는다.
+        // PursuerAgent.OnEpisodeBegin()이 EvaderAgent보다 먼저 실행되면
+        // IsComputed=true(이전 에피소드 값)와 이전 _spawnMap을 읽어 헌 위치에 스폰되는 문제 발생.
+        // → ComputeSpawn() 완료 시점에 모든 드론 transform에 새 위치를 즉시 적용하여 순서 의존성 제거.
+        foreach (var kvp in _spawnMap)
+        {
+            if (kvp.Key != null)
+                kvp.Key.transform.position = kvp.Value.Position;
+        }
 
         OnSpawnComputed?.Invoke();
     }
@@ -913,6 +960,123 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
 
     private static float RandomYaw() => UnityEngine.Random.Range(0f, 360f);
 
+    /// <summary>
+    /// 후보 위치가 캐싱된 도시 경계(XZ 평면) 안에 있는지 확인한다.
+    /// _cityBounds가 null이면 (메타데이터 없는 환경) 항상 true 반환.
+    /// Y축은 비행 고도이므로 무시하고 XZ만 검사한다.
+    /// </summary>
+    private bool IsWithinCityBoundsXZ(Vector3 pos)
+    {
+        if (!_cityBounds.HasValue) return true;
+        Bounds b = _cityBounds.Value;
+        return pos.x >= b.min.x && pos.x <= b.max.x &&
+               pos.z >= b.min.z && pos.z <= b.max.z;
+    }
+
+    /// <summary>
+    /// 기준 각도 주변을 촘촘하게 양방향 탐색하여 도시 경계 안이면서 건물과 겹치지 않는 위치를 찾는다.
+    /// angleStepDeg 간격으로 +step, -step 교대로 최대 ±180° 범위를 탐색.
+    /// 반경은 고정(_pursuerBoundaryRadius)하여 균등 분포 의도를 최대한 유지.
+    /// 성공 시 조정된 Vector3 반환, 실패 시 null 반환.
+    /// </summary>
+    private Vector3? TrySweepAngleForValidPosition(Vector3 center, float baseAngleRad, float radius, float evaderY,
+                                                    float angleStepDeg = 2f)
+    {
+        float stepRad  = angleStepDeg * Mathf.Deg2Rad;
+        int   maxSteps = Mathf.CeilToInt(180f / angleStepDeg); // 최대 ±180°
+
+        for (int s = 1; s <= maxSteps; s++)
+        {
+            // +방향, -방향 교대 탐색
+            for (int sign = 1; sign >= -1; sign -= 2)
+            {
+                float   angle = baseAngleRad + sign * s * stepRad;
+                float   x     = center.x + radius * Mathf.Cos(angle);
+                float   z     = center.z + radius * Mathf.Sin(angle);
+                Vector3 pos   = new Vector3(x, evaderY, z);
+                if (IsWithinCityBoundsXZ(pos) && IsNotOverlappingBuildings(pos))
+                    return pos;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// from 위치에서 target 위치를 향하는 XZ 평면상의 Yaw 각도(도)를 계산한다.
+    /// Unity 좌표계 기준: +Z가 전방(0°), 시계 방향 증가.
+    /// </summary>
+    private static float ComputeYawTowardTarget(Vector3 from, Vector3 target)
+    {
+        float dx  = target.x - from.x;
+        float dz  = target.z - from.z;
+        float rad = Mathf.Atan2(dx, dz); // Unity: Atan2(x, z) → 0°가 +Z 방향
+        return rad * Mathf.Rad2Deg;
+    }
+
+    /// <summary>
+    /// 바운더리 스폰 모드: 첫 번째 Evader 주변 원형 경계에 Pursuer를 균등 배치한다.
+    /// 기존 전략이 배치한 Pursuer 위치를 덮어쓴다.
+    /// </summary>
+    private void ComputePursuerBoundarySpawn()
+    {
+        // 첫 번째 Evader 스폰 위치 조회
+        if (!_spawnMap.TryGetValue(_evaderObjects[0], out SpawnResult evaderResult))
+        {
+            Debug.LogWarning("[EpisodeSpawnCoordinator] 바운더리 스폰: 첫 번째 Evader의 SpawnResult가 등록되지 않았습니다. 기존 전략 유지.", this);
+            return;
+        }
+
+        Vector3 center  = evaderResult.Position;
+        float   evaderY = center.y;
+
+        // 기존 Pursuer 위치를 _occupiedPositions에서 제거
+        foreach (var go in _pursuerObjects)
+        {
+            if (_spawnMap.TryGetValue(go, out SpawnResult old))
+                _occupiedPositions.Remove(old.Position);
+        }
+
+        // 에피소드마다 다른 배치를 위해 시작 각도를 랜덤 결정
+        float startAngleRad = UnityEngine.Random.Range(0f, 360f) * Mathf.Deg2Rad;
+        float stepRad       = (2f * Mathf.PI) / _pursuerObjects.Count;
+
+        for (int i = 0; i < _pursuerObjects.Count; i++)
+        {
+            GameObject go    = _pursuerObjects[i];
+            float      angle = startAngleRad + i * stepRad;
+
+            // 기본 위치 계산
+            float   x   = center.x + _pursuerBoundaryRadius * Mathf.Cos(angle);
+            float   z   = center.z + _pursuerBoundaryRadius * Mathf.Sin(angle);
+            Vector3 pos = new Vector3(x, evaderY, z);
+
+            // 도시 경계 밖이거나 건물 중첩이면 → 같은 반경을 유지하며 각도를 촘촘하게 양방향 탐색
+            if (!IsWithinCityBoundsXZ(pos) || !IsNotOverlappingBuildings(pos))
+            {
+                Vector3? swept = TrySweepAngleForValidPosition(center, angle, _pursuerBoundaryRadius, evaderY);
+                if (swept.HasValue)
+                {
+                    pos = swept.Value;
+                }
+                else
+                {
+                    Debug.LogWarning($"[EpisodeSpawnCoordinator] 바운더리 스폰: '{go.name}' 유효 위치 탐색 실패 — 기존 전략 위치로 폴백.", this);
+                    if (_spawnMap.TryGetValue(go, out SpawnResult fallback))
+                        _occupiedPositions.Add(fallback.Position);
+                    continue;
+                }
+            }
+
+            // Evader를 향하는 Yaw 계산
+            float yaw = ComputeYawTowardTarget(pos, center);
+
+            // _spawnMap 덮어쓰기 + _occupiedPositions 등록
+            _spawnMap[go] = new SpawnResult { Position = pos, YawDegrees = yaw };
+            _occupiedPositions.Add(pos);
+        }
+    }
+
+
     // ───────── Editor 디버그 기즈모 ──────────────────────────────────────
 #if UNITY_EDITOR
     private void OnDrawGizmosSelected()
@@ -950,6 +1114,15 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
         for (int i = 0; i < _occupiedPositions.Count; i++)
             for (int j = i + 1; j < _occupiedPositions.Count; j++)
                 Gizmos.DrawLine(_occupiedPositions[i], _occupiedPositions[j]);
+
+        // Pursuer 바운더리 반경 — 초록 WireDisc
+        if (_enablePursuerBoundarySpawn
+            && _evaderObjects.Count > 0
+            && _spawnMap.TryGetValue(_evaderObjects[0], out var evaderBoundaryResult))
+        {
+            UnityEditor.Handles.color = new Color(0f, 1f, 0f, 0.8f);
+            UnityEditor.Handles.DrawWireDisc(evaderBoundaryResult.Position, Vector3.up, _pursuerBoundaryRadius);
+        }
     }
 #endif
 }

@@ -148,6 +148,10 @@ namespace CityGenerator
         private SpawnConfiguration spawnConfiguration;
         private GameObject spawnSystemRoot;
 
+        // EpisodeSpawnCoordinator 재생성 시 Inspector 설정 보존용 캐시
+        private bool  _cachedEnablePursuerBoundarySpawn = false;
+        private float _cachedPursuerBoundaryRadius      = 30f;
+
         #endregion
 
         #region Unity Lifecycle Methods
@@ -373,6 +377,14 @@ namespace CityGenerator
             //   CreateSpawnSystem()에서 "이미 존재" 판정 → 재생성 안 함 → 프레임 끝 파괴 버그.
             if (cityGroupRoot != null)
             {
+                // cityGroupRoot 파괴 시 자식인 spawnSystemRoot(EpisodeSpawnCoordinator 포함)도 함께 파괴됨.
+                // 재생성 후 Inspector 설정이 리셋되지 않도록 파괴 전에 설정값을 캐싱한다.
+                if (EpisodeSpawnCoordinator.Instance != null)
+                {
+                    _cachedEnablePursuerBoundarySpawn = EpisodeSpawnCoordinator.Instance.EnablePursuerBoundarySpawn;
+                    _cachedPursuerBoundaryRadius      = EpisodeSpawnCoordinator.Instance.PursuerBoundaryRadius;
+                }
+
                 DestroyImmediate(cityGroupRoot);
                 cityGroupRoot = null;
                 Debug.Log("CityGenerator.ClearCity: CityGroup GameObject 제거 완료");
@@ -662,6 +674,13 @@ namespace CityGenerator
             GameObject wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
             wall.name = name;
             wall.tag = "Wall";
+
+            int wallLayer = LayerMask.NameToLayer("Wall");
+            if (wallLayer >= 0)
+                wall.layer = wallLayer;
+            else
+                Debug.LogWarning("[CityGenerator] 'Wall' 레이어가 없습니다. Project Settings > Tags and Layers에서 추가하세요.");
+
             wall.transform.SetParent(parent, false);
             wall.transform.localPosition = localPosition;
             wall.transform.localScale = size;
@@ -710,6 +729,13 @@ namespace CityGenerator
             floorObject.name = "CityFloor";
             floorObject.transform.position = new Vector3(transform.position.x, 0f, transform.position.z);
             floorObject.transform.localScale = new Vector3(scaleX, 1f, scaleZ);
+
+            int groundLayer = LayerMask.NameToLayer("Ground");
+            if (groundLayer >= 0)
+                floorObject.layer = groundLayer;
+            else
+                Debug.LogWarning("[CityGenerator] 'Ground' 레이어가 없습니다. Project Settings > Tags and Layers에서 추가하세요.");
+
             if (cityGroupRoot != null)
                 floorObject.transform.SetParent(cityGroupRoot.transform, true);
 
@@ -1638,6 +1664,10 @@ namespace CityGenerator
             // EpisodeSpawnCoordinator 컴포넌트 부착 + Strategy = CityMetadata
             EpisodeSpawnCoordinator coordinator = spawnSystemRoot.AddComponent<EpisodeSpawnCoordinator>();
             coordinator.Strategy = EpisodeSpawnCoordinator.SpawnStrategy.CityMetadata;
+
+            // ClearCity()에서 캐싱해 둔 Inspector 설정을 복원 (도시 재생성 시 설정 리셋 방지)
+            coordinator.EnablePursuerBoundarySpawn = _cachedEnablePursuerBoundarySpawn;
+            coordinator.PursuerBoundaryRadius      = _cachedPursuerBoundaryRadius;
 
             Debug.Log("CityGenerator.CreateSpawnSystem: SpawnSystem 자동 생성 완료 " +
                       $"(위치: {spawnSystemRoot.transform.position}, " +
