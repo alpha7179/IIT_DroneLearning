@@ -76,9 +76,11 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
     [SerializeField] private int   _maxRetry      = 20;
 
     [Header("Spawn Coordinator — Spawn Height (CityMetadata 전략)")]
-    [Tooltip("CityMetadata 전략에서 노드 고도(elevation) 기준 최저 스폰 높이 (m)")]
+    [Tooltip("스폰 최저 높이 (m). DronePhysics.MinAltitude 이상으로 런타임 클램핑됩니다.")]
+    [Range(0f, 200f)]
     [SerializeField] private float _minSpawnHeight = 5f;
-    [Tooltip("CityMetadata 전략에서 노드 고도(elevation) 기준 최고 스폰 높이 (m)")]
+    [Tooltip("스폰 최고 높이 (m). DronePhysics.MaxAltitude 이하로 런타임 클램핑됩니다.")]
+    [Range(0f, 200f)]
     [SerializeField] private float _maxSpawnHeight = 25f;
 
     [Header("Spawn Coordinator — Fallback Range (SpawnCenter 없을 때)")]
@@ -434,9 +436,15 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
         // 3. 경계 후보 풀 셔플 (에피소드마다 다른 결과를 위해 UnityEngine.Random 사용)
         ShuffleList(perimCandidates);
 
-        // 4. 경계 후보에서 Evader 위치 선택 (각 드론마다 개별 노드 할당)
+        // 4. 드론 물리 고도 제한으로 스폰 높이 범위 클램핑 (다음 스폰 시 Inspector 변경값 실시간 반영)
+        float droneMinAlt = GetDroneMinAltitude();
+        float droneMaxAlt = GetDroneMaxAltitude();
+        float effectiveMinH = droneMinAlt >= 0f ? Mathf.Max(_minSpawnHeight, droneMinAlt) : _minSpawnHeight;
+        float effectiveMaxH = droneMaxAlt  > 0f ? Mathf.Min(_maxSpawnHeight, droneMaxAlt) : _maxSpawnHeight;
+        effectiveMaxH = Mathf.Max(effectiveMinH, effectiveMaxH); // min > max 방지
+
         HashSet<int> usedNodeIds = new HashSet<int>();
-        float heightRange = Mathf.Max(0f, _maxSpawnHeight - _minSpawnHeight);
+        float heightRange = Mathf.Max(0f, effectiveMaxH - effectiveMinH);
 
         foreach (var go in _evaderObjects)
         {
@@ -454,7 +462,9 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
 
             GraphNode node = selected.Value;
             usedNodeIds.Add(node.nodeId);
-            float y = node.elevation + _minSpawnHeight + UnityEngine.Random.Range(0f, heightRange);
+            float y = node.elevation + effectiveMinH + UnityEngine.Random.Range(0f, heightRange);
+            // node.elevation이 0보다 크면 effectiveMaxH를 초과할 수 있으므로 절대 고도로 클램핑
+            if (droneMaxAlt > 0f) y = Mathf.Clamp(y, droneMinAlt >= 0f ? droneMinAlt : y, droneMaxAlt);
             Vector3 pos = new Vector3(node.position.x, y, node.position.z);
             _spawnMap[go] = new SpawnResult { Position = pos, YawDegrees = RandomYaw() };
             _occupiedPositions.Add(pos);
@@ -475,7 +485,8 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
 
             GraphNode node = selected.Value;
             usedNodeIds.Add(node.nodeId);
-            float y = node.elevation + _minSpawnHeight + UnityEngine.Random.Range(0f, heightRange);
+            float y = node.elevation + effectiveMinH + UnityEngine.Random.Range(0f, heightRange);
+            if (droneMaxAlt > 0f) y = Mathf.Clamp(y, droneMinAlt >= 0f ? droneMinAlt : y, droneMaxAlt);
             Vector3 pos = new Vector3(node.position.x, y, node.position.z);
             _spawnMap[go] = new SpawnResult { Position = pos, YawDegrees = RandomYaw() };
             _occupiedPositions.Add(pos);
@@ -497,16 +508,24 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
             goalNode = goalCandidates[0];
         }
 
+        float cityMaxH = GetMaxWorldBuildingHeight(metadata);
+
         if (goalNode.HasValue)
         {
             GraphNode gn = goalNode.Value;
-            float cityMaxHeight = GetMaxWorldBuildingHeight(metadata);
-            // Goal 실린더는 0 ~ cityMaxHeight 를 Y축으로 꽉 채움
-            // Y 중앙값 = cityMaxHeight / 2
-            // 건물 데이터 없을 시 기존 랜덤 범위 폴백
-            float goalY = cityMaxHeight > 0f
-                ? cityMaxHeight * 0.5f
-                : gn.elevation + _minSpawnHeight + UnityEngine.Random.Range(0f, heightRange);
+            float goalY;
+            if (droneMaxAlt > 0f)
+            {
+                // 드론이 있으면 최고제한고도 × 1.2 기준: 실린더 0 ~ MaxAltitude×1.2, 중점 = MaxAltitude×0.6
+                goalY = droneMaxAlt * 0.6f;
+            }
+            else
+            {
+                // 드론 없으면 기존 빌딩 높이 기준
+                goalY = cityMaxH > 0f
+                    ? cityMaxH * 0.5f
+                    : gn.elevation + effectiveMinH + UnityEngine.Random.Range(0f, heightRange);
+            }
             _goalResult = new SpawnResult
             {
                 Position = new Vector3(gn.position.x, goalY, gn.position.z),
@@ -517,11 +536,12 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
             _occupiedPositions.Add(_goalResult.Position);
         }
 
-        // Goal 위치 적용 — 건물 최대 높이로 실린더가 0~maxHeight를 꽉 채우도록 설정
+        // Goal 위치 적용 — 드론 존재 시 MaxAltitude, 없으면 건물 최대 높이로 실린더 범위 결정
         if (Goal.Current != null)
         {
-            float cityMaxH = GetMaxWorldBuildingHeight(metadata);
-            if (cityMaxH > 0f)
+            if (droneMaxAlt > 0f)
+                Goal.Current.ApplySpawnPositionWithHeightRange(_goalResult.Position, 0f, droneMaxAlt * 1.2f);
+            else if (cityMaxH > 0f)
                 Goal.Current.ApplySpawnPositionWithHeightRange(_goalResult.Position, 0f, cityMaxH);
             else
                 Goal.Current.ApplySpawnPosition(_goalResult.Position);
@@ -533,6 +553,7 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
                   $"Evader[0]: {(_evaderObjects.Count > 0 ? GetSpawnPosition(_evaderObjects[0]).ToString() : "없음")}, " +
                   $"Pursuer[0]: {(_pursuerObjects.Count > 0 ? GetSpawnPosition(_pursuerObjects[0]).ToString() : "없음")}, " +
                   $"Goal: {_goalResult.Position}, " +
+                  $"Goal 높이 기준: {(droneMaxAlt > 0f ? $"드론 MaxAltitude={droneMaxAlt}" : $"건물 MaxHeight={cityMaxH}")}, " +
                   $"후보 노드 수: {allCandidates.Count}");
     }
 
@@ -594,6 +615,84 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
             list[i] = list[j];
             list[j] = tmp;
         }
+    }
+
+    /// <summary>
+    /// 씬의 드론(Evader/Pursuer)에서 DronePhysics.MaxAltitude를 조회한다.
+    /// Evader를 먼저 탐색하고, 없으면 Pursuer를 탐색한다.
+    /// 드론이 없거나 DronePhysics 컴포넌트가 없으면 -1을 반환한다.
+    /// </summary>
+    /// <summary>
+    /// 태그 GameObject에서 DronePhysics 컴포넌트를 탐색한다.
+    /// 같은 GO → 자식 → 부모 순으로 탐색하여 계층 구조에 관계없이 찾는다.
+    /// </summary>
+    private static Component FindDronePhysics(GameObject go)
+    {
+        var dp = go.GetComponent("DronePhysics");
+        if (dp != null) return dp;
+
+        // GetComponentInChildren/InParent은 string 오버로드 없음 → MonoBehaviour로 순회
+        foreach (var mb in go.GetComponentsInChildren<MonoBehaviour>())
+            if (mb != null && mb.GetType().Name == "DronePhysics") return mb;
+
+        foreach (var mb in go.GetComponentsInParent<MonoBehaviour>())
+            if (mb != null && mb.GetType().Name == "DronePhysics") return mb;
+
+        return null;
+    }
+
+    private float GetDroneMinAltitude()
+    {
+        float min = float.MaxValue;
+        System.Reflection.FieldInfo altField = null;
+        foreach (var go in _evaderObjects)
+        {
+            if (go == null) continue;
+            var dp = FindDronePhysics(go);
+            if (dp == null) continue;
+            if (altField == null) altField = dp.GetType().GetField("MinAltitude");
+            if (altField == null) continue;
+            float val = (float)altField.GetValue(dp);
+            if (val < min) min = val;
+        }
+        foreach (var go in _pursuerObjects)
+        {
+            if (go == null) continue;
+            var dp = FindDronePhysics(go);
+            if (dp == null) continue;
+            if (altField == null) altField = dp.GetType().GetField("MinAltitude");
+            if (altField == null) continue;
+            float val = (float)altField.GetValue(dp);
+            if (val < min) min = val;
+        }
+        return min == float.MaxValue ? -1f : min;
+    }
+
+    private float GetDroneMaxAltitude()
+    {
+        float max = -1f;
+        System.Reflection.FieldInfo altField = null;
+        foreach (var go in _evaderObjects)
+        {
+            if (go == null) continue;
+            var dp = FindDronePhysics(go);
+            if (dp == null) continue;
+            if (altField == null) altField = dp.GetType().GetField("MaxAltitude");
+            if (altField == null) continue;
+            float val = (float)altField.GetValue(dp);
+            if (val > max) max = val;
+        }
+        foreach (var go in _pursuerObjects)
+        {
+            if (go == null) continue;
+            var dp = FindDronePhysics(go);
+            if (dp == null) continue;
+            if (altField == null) altField = dp.GetType().GetField("MaxAltitude");
+            if (altField == null) continue;
+            float val = (float)altField.GetValue(dp);
+            if (val > max) max = val;
+        }
+        return max;
     }
 
     /// <summary>
