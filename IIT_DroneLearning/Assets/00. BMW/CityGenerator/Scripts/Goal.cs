@@ -213,7 +213,9 @@ public class Goal : MonoBehaviour
     /// </summary>
     public void ApplySpawnPosition(Vector3 worldPosition)
     {
-        QuerySpawnCenter(); // 실린더 높이 갱신
+        // QuerySpawnCenter() 호출 제거:
+        // ApplySpawnPositionWithHeightRange()로 설정된 높이를 유지하기 위해
+        // 이 메서드는 XZ 위치만 갱신하고 실린더 높이는 건드리지 않는다.
         transform.position = worldPosition;
         if (_enableShrinkOnOverlap) TryShrinkToAvoidBuildings();
     }
@@ -305,8 +307,9 @@ public class Goal : MonoBehaviour
     {
         if (SpawnCenter.Current != null)
         {
-            QuerySpawnCenter(); // 범위 갱신 + 실린더 높이 조절
-
+            // QuerySpawnCenter() 호출 제거:
+            // EpisodeSpawnCoordinator가 ApplySpawnPositionWithHeightRange()로 설정한
+            // 실린더 높이(_queriedMinY/_queriedMaxY)를 유지한 채 XZ 위치만 재랜덤화한다.
             var     range  = SpawnCenter.Current.GetGoalSpawnRange();
             Vector3 rndPos = SpawnCenter.Current.GetRandomPosition(range);
             float   midY   = (_queriedMinY + _queriedMaxY) * 0.5f;

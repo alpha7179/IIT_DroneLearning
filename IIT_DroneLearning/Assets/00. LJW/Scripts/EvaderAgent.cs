@@ -541,6 +541,9 @@ public class EvaderAgent : DroneAgent
         _lastCrashTerminalPenalty = -1.0f;
         _lastGoalClearanceFailureType = GoalClearanceFailureType.None;
 
+        // [WorldSeedRotator] ComputeSpawn 이전에 시드 로테이션 수행 (새 도시 기반 스폰 보장)
+        CityGenerator.WorldSeedRotator.Instance?.NotifyEpisodeBegin();
+
         // 코디네이터에 전체 스폰 계산 위임 (Evader/Pursuer/Goal 위치 모두 내부에서 처리)
         if (EpisodeSpawnCoordinator.Instance != null)
         {

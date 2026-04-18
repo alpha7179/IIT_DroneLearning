@@ -212,11 +212,23 @@ namespace DroneVisualPipeline
             }
 
             // 2. Observation 전용 child GameObject 생성 후 Camera 추가
-            //    (DroneCamera_Solo에는 Camera가 이미 존재하므로 자식 오브젝트에 별도 생성)
-            //    동일 parent Transform → LateUpdate 위치 갱신 자동 추종
+            //    드론 Transform에 직접 부착, (0,0,0) 위치.
+            //    DroneCamera_Solo / MultiView를 자식으로 편입 →
+            //    하이라키: Drone > DroneVisionCamera > {Solo, MultiView}
+            //    SetSiblingIndex(1) → DroneDepthCamera 바로 다음에 위치.
             var obsGO = new GameObject("DroneVisionCamera");
-            obsGO.transform.SetParent(soloCamera.transform, false);
+            obsGO.transform.SetParent(transform, false);
+            obsGO.transform.SetSiblingIndex(1);
             _observationCamera = obsGO.AddComponent<Camera>();
+
+            // DroneCamera_Solo, DroneCamera_MultiView를 DroneVisionCamera 자식으로 편입.
+            // worldPositionStays=false: 기존 localPosition 유지
+            //   → Solo localPos (0,0,cameraDistance)는 DroneVisionCamera 기준으로 동일하게 유지됨.
+            //   DroneCameraSystem.ApplyCameraPosition()이 계속 같은 값을 쓰므로 충돌 없음.
+            soloCamera.transform.SetParent(obsGO.transform, false);
+            Camera multiViewCam = _cameraSystem.MultiViewCamera;
+            if (multiViewCam != null)
+                multiViewCam.transform.SetParent(obsGO.transform, false);
 
             // 3. RenderTexture 생성
             _renderTexture = CreateRenderTexture(textureWidth, textureHeight);
