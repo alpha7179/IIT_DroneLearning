@@ -521,6 +521,10 @@ public class EvaderAgent : DroneAgent
     // EpisodeSpawnCoordinator 우선, 없으면 SpawnCenter 직접 사용 폴백
     public override void OnEpisodeBegin()
     {
+        // _episodeEnded가 false인 채로 OnEpisodeBegin이 호출되면 ML-Agents MaxStep에 의한 강제 종료
+        if (!_episodeEnded)
+            Debug.Log($"[Evader 재스폰] ML-Agents MaxStep 초과로 강제 종료 | step={_episodeSteps}");
+
         _episodeTimer             = 0f;
         _episodeSteps             = 0;
         _episodeEnded             = false;
@@ -810,6 +814,12 @@ public class EvaderAgent : DroneAgent
         _lastCrashKind = crashKind == CrashKind.None ? CrashKind.Other : crashKind;
         _lastCrashObjectName = hitObject != null ? hitObject.name : string.Empty;
         _lastCrashTerminalPenalty = ResolveCrashTerminalPenalty(_lastCrashKind);
+
+        // Evader 충돌 시 모든 Pursuer 에피소드도 함께 종료
+        var pursuers = FindObjectsByType<PursuerAgent>(FindObjectsSortMode.None);
+        foreach (var pursuer in pursuers)
+            pursuer.ForceEndEpisode();
+
         TerminateEpisode(EpisodeLogger.TermType.Crash, _lastCrashTerminalPenalty, true);
     }
 
@@ -854,6 +864,16 @@ public class EvaderAgent : DroneAgent
 
         if (applyTerminalReward)
             AddReward(terminalReward);
+
+        string reason = termType switch
+        {
+            EpisodeLogger.TermType.Crash    => $"충돌 [{_lastCrashKind}] 대상: '{(_lastCrashObjectName != "" ? _lastCrashObjectName : "unknown")}'",
+            EpisodeLogger.TermType.Timeout  => "타임아웃",
+            EpisodeLogger.TermType.Goal     => "골 도달",
+            EpisodeLogger.TermType.Captured => "Pursuer에게 포획됨",
+            _                               => termType.ToString(),
+        };
+        Debug.Log($"[Evader 재스폰] {reason} | step={_episodeSteps} | reward={terminalReward:F2}");
 
         _episodeLogger?.LogEpisode(termType, _episodeSteps);
         PushTerminationStats(termType);

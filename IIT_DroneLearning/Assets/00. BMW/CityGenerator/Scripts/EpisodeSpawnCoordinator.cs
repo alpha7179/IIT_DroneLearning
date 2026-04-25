@@ -278,6 +278,24 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
                 kvp.Key.transform.position = kvp.Value.Position;
         }
 
+        // 스폰 위치 요약 로그 (건물 겹침 여부 포함)
+        var sb = new System.Text.StringBuilder("[스폰 계산 완료]\n");
+        foreach (var kvp in _spawnMap)
+        {
+            if (kvp.Key == null) continue;
+            bool overlaps = IsNotOverlappingBuildings(kvp.Value.Position) == false;
+            sb.Append($"  {kvp.Key.name}: {kvp.Value.Position:F1}");
+            if (overlaps) sb.Append(" ⚠ 건물 겹침");
+            sb.Append('\n');
+        }
+        if (_goalResult.Position != Vector3.zero)
+        {
+            bool goalOverlaps = IsNotOverlappingBuildings(_goalResult.Position) == false;
+            sb.Append($"  Goal: {_goalResult.Position:F1}");
+            if (goalOverlaps) sb.Append(" ⚠ 건물 겹침");
+        }
+        Debug.Log(sb.ToString(), this);
+
         OnSpawnComputed?.Invoke();
     }
 
