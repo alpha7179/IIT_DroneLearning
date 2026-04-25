@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: 6097617333838314c84cfcf9674fe8a8
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290377
+  packageName: Surveillance Drone UAV 3D Asset Pack URP/HDRP/Built-In Supported -
+    BHS
+  packageVersion: 2.0
+  assetPath: Assets/Blender Head Studios/3D Surveillance Drone UAV/Scripts/DroneController.cs
+  uploadId: 715161

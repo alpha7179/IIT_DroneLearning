@@ -116,6 +116,10 @@ public class PursuerAgent : DroneAgent
     {
         EnsureRuntimeReferences();
 
+        // _episodeClosed가 false인 채로 호출되면 ML-Agents MaxStep에 의한 강제 종료
+        if (!_episodeClosed)
+            Debug.Log($"[Pursuer 재스폰] ML-Agents MaxStep 초과로 강제 종료 | name={name} | step={_episodeSteps}");
+
         _episodeTimer = 0f;
         _episodeSteps = 0;
         _episodeClosed = false;
@@ -249,6 +253,7 @@ public class PursuerAgent : DroneAgent
         _episodeClosed = true;
         AddReward(_rewardCalculator.CrashPenalty);
         _episodeLogger?.LogEpisode(EpisodeLogger.TermType.Crash, _episodeSteps);
+        Debug.Log($"[Pursuer 재스폰] 충돌 | name={name} | step={_episodeSteps}");
         _pendingEpisodeEnd = true;
     }
 
@@ -279,11 +284,14 @@ public class PursuerAgent : DroneAgent
             case RoundEndReason.Captured:
                 AddReward(_rewardCalculator.CaptureReward);
                 _episodeLogger?.LogEpisode(EpisodeLogger.TermType.Captured, _episodeSteps);
+                Debug.Log($"[Pursuer 재스폰] 포획 성공 (source={source?.name}) | name={name} | step={_episodeSteps}");
                 break;
 
             case RoundEndReason.Timeout:
                 AddReward(_rewardCalculator.TimeoutPenalty);
                 _episodeLogger?.LogEpisode(EpisodeLogger.TermType.Timeout, _episodeSteps);
+                Debug.Log($"[Pursuer 재스폰] 타임아웃 | name={name} | step={_episodeSteps}");
+                NotifyEvaderEndEpisode(); // Pursuer 타임아웃 시 Evader 에피소드도 함께 종료
                 break;
         }
 
@@ -320,6 +328,34 @@ public class PursuerAgent : DroneAgent
 
         var genericAgent = TargetTransform.GetComponent<Agent>();
         genericAgent?.EndEpisode();
+    }
+
+    /// <summary>
+    /// Pursuer 타임아웃/충돌 시 Evader 에피소드도 함께 종료한다.
+    /// EvaderAgent.TerminateEpisode()는 private이므로 Agent.EndEpisode() 직접 호출.
+    /// ML-Agents EndEpisode()는 내부적으로 멱등 처리되므로 복수 Pursuer 환경에서 중복 호출 안전.
+    /// </summary>
+    private void NotifyEvaderEndEpisode()
+    {
+        if (TargetTransform == null)
+            return;
+
+        var agent = TargetTransform.GetComponent<Agent>();
+        agent?.EndEpisode();
+    }
+
+    /// <summary>
+    /// Evader 충돌 시 외부(EvaderAgent)에서 호출. 보상·로그 없이 에피소드만 안전하게 종료한다.
+    /// _pendingEpisodeEnd 패턴을 사용하여 Physics 콜백 중 EndEpisode() 직접 호출을 피한다.
+    /// </summary>
+    public void ForceEndEpisode()
+    {
+        if (_episodeClosed)
+            return;
+
+        _episodeClosed    = true;
+        _pendingEpisodeEnd = true;
+        Debug.Log($"[Pursuer 재스폰] Evader 충돌로 강제 종료 | name={name} | step={_episodeSteps}");
     }
 
     private void ResolveGoalZone()

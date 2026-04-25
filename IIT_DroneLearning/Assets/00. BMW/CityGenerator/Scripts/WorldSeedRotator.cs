@@ -170,6 +170,12 @@ namespace CityGenerator
             }
             _pendingRotation = false;
             ExecuteRotation();
+
+            // 도시 재생성 후 새 건물 Bounds 기준으로 스폰 위치를 재계산한다.
+            // (ComputeSpawn이 이전 도시 기준으로 이미 실행되었기 때문에
+            //  골존/드론이 새 건물과 겹치는 문제를 방지)
+            if (EpisodeSpawnCoordinator.Instance != null)
+                EpisodeSpawnCoordinator.Instance.ComputeSpawn();
         }
 
         // ───────── 핵심 공개 API ──────────────────────────────────────
