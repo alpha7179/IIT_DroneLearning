@@ -1,0 +1,98 @@
+# pursuer_s2_stage1_rgb_camfeat.yaml
+#
+# Goal:
+#   Train Drone_Pursuer in the Stage1 building environment for capture.
+#   Current curriculum target:
+#     Stage A) detect Evader by RGB color and keep it centered
+#     Stage B) estimate Evader image motion with Lucas-Kanade and follow it
+#   Policy inputs are limited to:
+#     1) RGB camera visual observation
+#     2) optional depth visual observation
+#     3) pursuer self-state vector
+#     4) RGB color + Lucas-Kanade-derived target tracking features
+#
+# Allowed color-derived target features:
+#   - Evader color centroid viewport offset
+#   - Evader Lucas-Kanade optical-flow viewport motion
+#   - visible / not-visible flag
+#   - approximate target direction and depth proxy inferred from color blob size
+#
+# Explicitly excluded from policy observations:
+#   - target absolute / relative ground-truth position
+#   - 26-ray obstacle distances
+#   - GT distance / GT closing-speed dense reward shaping
+#   - building-occlusion route-following curriculum
+#
+# Unity Inspector prerequisites:
+#   Scene: Assets/01. Scenes/Stage1.unity
+#   - Drone_Pursuer:
+#       Behavior Name = Drone_Pursuer
+#       Behavior Type = Default
+#       Model = None
+#       Use Child Sensors = true
+#       PursuerAgent._includeTargetTrackingObservations = true
+#       PursuerAgent._includeRayObservations = false
+#       PursuerAgent._useColorTargetTracking = true
+#       PursuerAgent._useLucasKanadeFlow = true
+#       PursuerAgent._targetColor ~= Mat_Evader _BaseColor (1.0, 0.0568, 0.0)
+#       PursuerAgent._catchConfirmSteps = 3
+#       PursuerReward._useGroundTruthDenseShaping = false
+#   - DroneVisionSystem.enableVisualObservation = true
+#   - DroneVisionSystem.grayscale = false
+#   - DroneDepthSystem.enableDepthSensor = optional/allowed
+#   - DroneRGB RenderTextureSensorComponent:
+#       Sensor Name = DroneRGB
+#       Grayscale = false
+#   - DroneDepth RenderTextureSensorComponent, if enabled:
+#       Sensor Name = DroneDepth
+#       Grayscale = true
+#   - Evader should be controlled by either ScriptedEvader or a fixed inference policy.
+#
+# Run:
+#   mlagents-learn python/config/pursuer_s2_stage1_rgb_camfeat.yaml \
+#     --run-id=pursuer_s2_stage1_rgb_camfeat_seed42 --force
+
+behaviors:
+  Drone_Pursuer:
+    trainer_type: ppo
+
+    hyperparameters:
+      batch_size: 256
+      buffer_size: 16384
+      learning_rate: 2.5e-4
+      beta: 5.0e-3
+      epsilon: 0.2
+      lambd: 0.99
+      num_epoch: 3
+      learning_rate_schedule: linear
+
+    network_settings:
+      normalize: true
+      hidden_units: 192
+      num_layers: 2
+      vis_encode_type: simple
+      memory:
+        sequence_length: 32
+        memory_size: 128
+
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+
+    max_steps: 3000000
+    time_horizon: 128
+    summary_freq: 10000
+    checkpoint_interval: 100000
+    keep_checkpoints: 5
+
+# Notes
+# - This config assumes one RGB visual sensor and an 18D vector observation.
+#   If DroneDepth is enabled, it adds a second visual sensor but does not change
+#   the vector observation size.
+# - The 11D target feature block is filled from Evader color segmentation and
+#   Lucas-Kanade optical flow when available.
+# - The dense reward is capture-oriented: visibility, centering, and color blob
+#   area/growth help, but capture dominates.
+# - Route-following after building occlusion is intentionally excluded for this run.
+# - Pursuer spawn should start near the evader with immediate line-of-sight.
