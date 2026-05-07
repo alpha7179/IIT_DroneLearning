@@ -42,23 +42,23 @@ public class PursuerReward : MonoBehaviour
 
     [Header("Camera Tracking")]
     [Tooltip("Evader가 카메라 시야 안에 있을 때 받는 스텝 보상")]
-    [SerializeField] private float _visibilityRewardPerStep = 0.0005f;
+    [SerializeField] private float _visibilityRewardPerStep = 0.008f;
 
     [Tooltip("화면 중심에 Evader를 둘수록 증가하는 보상 계수")]
-    [SerializeField] private float _viewportCenterCoeff = 0.0015f;
+    [SerializeField] private float _viewportCenterCoeff = 0.015f;
 
     [Tooltip("한 번 보던 Evader를 놓친 순간에만 부여되는 penalty")]
-    [SerializeField] private float _lostTargetPenalty = -0.05f;
+    [SerializeField] private float _lostTargetPenalty = -0.02f;
 
     [Header("Visual Approach")]
     [Tooltip("색상 blob 면적 reward를 정규화할 기준 화면 비율")]
     [SerializeField] private float _visualAreaReference = 0.02f;
 
     [Tooltip("Evader 색상 blob이 크게 보일수록 추가되는 reward 계수")]
-    [SerializeField] private float _visualAreaRewardCoeff = 0.001f;
+    [SerializeField] private float _visualAreaRewardCoeff = 0.006f;
 
     [Tooltip("Evader 색상 blob 면적이 증가할 때 추가되는 approach reward 계수")]
-    [SerializeField] private float _visualAreaGrowthCoeff = 0.01f;
+    [SerializeField] private float _visualAreaGrowthCoeff = 0.02f;
 
     [Tooltip("한 스텝에서 반영할 색상 blob 면적 변화량 상한")]
     [SerializeField] private float _maxVisualAreaDeltaPerStep = 0.01f;
@@ -75,7 +75,7 @@ public class PursuerReward : MonoBehaviour
     [SerializeField] private float _maxDistanceDeltaPerStep = 0.5f;
 
     [Tooltip("step reward 총합의 절대값 상한")]
-    [SerializeField] private float _maxStepRewardMagnitude = 0.06f;
+    [SerializeField] private float _maxStepRewardMagnitude = 0.08f;
 
     [Header("Terminal Rewards")]
     [SerializeField] private float _captureReward = 5.0f;

@@ -10,6 +10,7 @@
 #     2) optional depth visual observation
 #     3) pursuer self-state vector
 #     4) RGB color + Lucas-Kanade-derived target tracking features
+#     5) intermittent masked GT hint during BehaviorType=Default training only
 #
 # Allowed color-derived target features:
 #   - Evader color centroid viewport offset
@@ -17,8 +18,8 @@
 #   - visible / not-visible flag
 #   - approximate target direction and depth proxy inferred from color blob size
 #
-# Explicitly excluded from policy observations:
-#   - target absolute / relative ground-truth position
+# Explicitly excluded from policy observations except the masked curriculum hint:
+#   - persistent target absolute / relative ground-truth position
 #   - 26-ray obstacle distances
 #   - GT distance / GT closing-speed dense reward shaping
 #   - building-occlusion route-following curriculum
@@ -34,6 +35,7 @@
 #       PursuerAgent._includeRayObservations = false
 #       PursuerAgent._useColorTargetTracking = true
 #       PursuerAgent._useLucasKanadeFlow = true
+#       PursuerAgent._useTrainingGroundTruthHint = true for early curriculum only
 #       PursuerAgent._targetColor ~= Mat_Evader _BaseColor (1.0, 0.0568, 0.0)
 #       PursuerAgent._catchConfirmSteps = 3
 #       PursuerReward._useGroundTruthDenseShaping = false
@@ -87,11 +89,13 @@ behaviors:
     keep_checkpoints: 5
 
 # Notes
-# - This config assumes one RGB visual sensor and an 18D vector observation.
+# - This config assumes one RGB visual sensor and a 22D vector observation.
 #   If DroneDepth is enabled, it adds a second visual sensor but does not change
 #   the vector observation size.
 # - The 11D target feature block is filled from Evader color segmentation and
 #   Lucas-Kanade optical flow when available.
+# - The 4D GT hint block is mask + camera-local position. It is randomly exposed
+#   during training and forced to zero outside BehaviorType=Default.
 # - The dense reward is capture-oriented: visibility, centering, and color blob
 #   area/growth help, but capture dominates.
 # - Route-following after building occlusion is intentionally excluded for this run.

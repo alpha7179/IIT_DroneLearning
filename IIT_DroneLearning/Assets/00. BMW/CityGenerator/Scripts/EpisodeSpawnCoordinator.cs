@@ -82,6 +82,8 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
     [Tooltip("스폰 최고 높이 (m). DronePhysics.MaxAltitude 이하로 런타임 클램핑됩니다.")]
     [Range(0f, 200f)]
     [SerializeField] private float _maxSpawnHeight = 25f;
+    [Tooltip("CityMetadata 전략에서 Goal을 Z가 큰 후보군 쪽으로 편향시키는 비율 (0이면 비활성, 0.20이면 상위 20% Z 후보 사용)")]
+    [SerializeField] private float _goalHighZCandidateFraction = 0.20f;
 
     [Header("Spawn Coordinator — Fallback Range (SpawnCenter 없을 때)")]
     [Tooltip("폴백 XZ 랜덤 스폰 반폭 (m)")]
@@ -186,6 +188,7 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
         _maxRetry       = Mathf.Max(1,   _maxRetry);
         _minSpawnHeight = Mathf.Max(0f,  _minSpawnHeight);
         _maxSpawnHeight = Mathf.Max(_minSpawnHeight, _maxSpawnHeight);
+        _goalHighZCandidateFraction = Mathf.Clamp01(_goalHighZCandidateFraction);
         _fallbackRange  = Mathf.Max(1f,  _fallbackRange);
         _fallbackHeight = Mathf.Max(0f,  _fallbackHeight);
         _pursuerBoundaryRadius      = Mathf.Max(_minSeparation, _pursuerBoundaryRadius);
@@ -579,6 +582,7 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
         // 6. 나머지 후보에서 Goal 위치 선택 (모든 드론과 _minSeparation 이격 보장)
         //    전체 후보를 셔플하여 경계 후보에 편향되지 않도록 함
         List<GraphNode> goalCandidates = new List<GraphNode>(allCandidates);
+        ApplyGoalHighZBias(goalCandidates);
         ShuffleList(goalCandidates);
 
         GraphNode? goalNode = SelectCandidateWithSeparation(goalCandidates, usedNodeIds);
@@ -597,19 +601,13 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
         if (goalNode.HasValue)
         {
             GraphNode gn = goalNode.Value;
-            float goalY;
-            if (droneMaxAlt > 0f)
-            {
-                // 드론이 있으면 최고제한고도 × 1.2 기준: 실린더 0 ~ MaxAltitude×1.2, 중점 = MaxAltitude×0.6
-                goalY = droneMaxAlt * 0.6f;
-            }
-            else
-            {
-                // 드론 없으면 기존 빌딩 높이 기준
-                goalY = cityMaxH > 0f
-                    ? cityMaxH * 0.5f
+            // Goal target point는 실린더 상단 높이로 고정하고, Goal trigger는 별도로 전체 높이를 덮는다.
+            // 드론 고도 제한이 있으면 원격 설정의 MaxAltitude x 1.2 범위를 유지한다.
+            float goalY = droneMaxAlt > 0f
+                ? droneMaxAlt * 1.2f
+                : cityMaxH > 0f
+                    ? cityMaxH
                     : gn.elevation + effectiveMinH + UnityEngine.Random.Range(0f, heightRange);
-            }
             _goalResult = new SpawnResult
             {
                 Position = new Vector3(gn.position.x, goalY, gn.position.z),
@@ -685,6 +683,21 @@ public class EpisodeSpawnCoordinator : MonoBehaviour
                 return node;
         }
         return null;
+    }
+
+    private void ApplyGoalHighZBias(List<GraphNode> candidates)
+    {
+        if (_goalHighZCandidateFraction <= 0f || candidates.Count <= 1)
+            return;
+
+        candidates.Sort((a, b) => b.position.z.CompareTo(a.position.z));
+
+        int keepCount = Mathf.Clamp(
+            Mathf.CeilToInt(candidates.Count * _goalHighZCandidateFraction),
+            1,
+            candidates.Count);
+        if (keepCount < candidates.Count)
+            candidates.RemoveRange(keepCount, candidates.Count - keepCount);
     }
 
     /// <summary>

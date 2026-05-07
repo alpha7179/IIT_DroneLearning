@@ -66,6 +66,8 @@ public class Goal : MonoBehaviour
     private Vector3         _selfCenter;        // _centerTransform 미설정 시 폴백
     private CapsuleCollider _capsuleCollider;
     private float           _originalRadius;    // Awake 시점의 원래 반경 저장
+    private bool            _hasTargetPositionOverride;
+    private Vector3         _targetPositionOverride;
 
     // ───────── Editor: 컴포넌트 추가 시 자동 설정 ────────────────────────
 #if UNITY_EDITOR
@@ -213,9 +215,8 @@ public class Goal : MonoBehaviour
     /// </summary>
     public void ApplySpawnPosition(Vector3 worldPosition)
     {
-        // QuerySpawnCenter() 호출 제거:
-        // ApplySpawnPositionWithHeightRange()로 설정된 높이를 유지하기 위해
-        // 이 메서드는 XZ 위치만 갱신하고 실린더 높이는 건드리지 않는다.
+        _hasTargetPositionOverride = false;
+        QuerySpawnCenter(); // 실린더 높이 갱신
         transform.position = worldPosition;
         if (_enableShrinkOnOverlap) TryShrinkToAvoidBuildings();
     }
@@ -225,9 +226,9 @@ public class Goal : MonoBehaviour
     /// Goal 실린더가 minY~maxY 범위를 Y축으로 완전히 채우도록 설정한다.
     ///
     /// ■ 동작
-    ///   1. Y 중앙값 = (minY + maxY) / 2 로 위치 설정
+    ///   1. Trigger 실린더 중심은 (minY + maxY) / 2 로 유지
     ///   2. CapsuleCollider 높이 = maxY - minY 로 스케일 조절
-    ///   3. XZ 위치는 worldPosition에서 가져옴
+    ///   3. Evader가 향하는 목표점은 maxY 높이로 고정
     /// </summary>
     /// <param name="worldPosition">Goal의 XZ 위치 (Y는 무시되고 재계산됨)</param>
     /// <param name="minY">실린더 하단 Y (보통 0)</param>
@@ -244,6 +245,8 @@ public class Goal : MonoBehaviour
         // Y 중앙값으로 위치 설정
         float centerY = (minY + maxY) * 0.5f;
         transform.position = new Vector3(worldPosition.x, centerY, worldPosition.z);
+        _targetPositionOverride = new Vector3(worldPosition.x, maxY, worldPosition.z);
+        _hasTargetPositionOverride = true;
         if (_enableShrinkOnOverlap) TryShrinkToAvoidBuildings();
     }
 
@@ -315,6 +318,8 @@ public class Goal : MonoBehaviour
             float   midY   = (_queriedMinY + _queriedMaxY) * 0.5f;
 
             transform.position = new Vector3(rndPos.x, midY, rndPos.z);
+            _targetPositionOverride = new Vector3(rndPos.x, _queriedMaxY, rndPos.z);
+            _hasTargetPositionOverride = true;
             return;
         }
 
@@ -322,13 +327,14 @@ public class Goal : MonoBehaviour
         Vector2 offset = UnityEngine.Random.insideUnitCircle * _randomizeRadius;
         Vector3 c = GetCenter();
         transform.position = c + new Vector3(offset.x, 0f, offset.y);
+        _hasTargetPositionOverride = false;
     }
 
     /// <summary>OnArrival 이벤트 발생. OnTriggerEnter에서 자동 호출.</summary>
     public void NotifyArrival() => OnArrival?.Invoke(this);
 
     /// <summary>현재 Goal의 월드 위치 반환.</summary>
-    public Vector3 GetPosition() => transform.position;
+    public Vector3 GetPosition() => _hasTargetPositionOverride ? _targetPositionOverride : transform.position;
 
     // ───────── Editor 디버그 기즈모 ───────────────────────────────────────
 #if UNITY_EDITOR

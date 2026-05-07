@@ -184,7 +184,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_BrainParameters:
-    VectorObservationSize: 44
+    VectorObservationSize: 22
     NumStackedVectorObservations: 1
     m_ActionSpec:
       m_NumContinuousActions: 4
@@ -193,9 +193,9 @@ MonoBehaviour:
     VectorActionDescriptions: []
     VectorActionSpaceType: 1
     hasUpgradedBrainParametersWithActionSpec: 1
-  m_Model: {fileID: 5022602860645237092, guid: 55116c1f6b3f470ea2b384dcfc18b2f4, type: 3}
+  m_Model: {fileID: 0}
   m_InferenceDevice: 0
-  m_BehaviorType: 2
+  m_BehaviorType: 0
   m_BehaviorName: Drone_Pursuer
   TeamId: 0
   m_UseChildSensors: 1
@@ -404,7 +404,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c26c494eb36973d44898d4b76fa746e9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  enableDepthSensor: 1
+  enableDepthSensor: 0
   depthWidth: 84
   depthHeight: 84
   depthMode: 0
@@ -463,16 +463,50 @@ MonoBehaviour:
   _goalZone: {fileID: 0}
   _maxEpisodeSeconds: 25
   _catchDistance: 2
+  _catchConfirmSteps: 3
   _targetTag: Evader
   _viewportVisibleMargin: 0.2
   _lostTargetMemorySeconds: 1.5
-  _spawnFacingJitterDeg: 20
+  _spawnFacingJitterDeg: 3
+  _useColorTargetTracking: 1
+  _targetColor: {r: 1, g: 0.06, b: 0, a: 1}
+  _colorMatchTolerance: 0.32
+  _minColorSaturation: 0.25
+  _minColorBrightness: 0.08
+  _colorSampleStride: 1
+  _minMatchedColorSamples: 1
+  _minMatchedPixelFraction: 0.0001
+  _colorReferencePixelFraction: 0.02
+  _colorReferenceDistance: 8
+  _colorMinEstimatedDistance: 1.5
+  _useTrainingGroundTruthHint: 1
+  _groundTruthHintInitialProbability: 0.25
+  _groundTruthHintFinalProbability: 0
+  _groundTruthHintDecaySteps: 1000000
+  _groundTruthHintOnlyWhenTargetHidden: 1
+  _useLucasKanadeFlow: 1
+  _lkWindowRadius: 2
+  _lkFeatureStride: 2
+  _lkMaxFeatures: 32
+  _lkMinGradient: 0.015
+  _lkMinDeterminant: 0.00001
+  _lkMaxPixelDisplacement: 8
+  _lkMinTrackedFeatures: 2
+  _spawnNearTargetAtEpisodeStart: 1
+  _nearTargetSpawnMinDistance: 3
+  _nearTargetSpawnMaxDistance: 6
+  _nearTargetSpawnVerticalJitter: 0.5
+  _nearTargetSpawnClearanceRadius: 1.25
+  _nearTargetSpawnAttempts: 36
+  _spawnSyncFixedSteps: 2
   _visibilityMask:
     serializedVersion: 2
     m_Bits: 4294967295
   _maxDistance: 50
   _maxObsSpeed: 10
   _maxViewportSpeed: 4
+  _includeTargetTrackingObservations: 1
+  _includeRayObservations: 0
 --- !u!114 &6249942861304372141
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -485,23 +519,28 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4bd7911f0a8848999dfdb6a8c2f3070b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _useGroundTruthDenseShaping: 0
   _distanceShapingCoeff: 0.12
   _proximityRewardCoeff: 0.025
   _proximityRewardDistance: 10
   _nearCatchRewardCoeff: 0.03
   _nearCatchDistance: 4
   _closingSpeedCoeff: 0.01
-  _visibilityRewardPerStep: 0.002
-  _viewportCenterCoeff: 0.008
-  _lostTargetPenalty: -0.03
+  _visibilityRewardPerStep: 0.008
+  _viewportCenterCoeff: 0.015
+  _lostTargetPenalty: -0.02
+  _visualAreaReference: 0.02
+  _visualAreaRewardCoeff: 0.006
+  _visualAreaGrowthCoeff: 0.02
+  _maxVisualAreaDeltaPerStep: 0.01
   _maxObsSpeed: 10
-  _timePenaltyPerStep: -0.0005
+  _timePenaltyPerStep: -0.001
   _maxDistanceDeltaPerStep: 0.5
-  _maxStepRewardMagnitude: 0.06
-  _captureReward: 2
-  _evaderGoalPenalty: -0.35
-  _timeoutPenalty: -0.08
-  _crashPenalty: -1
+  _maxStepRewardMagnitude: 0.08
+  _captureReward: 5
+  _evaderGoalPenalty: -2
+  _timeoutPenalty: -1
+  _crashPenalty: -1.5
 --- !u!114 &1804533257203389816
 MonoBehaviour:
   m_ObjectHideFlags: 0

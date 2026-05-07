@@ -19,6 +19,7 @@ public class PursuerAgent : DroneAgent
 {
     private const int SelfVectorObservationSize = 7;
     private const int TargetTrackingObservationSize = 11;
+    private const int GroundTruthHintObservationSize = 4;
     private const int RayObservationSize = 26;
 
     private enum RoundEndReason
@@ -42,20 +43,27 @@ public class PursuerAgent : DroneAgent
     [SerializeField] private string _targetTag = "Evader";
     [SerializeField] private float _viewportVisibleMargin = 0.05f;
     [SerializeField] private float _lostTargetMemorySeconds = 0.75f;
-    [SerializeField] private float _spawnFacingJitterDeg = 20f;
+    [SerializeField] private float _spawnFacingJitterDeg = 4f;
 
     [Header("Pursuer — Color Target Tracking")]
     [SerializeField] private bool _useColorTargetTracking = true;
     [SerializeField] private Color _targetColor = new Color(1f, 0.06f, 0f, 1f);
-    [SerializeField] private float _colorMatchTolerance = 0.22f;
-    [SerializeField] private float _minColorSaturation = 0.35f;
-    [SerializeField] private float _minColorBrightness = 0.15f;
-    [SerializeField] private int _colorSampleStride = 2;
-    [SerializeField] private int _minMatchedColorSamples = 2;
-    [SerializeField] private float _minMatchedPixelFraction = 0.001f;
+    [SerializeField] private float _colorMatchTolerance = 0.32f;
+    [SerializeField] private float _minColorSaturation = 0.25f;
+    [SerializeField] private float _minColorBrightness = 0.08f;
+    [SerializeField] private int _colorSampleStride = 1;
+    [SerializeField] private int _minMatchedColorSamples = 1;
+    [SerializeField] private float _minMatchedPixelFraction = 0.0001f;
     [SerializeField] private float _colorReferencePixelFraction = 0.02f;
     [SerializeField] private float _colorReferenceDistance = 8f;
     [SerializeField] private float _colorMinEstimatedDistance = 1.5f;
+
+    [Header("Pursuer — Training Ground Truth Hint")]
+    [SerializeField] private bool _useTrainingGroundTruthHint = true;
+    [SerializeField] private float _groundTruthHintInitialProbability = 0.25f;
+    [SerializeField] private float _groundTruthHintFinalProbability = 0f;
+    [SerializeField] private float _groundTruthHintDecaySteps = 1000000f;
+    [SerializeField] private bool _groundTruthHintOnlyWhenTargetHidden = true;
 
     [Header("Pursuer — Lucas-Kanade Optical Flow")]
     [SerializeField] private bool _useLucasKanadeFlow = true;
@@ -69,11 +77,11 @@ public class PursuerAgent : DroneAgent
 
     [Header("Pursuer — Spawn Assist")]
     [SerializeField] private bool _spawnNearTargetAtEpisodeStart = true;
-    [SerializeField] private float _nearTargetSpawnMinDistance = 6f;
-    [SerializeField] private float _nearTargetSpawnMaxDistance = 10f;
-    [SerializeField] private float _nearTargetSpawnVerticalJitter = 1.5f;
+    [SerializeField] private float _nearTargetSpawnMinDistance = 3f;
+    [SerializeField] private float _nearTargetSpawnMaxDistance = 6f;
+    [SerializeField] private float _nearTargetSpawnVerticalJitter = 0.5f;
     [SerializeField] private float _nearTargetSpawnClearanceRadius = 1.25f;
-    [SerializeField] private int _nearTargetSpawnAttempts = 24;
+    [SerializeField] private int _nearTargetSpawnAttempts = 36;
     [SerializeField] private int _spawnSyncFixedSteps = 2;
     [SerializeField] private LayerMask _visibilityMask = ~0;
 
@@ -85,6 +93,10 @@ public class PursuerAgent : DroneAgent
     [Header("Pursuer — Observation Sources")]
     [SerializeField] private bool _includeTargetTrackingObservations = true;
     [SerializeField] private bool _includeRayObservations = true;
+
+    [Header("Pursuer — Diagnostics")]
+    [SerializeField] private bool _reportPerceptionDiagnostics = true;
+    [SerializeField] private int _perceptionDiagnosticsIntervalSteps = 10;
 
     private PursuerReward _rewardCalculator;
     private EpisodeLogger _episodeLogger;
@@ -116,8 +128,11 @@ public class PursuerAgent : DroneAgent
     private bool _hasPreviousLumaFrame;
     private bool _previousLumaFrameHadTarget;
     private float _lastLucasKanadeConfidence;
+    private bool _lastGroundTruthHintActive;
+    private float _lastGroundTruthHintProbability;
     private bool _pendingEpisodeEnd;
     private int _catchContactSteps;
+    private int _perceptionDiagnosticsCounter;
     private int _spawnSyncStepsRemaining;
     private bool _awaitingTargetSpawnPlacement;
     private Vector3 _pendingBaseSpawnPosition;
@@ -176,6 +191,9 @@ public class PursuerAgent : DroneAgent
         _colorReferencePixelFraction = Mathf.Clamp(_colorReferencePixelFraction, 0.0001f, 1f);
         _colorReferenceDistance = Mathf.Max(0.1f, _colorReferenceDistance);
         _colorMinEstimatedDistance = Mathf.Max(0.1f, _colorMinEstimatedDistance);
+        _groundTruthHintInitialProbability = Mathf.Clamp01(_groundTruthHintInitialProbability);
+        _groundTruthHintFinalProbability = Mathf.Clamp01(_groundTruthHintFinalProbability);
+        _groundTruthHintDecaySteps = Mathf.Max(0f, _groundTruthHintDecaySteps);
         _lkWindowRadius = Mathf.Max(1, _lkWindowRadius);
         _lkFeatureStride = Mathf.Max(1, _lkFeatureStride);
         _lkMaxFeatures = Mathf.Max(1, _lkMaxFeatures);
@@ -192,6 +210,7 @@ public class PursuerAgent : DroneAgent
         _maxDistance = Mathf.Max(1f, _maxDistance);
         _maxObsSpeed = Mathf.Max(0.1f, _maxObsSpeed);
         _maxViewportSpeed = Mathf.Max(0.1f, _maxViewportSpeed);
+        _perceptionDiagnosticsIntervalSteps = Mathf.Max(1, _perceptionDiagnosticsIntervalSteps);
         SyncBehaviorParameters();
     }
 
@@ -208,6 +227,7 @@ public class PursuerAgent : DroneAgent
         _episodeClosed = false;
         _pendingEpisodeEnd = false;
         _catchContactSteps = 0;
+        _perceptionDiagnosticsCounter = 0;
         _spawnSyncStepsRemaining = 0;
         _awaitingTargetSpawnPlacement = false;
         ResetPerceptionState();
@@ -269,6 +289,8 @@ public class PursuerAgent : DroneAgent
             sensor.AddObservation(observedViewportSpeed);                 // 1
         }
 
+        AddGroundTruthHintObservation(sensor);
+
         if (_includeRayObservations && _sensorSystem != null)
         {
             foreach (float d in _sensorSystem.GetAllNormalizedDistances())
@@ -285,6 +307,66 @@ public class PursuerAgent : DroneAgent
             // 관측 차원은 이미 채웠지만, target 관련 상태는 다음 스텝에서 0 유지.
             _targetLocalVelocity = Vector3.zero;
         }
+    }
+
+    private void AddGroundTruthHintObservation(VectorSensor sensor)
+    {
+        _lastGroundTruthHintActive = false;
+        _lastGroundTruthHintProbability = GetCurrentGroundTruthHintProbability();
+
+        Vector3 normalizedHintLocalPos = Vector3.zero;
+        if (ShouldExposeGroundTruthHint(_lastGroundTruthHintProbability))
+        {
+            Transform referenceFrame = _trackingCamera != null ? _trackingCamera.transform : transform;
+            Vector3 hintLocalPos = referenceFrame.InverseTransformPoint(TargetTransform.position) / _maxDistance;
+            normalizedHintLocalPos = new Vector3(
+                Mathf.Clamp(hintLocalPos.x, -1f, 1f),
+                Mathf.Clamp(hintLocalPos.y, -1f, 1f),
+                Mathf.Clamp(hintLocalPos.z, -1f, 1f));
+            _lastGroundTruthHintActive = true;
+        }
+
+        sensor.AddObservation(_lastGroundTruthHintActive ? 1f : 0f); // 1
+        sensor.AddObservation(normalizedHintLocalPos);                // 3
+    }
+
+    private bool ShouldExposeGroundTruthHint(float probability)
+    {
+        if (!_useTrainingGroundTruthHint || probability <= 0f || TargetTransform == null)
+            return false;
+
+        if (!IsTrainerControlledBehavior())
+            return false;
+
+        if (_groundTruthHintOnlyWhenTargetHidden && _isTargetVisible)
+            return false;
+
+        return UnityEngine.Random.value < probability;
+    }
+
+    private float GetCurrentGroundTruthHintProbability()
+    {
+        if (!_useTrainingGroundTruthHint)
+            return 0f;
+
+        if (_groundTruthHintDecaySteps <= 0f)
+            return _groundTruthHintFinalProbability;
+
+        int environmentStep = Academy.Instance != null
+            ? Academy.Instance.TotalStepCount
+            : 0;
+        float progress = Mathf.Clamp01(environmentStep / _groundTruthHintDecaySteps);
+        return Mathf.Lerp(
+            _groundTruthHintInitialProbability,
+            _groundTruthHintFinalProbability,
+            progress);
+    }
+
+    private bool IsTrainerControlledBehavior()
+    {
+        BehaviorParameters behaviorParameters = GetComponent<BehaviorParameters>();
+        return behaviorParameters != null &&
+               behaviorParameters.BehaviorType == BehaviorType.Default;
     }
 
     public override void OnActionReceived(ActionBuffers actions)
@@ -317,6 +399,7 @@ public class PursuerAgent : DroneAgent
             viewportOffset: _viewportOffset,
             visualTargetArea: _targetColorBlobFraction));
 
+        ReportPerceptionDiagnostics();
         CheckTerminationConditions();
     }
 
@@ -468,6 +551,7 @@ public class PursuerAgent : DroneAgent
         _episodeClosed = false;
         _pendingEpisodeEnd = false;
         _catchContactSteps = 0;
+        _perceptionDiagnosticsCounter = 0;
         _spawnSyncStepsRemaining = 0;
         _awaitingTargetSpawnPlacement = false;
         ResetPerceptionState();
@@ -514,6 +598,7 @@ public class PursuerAgent : DroneAgent
         int observationSize = SelfVectorObservationSize;
         if (_includeTargetTrackingObservations)
             observationSize += TargetTrackingObservationSize;
+        observationSize += GroundTruthHintObservationSize;
         if (_includeRayObservations)
             observationSize += RayObservationSize;
         return observationSize;
@@ -769,6 +854,8 @@ public class PursuerAgent : DroneAgent
         _hasPreviousLumaFrame = false;
         _previousLumaFrameHadTarget = false;
         _lastLucasKanadeConfidence = 0f;
+        _lastGroundTruthHintActive = false;
+        _lastGroundTruthHintProbability = 0f;
     }
 
     private void FillCurrentLumaFrame(Texture2D source)
@@ -1145,6 +1232,39 @@ public class PursuerAgent : DroneAgent
         _lastLucasKanadeConfidence = 0f;
     }
 
+    private void ReportPerceptionDiagnostics()
+    {
+        if (!_reportPerceptionDiagnostics)
+            return;
+
+        _perceptionDiagnosticsCounter++;
+        if (_perceptionDiagnosticsCounter < _perceptionDiagnosticsIntervalSteps)
+            return;
+        _perceptionDiagnosticsCounter = 0;
+
+        Academy academy = Academy.Instance;
+        if (academy == null)
+            return;
+
+        var stats = academy.StatsRecorder;
+        float viewportError = _isTargetVisible ? Mathf.Clamp01(_viewportOffset.magnitude) : 1f;
+        float normalizedBlobArea = _colorReferencePixelFraction > 0f
+            ? Mathf.Clamp01(_targetColorBlobFraction / _colorReferencePixelFraction)
+            : 0f;
+
+        stats.Add("Diagnostics/PursuerTargetVisible", _isTargetVisible ? 1f : 0f);
+        stats.Add("Diagnostics/PursuerColorBlobArea", _targetColorBlobFraction);
+        stats.Add("Diagnostics/PursuerColorBlobAreaNorm", normalizedBlobArea);
+        stats.Add("Diagnostics/PursuerViewportError", viewportError);
+        stats.Add("Diagnostics/PursuerViewportCentered", 1f - viewportError);
+        stats.Add("Diagnostics/PursuerLKConfidence", _lastLucasKanadeConfidence);
+        stats.Add("Diagnostics/PursuerViewportSpeed", Mathf.Clamp01(_viewportVelocity.magnitude / _maxViewportSpeed));
+        stats.Add("Diagnostics/PursuerHasLastKnownTarget", _hasLastKnownTarget ? 1f : 0f);
+        stats.Add("Diagnostics/PursuerTimeSinceTargetSeen", _timeSinceTargetSeen);
+        stats.Add("Diagnostics/PursuerGTHintActive", _lastGroundTruthHintActive ? 1f : 0f);
+        stats.Add("Diagnostics/PursuerGTHintProbability", _lastGroundTruthHintProbability);
+    }
+
     private void ReleaseColorReadbackTexture()
     {
         if (_colorReadbackTexture == null)
@@ -1163,6 +1283,8 @@ public class PursuerAgent : DroneAgent
         _hasPreviousLumaFrame = false;
         _previousLumaFrameHadTarget = false;
         _lastLucasKanadeConfidence = 0f;
+        _lastGroundTruthHintActive = false;
+        _lastGroundTruthHintProbability = 0f;
     }
 
     private void TryOverrideSpawnNearTarget()

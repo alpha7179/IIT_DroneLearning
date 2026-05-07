@@ -12240,7 +12240,7 @@ PrefabInstance:
       objectReference: {fileID: 5022602860645237092, guid: 126af01c0a7383a42859da3c037dffc3, type: 3}
     - target: {fileID: 2591483942227818757, guid: 03db6dc6599c71f4bb3367a1ebce781e, type: 3}
       propertyPath: m_BehaviorType
-      value: 0
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 3601377915378749040, guid: 03db6dc6599c71f4bb3367a1ebce781e, type: 3}
       propertyPath: MiddleMode
