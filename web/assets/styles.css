@@ -896,6 +896,165 @@ pre,
   background: #fef2f2;
 }
 
+.diagram-board {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
+  display: grid;
+  gap: 1rem;
+  overflow: hidden;
+}
+
+.diagram-lane {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.diagram-lane__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+  padding: 0 0.2rem;
+}
+
+.diagram-lane__head span,
+.diagram-node strong {
+  color: var(--brand-navy);
+  font-family: 'Montserrat', 'Noto Sans KR', sans-serif;
+  font-weight: 800;
+}
+
+.diagram-lane__head small,
+.diagram-node span {
+  color: var(--ink-mute);
+  line-height: 1.5;
+}
+
+.diagram-flow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 38px minmax(0, 1fr) 38px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0.45rem;
+}
+
+.diagram-flow--compact {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.diagram-node {
+  min-height: 118px;
+  padding: 1rem;
+  border: 1px solid rgba(27, 47, 89, 0.14);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 18px 34px -30px rgba(15, 23, 42, 0.55);
+  display: grid;
+  align-content: start;
+  gap: 0.38rem;
+}
+
+.diagram-node i {
+  width: 1.35rem;
+  height: 1.35rem;
+  color: var(--brand-blue);
+}
+
+.diagram-node--wide {
+  min-height: auto;
+}
+
+.diagram-node--terminal {
+  background: #10213f;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.diagram-node--terminal strong,
+.diagram-node--terminal span,
+.diagram-node--terminal i {
+  color: #ffffff;
+}
+
+.diagram-arrow {
+  position: relative;
+  min-height: 100%;
+}
+
+.diagram-arrow::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: rgba(59, 94, 163, 0.38);
+  transform: translateY(-50%);
+}
+
+.diagram-arrow::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid rgba(59, 94, 163, 0.55);
+  border-right: 2px solid rgba(59, 94, 163, 0.55);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.diagram-stack {
+  width: min(720px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.diagram-stack .diagram-node {
+  min-height: auto;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.75rem;
+  align-items: center;
+}
+
+.diagram-stack .diagram-node span {
+  grid-column: 2;
+}
+
+.diagram-arrow--down {
+  height: 32px;
+  min-height: 32px;
+}
+
+.diagram-arrow--down::before {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  right: auto;
+  width: 2px;
+  height: auto;
+  transform: translateX(-50%);
+}
+
+.diagram-arrow--down::after {
+  top: auto;
+  bottom: 3px;
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%) rotate(135deg);
+}
+
+.diagram-note {
+  padding: 0.78rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(52, 103, 202, 0.16);
+  background: rgba(219, 234, 254, 0.64);
+  color: var(--brand-navy);
+  font-weight: 700;
+}
+
 .mermaid-wrap {
   padding: 1rem;
   border-radius: var(--radius-sm);
@@ -1065,6 +1224,37 @@ pre,
   .team-grid,
   .stats-grid {
     grid-template-columns: 1fr;
+  }
+
+  .diagram-flow {
+    grid-template-columns: 1fr;
+  }
+
+  .diagram-arrow {
+    height: 28px;
+    min-height: 28px;
+  }
+
+  .diagram-arrow::before {
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    right: auto;
+    width: 2px;
+    height: auto;
+    transform: translateX(-50%);
+  }
+
+  .diagram-arrow::after {
+    top: auto;
+    bottom: 2px;
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%) rotate(135deg);
+  }
+
+  .diagram-lane__head {
+    display: grid;
   }
 
   .lead-image {

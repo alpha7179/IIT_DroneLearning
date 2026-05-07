@@ -7,7 +7,6 @@
   <meta name="description" content="System architecture and Sim2Real control pipeline">
   <link rel="stylesheet" href="../assets/styles.css">
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
   <script defer src="../assets/app.js"></script>
 </head>
 <body data-page="system">
@@ -22,6 +21,7 @@
         <a class="nav-link" href="../system/" data-route="system">System</a>
         <a class="nav-link" href="../analysis/" data-route="analysis">Analysis</a>
         <a class="nav-link" href="../evader/" data-route="evader">Evader</a>
+        <a class="nav-link" href="../pursuer/" data-route="pursuer">Pursuer</a>
         <a class="nav-link" href="../roadmap/" data-route="roadmap">Roadmap</a>
         <a class="nav-link" href="../team/" data-route="team">Team</a>
       </nav>
@@ -48,35 +48,113 @@
       <div class="section-inner content-grid">
         <article class="panel content-card reveal">
           <h3>전체 아키텍처</h3>
-          <div class="mermaid-wrap">
-            <pre class="mermaid">graph TB
-    subgraph Unity["Unity 6 - Digital Twin"]
-        A[3D Urban Scene] --> B[Drone Physics 6-DOF]
-        B --> C[Sensor System Ray + Camera]
-        C --> D[ML-Agents Communicator]
-    end
-    subgraph Python["Python 학습 파이프라인"]
-        D --> E[State Preprocessing]
-        E --> F[PPO Policy Network PyTorch 2.x]
-        F --> G[Action Output 4D Continuous]
-    end
-    subgraph Infra["인프라"]
-        F --> H[TensorBoard]
-        F --> I[결과 아카이브 JSON CSV]
-    end
-    G --> D</pre>
+          <div class="diagram-board diagram-board--architecture">
+            <div class="diagram-lane">
+              <div class="diagram-lane__head">
+                <span>Unity Digital Twin</span>
+                <small>도시 환경과 드론 물리</small>
+              </div>
+              <div class="diagram-flow">
+                <div class="diagram-node">
+                  <i data-lucide="building-2"></i>
+                  <strong>3D Urban Scene</strong>
+                  <span>건물, 도로, 장애물 배치</span>
+                </div>
+                <div class="diagram-arrow" aria-hidden="true"></div>
+                <div class="diagram-node">
+                  <i data-lucide="plane"></i>
+                  <strong>6-DOF Physics</strong>
+                  <span>추력, 자세, 충돌 판정</span>
+                </div>
+                <div class="diagram-arrow" aria-hidden="true"></div>
+                <div class="diagram-node">
+                  <i data-lucide="radar"></i>
+                  <strong>Sensor System</strong>
+                  <span>Ray, RGB Camera, LOS</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="diagram-lane">
+              <div class="diagram-lane__head">
+                <span>ML-Agents Bridge</span>
+                <small>Unity와 Python을 연결</small>
+              </div>
+              <div class="diagram-flow diagram-flow--compact">
+                <div class="diagram-node diagram-node--wide">
+                  <i data-lucide="repeat-2"></i>
+                  <strong>Communicator</strong>
+                  <span>관측값을 넘기고 정책 행동을 다시 받습니다.</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="diagram-lane">
+              <div class="diagram-lane__head">
+                <span>Python Training</span>
+                <small>정책 학습과 결과 기록</small>
+              </div>
+              <div class="diagram-flow">
+                <div class="diagram-node">
+                  <i data-lucide="sliders-horizontal"></i>
+                  <strong>State Preprocess</strong>
+                  <span>센서 값을 학습 입력으로 정리</span>
+                </div>
+                <div class="diagram-arrow" aria-hidden="true"></div>
+                <div class="diagram-node">
+                  <i data-lucide="brain"></i>
+                  <strong>PPO Policy</strong>
+                  <span>PyTorch 기반 행동 정책</span>
+                </div>
+                <div class="diagram-arrow" aria-hidden="true"></div>
+                <div class="diagram-node">
+                  <i data-lucide="archive"></i>
+                  <strong>Artifacts</strong>
+                  <span>TensorBoard, JSON, CSV</span>
+                </div>
+              </div>
+            </div>
+
+            <p class="diagram-note">Unity가 실제 상황을 만들고, Python이 그 상황을 보고 더 나은 추적·회피 행동을 학습합니다.</p>
           </div>
         </article>
 
         <article class="panel content-card reveal">
           <h3>Sim2Real 계층형 제어 구조</h3>
           <p>RL 정책은 직접 모터를 제어하지 않습니다. 항상 PID 추상 계층을 거쳐 실기체 FCU와 동일한 인터페이스로 명령이 전달됩니다.</p>
-          <div class="mermaid-wrap" style="margin-top: 1rem;">
-            <pre class="mermaid">graph TD
-    A["Mission Layer Goal / Intercept Policy"] --> B["Tactical Layer Pursuit-Evasion Decision"]
-    B --> C["Guidance Layer Heading / Speed / Altitude"]
-    C --> D["Low-level Control PID Attitude / Throttle"]
-    D --> E["Unity Physics or Real FCU"]</pre>
+          <div class="diagram-board diagram-board--control">
+            <div class="diagram-stack">
+              <div class="diagram-node diagram-node--wide">
+                <i data-lucide="flag"></i>
+                <strong>Mission Layer</strong>
+                <span>목표 도달, 추적, 차단 같은 임무를 정합니다.</span>
+              </div>
+              <div class="diagram-arrow diagram-arrow--down" aria-hidden="true"></div>
+              <div class="diagram-node diagram-node--wide">
+                <i data-lucide="route"></i>
+                <strong>Tactical Layer</strong>
+                <span>추격자와 회피자의 다음 전략을 고릅니다.</span>
+              </div>
+              <div class="diagram-arrow diagram-arrow--down" aria-hidden="true"></div>
+              <div class="diagram-node diagram-node--wide">
+                <i data-lucide="navigation"></i>
+                <strong>Guidance Layer</strong>
+                <span>속도, 고도, 방향 같은 비행 명령으로 바꿉니다.</span>
+              </div>
+              <div class="diagram-arrow diagram-arrow--down" aria-hidden="true"></div>
+              <div class="diagram-node diagram-node--wide">
+                <i data-lucide="gauge"></i>
+                <strong>PID Control</strong>
+                <span>드론이 흔들리지 않도록 자세와 추력을 안정화합니다.</span>
+              </div>
+              <div class="diagram-arrow diagram-arrow--down" aria-hidden="true"></div>
+              <div class="diagram-node diagram-node--wide diagram-node--terminal">
+                <i data-lucide="cpu"></i>
+                <strong>Unity Physics / Real FCU</strong>
+                <span>시뮬레이션 또는 실제 비행제어기로 같은 형태의 명령을 보냅니다.</span>
+              </div>
+            </div>
+            <p class="diagram-note">정책은 “어디로 가야 하는지”를 정하고, 제어 계층은 “어떻게 안전하게 움직일지”를 맡습니다.</p>
           </div>
         </article>
 
@@ -179,6 +257,7 @@
         <a href="../system/">System</a>
         <a href="../analysis/">Analysis</a>
         <a href="../evader/">Evader</a>
+        <a href="../pursuer/">Pursuer</a>
         <a href="../roadmap/">Roadmap</a>
         <a href="../team/">Team</a>
       </nav>
