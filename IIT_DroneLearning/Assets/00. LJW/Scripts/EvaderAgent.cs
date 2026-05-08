@@ -193,38 +193,50 @@ public class EvaderAgent : DroneAgent
     [SerializeField] private float _wallSymmetricClearanceBiasScale = 0.10f;
 
     [Header("Evader — Boundary Constraints")]
-    [Tooltip("이 고도(m) 초과 시 맵 이탈로 판정 (벽 높이 20m)")]
-    [SerializeField] private float _maxFlightHeight   = 20f;
+    [Tooltip("이 고도(m) 초과 시 맵 이탈로 판정. DronePhysics.MaxAltitude보다 약간 높게 둔다")]
+    [SerializeField] private float _maxFlightHeight   = 32f;
     [Tooltip("XZ 절대값이 이 거리(m) 초과 시 맵 이탈로 판정 (도시 반폭 ~72m)")]
     [SerializeField] private float _boundaryHalfSize  = 72f;
     [Tooltip("에피소드 시작 시 스폰 좌표를 경계 안쪽으로 클램프하는 여유 거리(m)")]
-    [SerializeField] private float _spawnBoundaryInset = 2f;
+    [SerializeField] private float _spawnBoundaryInset = 6f;
 
     [Header("Evader — Boundary Safety")]
     [Tooltip("true면 경계 근접 시 중심 방향으로 조향을 보정한다")]
     [SerializeField] private bool _enableBoundarySafety = true;
     [Tooltip("경계 위험 구간 시작 여유 거리(m). boundaryHalfSize - margin부터 보정 시작")]
-    [SerializeField] private float _boundarySafetyMargin = 10f;
+    [SerializeField] private float _boundarySafetyMargin = 20f;
     [Tooltip("경계 근접 시 중심 방향 roll 보정 강도 (0~1)")]
-    [SerializeField] private float _boundaryInwardRollAssist = 0.15f;
+    [SerializeField] private float _boundaryInwardRollAssist = 0.35f;
     [Tooltip("경계 근접 시 중심 방향 yaw 보정 강도 (0~1)")]
-    [SerializeField] private float _boundaryInwardYawAssist = 0.22f;
+    [SerializeField] private float _boundaryInwardYawAssist = 0.45f;
     [Tooltip("경계 근접 + 외향 진행 시 forward pitch 감쇠 하한 (0~1)")]
-    [SerializeField] private float _boundaryForwardPitchMinScale = 0.20f;
+    [SerializeField] private float _boundaryForwardPitchMinScale = 0.0f;
     [Tooltip("경계 위험 구간 스텝당 추가 페널티 (음수 권장)")]
-    [SerializeField] private float _boundaryRiskPenaltyPerStep = -0.0015f;
+    [SerializeField] private float _boundaryRiskPenaltyPerStep = -0.0060f;
     [Tooltip("외향 속도 위험도 정규화 기준 (m/s)")]
-    [SerializeField] private float _boundaryOutwardSpeedReference = 6.0f;
+    [SerializeField] private float _boundaryOutwardSpeedReference = 4.0f;
     [Tooltip("이 위험도 이상에서 긴급 inward steering을 활성화")]
-    [SerializeField] private float _boundaryEmergencyRiskThreshold = 0.88f;
+    [SerializeField] private float _boundaryEmergencyRiskThreshold = 0.72f;
     [Tooltip("긴급 복귀 시 추가 roll 보정 강도")]
-    [SerializeField] private float _boundaryEmergencyRollAssist = 0.28f;
+    [SerializeField] private float _boundaryEmergencyRollAssist = 0.45f;
     [Tooltip("긴급 복귀 시 추가 yaw 보정 강도")]
-    [SerializeField] private float _boundaryEmergencyYawAssist = 0.32f;
+    [SerializeField] private float _boundaryEmergencyYawAssist = 0.55f;
+    [Tooltip("긴급 복귀 시 중심 방향 pitch 목표를 섞는 강도")]
+    [SerializeField] private float _boundaryEmergencyPitchAssist = 0.45f;
+    [Tooltip("경계 초과 직전/직후 위치를 내부로 되돌리는 여유 거리(m)")]
+    [SerializeField] private float _boundarySoftClampInset = 1.5f;
+    [Tooltip("이 거리(m) 이내의 얕은 XZ 초과는 crash 대신 내부로 되돌린다")]
+    [SerializeField] private float _boundarySoftClampTolerance = 2.5f;
+    [Tooltip("soft clamp가 발생했을 때 부여하는 단발 페널티")]
+    [SerializeField] private float _boundarySoftClampPenalty = -0.05f;
+    [Tooltip("최대 고도 근처에서 하강 보정을 시작하는 여유 거리(m)")]
+    [SerializeField] private float _heightSafetyMargin = 4.0f;
+    [Tooltip("최대 고도 근처에서 허용하는 최저 throttle")]
+    [SerializeField] private float _heightDescendThrottle = -0.55f;
 
     [Header("Evader — Terminal Penalties")]
     [Tooltip("경계 이탈 crash 시 terminal reward")]
-    [SerializeField] private float _terminalPenaltyBoundaryOverflow = -1.25f;
+    [SerializeField] private float _terminalPenaltyBoundaryOverflow = -2.00f;
     [Tooltip("외벽 충돌 crash 시 terminal reward")]
     [SerializeField] private float _terminalPenaltyOuterWall = -1.10f;
     [Tooltip("건물/장애물 충돌 crash 시 terminal reward")]
@@ -442,19 +454,26 @@ public class EvaderAgent : DroneAgent
         _wallAvoidBiasSmoothing = 0.18f;
         _wallSymmetricClearanceBiasScale = 0.10f;
 
+        _maxFlightHeight = 32f;
         _enableBoundarySafety = true;
-        _boundarySafetyMargin = 12f;
-        _boundaryInwardRollAssist = 0.20f;
-        _boundaryInwardYawAssist = 0.26f;
-        _boundaryForwardPitchMinScale = 0.15f;
-        _boundaryRiskPenaltyPerStep = -0.0030f;
-        _boundaryOutwardSpeedReference = 6.0f;
-        _boundaryEmergencyRiskThreshold = 0.88f;
-        _boundaryEmergencyRollAssist = 0.28f;
-        _boundaryEmergencyYawAssist = 0.32f;
-        _spawnBoundaryInset = 2f;
+        _boundarySafetyMargin = 20f;
+        _boundaryInwardRollAssist = 0.35f;
+        _boundaryInwardYawAssist = 0.45f;
+        _boundaryForwardPitchMinScale = 0.0f;
+        _boundaryRiskPenaltyPerStep = -0.0060f;
+        _boundaryOutwardSpeedReference = 4.0f;
+        _boundaryEmergencyRiskThreshold = 0.72f;
+        _boundaryEmergencyRollAssist = 0.45f;
+        _boundaryEmergencyYawAssist = 0.55f;
+        _boundaryEmergencyPitchAssist = 0.45f;
+        _boundarySoftClampInset = 1.5f;
+        _boundarySoftClampTolerance = 2.5f;
+        _boundarySoftClampPenalty = -0.05f;
+        _heightSafetyMargin = 4.0f;
+        _heightDescendThrottle = -0.55f;
+        _spawnBoundaryInset = 6f;
 
-        _terminalPenaltyBoundaryOverflow = -1.25f;
+        _terminalPenaltyBoundaryOverflow = -2.00f;
         _terminalPenaltyOuterWall = -1.10f;
         _terminalPenaltyBuilding = -1.60f;
         _terminalPenaltyOtherCrash = -1.00f;
@@ -474,6 +493,8 @@ public class EvaderAgent : DroneAgent
         _catchDistance     = Mathf.Max(0.1f, _catchDistance);
         _maxDistance       = Mathf.Max(1f,   _maxDistance);
         _maxObsSpeed       = Mathf.Max(0.1f, _maxObsSpeed);
+        _maxFlightHeight   = Mathf.Max(1f,   _maxFlightHeight);
+        _boundaryHalfSize  = Mathf.Max(1f,   _boundaryHalfSize);
         _goalObstacleClearanceRadius = Mathf.Max(0.5f, _goalObstacleClearanceRadius);
         _goalResampleMaxAttempts     = Mathf.Max(1,    _goalResampleMaxAttempts);
         _goalBoundaryClearanceMargin = Mathf.Clamp(_goalBoundaryClearanceMargin, 0f, Mathf.Max(0f, _boundaryHalfSize - 1f));
@@ -506,6 +527,12 @@ public class EvaderAgent : DroneAgent
         _boundaryEmergencyRiskThreshold = Mathf.Clamp(_boundaryEmergencyRiskThreshold, 0.5f, 1f);
         _boundaryEmergencyRollAssist = Mathf.Clamp01(_boundaryEmergencyRollAssist);
         _boundaryEmergencyYawAssist = Mathf.Clamp01(_boundaryEmergencyYawAssist);
+        _boundaryEmergencyPitchAssist = Mathf.Clamp01(_boundaryEmergencyPitchAssist);
+        _boundarySoftClampInset = Mathf.Clamp(_boundarySoftClampInset, 0f, Mathf.Max(0f, _boundaryHalfSize - 1f));
+        _boundarySoftClampTolerance = Mathf.Max(0f, _boundarySoftClampTolerance);
+        _boundarySoftClampPenalty = Mathf.Min(0f, _boundarySoftClampPenalty);
+        _heightSafetyMargin = Mathf.Clamp(_heightSafetyMargin, 0.1f, Mathf.Max(0.1f, _maxFlightHeight - 0.5f));
+        _heightDescendThrottle = Mathf.Clamp(_heightDescendThrottle, -1f, 0f);
         _spawnBoundaryInset = Mathf.Clamp(_spawnBoundaryInset, 0f, Mathf.Max(0f, _boundaryHalfSize - 1f));
 
         _terminalPenaltyBoundaryOverflow = Mathf.Min(0f, _terminalPenaltyBoundaryOverflow);
@@ -699,9 +726,10 @@ public class EvaderAgent : DroneAgent
         float[] obstacleDists = _sensorSystem?.GetAllNormalizedDistances();
 
         ApplyWallProximitySafety(ref roll, ref pitch, ref yaw, obstacleDists);
-        ApplyBoundarySafety(ref roll, ref pitch, ref yaw);
+        ApplyBoundarySafety(ref thrust, ref roll, ref pitch, ref yaw);
 
         _dronePhysics?.SetCommand(thrust, roll, pitch, yaw);
+        ApplyBoundarySoftClamp();
 
         EvaderReward.RewardBreakdown breakdown;
         float stepReward = _rewardCalculator.ComputeStepReward(
@@ -743,12 +771,19 @@ public class EvaderAgent : DroneAgent
             return;
         }
 
-        // 2) 맵 이탈 — 벽 위로 탈출하거나 XZ 경계 초과 시 crash 처리
+        // 2) 맵 이탈 — 최대 고도 또는 XZ 경계 초과 시 crash 처리
         Vector3 pos = transform.position;
         if (pos.y > _maxFlightHeight ||
             Mathf.Abs(pos.x) > _boundaryHalfSize ||
             Mathf.Abs(pos.z) > _boundaryHalfSize)
         {
+            Academy academy = Academy.Instance;
+            if (academy != null)
+            {
+                academy.StatsRecorder.Add("Diagnostics/BoundaryOverflowHeight", pos.y > _maxFlightHeight ? 1f : 0f);
+                academy.StatsRecorder.Add("Diagnostics/BoundaryOverflowXZ",
+                    Mathf.Abs(pos.x) > _boundaryHalfSize || Mathf.Abs(pos.z) > _boundaryHalfSize ? 1f : 0f);
+            }
             SetCrash(CrashKind.BoundaryOverflow);
             return;
         }
@@ -1394,7 +1429,7 @@ public class EvaderAgent : DroneAgent
         }
     }
 
-    private void ApplyBoundarySafety(ref float roll, ref float pitch, ref float yaw)
+    private void ApplyBoundarySafety(ref float thrust, ref float roll, ref float pitch, ref float yaw)
     {
         if (!_enableBoundarySafety || _boundaryHalfSize <= 1f)
             return;
@@ -1402,56 +1437,70 @@ public class EvaderAgent : DroneAgent
         Vector3 pos = transform.position;
         float margin = Mathf.Clamp(_boundarySafetyMargin, 1f, Mathf.Max(2f, _boundaryHalfSize - 0.5f));
         float warningBoundary = Mathf.Max(0.5f, _boundaryHalfSize - margin);
+        float heightWarning = Mathf.Max(0.5f, _maxFlightHeight - _heightSafetyMargin);
 
         float xRisk = Mathf.InverseLerp(warningBoundary, _boundaryHalfSize, Mathf.Abs(pos.x));
         float zRisk = Mathf.InverseLerp(warningBoundary, _boundaryHalfSize, Mathf.Abs(pos.z));
         float boundaryRisk = Mathf.Clamp01(Mathf.Max(xRisk, zRisk));
+        float heightRisk = _maxFlightHeight > 0.5f
+            ? Mathf.Clamp01(Mathf.InverseLerp(heightWarning, _maxFlightHeight, pos.y))
+            : 0f;
 
-        if (boundaryRisk <= 0f)
+        if (boundaryRisk <= 0f && heightRisk <= 0f)
             return;
-
-        Vector3 toCenter = new Vector3(-pos.x, 0f, -pos.z);
-        if (toCenter.sqrMagnitude < 0.0001f)
-            return;
-
-        Vector3 toCenterDir = toCenter.normalized;
-        Vector3 localToCenter = transform.InverseTransformDirection(toCenterDir);
 
         float outwardSpeed = 0f;
-        if (_dronePhysics != null)
+        float planarEffectiveRisk = boundaryRisk;
+
+        if (boundaryRisk > 0f)
         {
-            Vector3 velocity = _dronePhysics.GetVelocity();
-            outwardSpeed = Mathf.Max(0f, Vector3.Dot(velocity, -toCenterDir));
-        }
-
-        float outwardRisk = Mathf.Clamp01(outwardSpeed / Mathf.Max(0.1f, _boundaryOutwardSpeedReference));
-        float effectiveRisk = Mathf.Clamp01(Mathf.Max(boundaryRisk, Mathf.Lerp(boundaryRisk, 1f, outwardRisk * 0.55f)));
-
-        float assistScale = Mathf.Lerp(0.40f, 1f, effectiveRisk);
-        float inwardSide = Mathf.Clamp(localToCenter.x, -1f, 1f);
-
-        roll = Mathf.Clamp(roll + inwardSide * _boundaryInwardRollAssist * assistScale, -1f, 1f);
-        yaw = Mathf.Clamp(yaw + inwardSide * _boundaryInwardYawAssist * assistScale, -1f, 1f);
-
-        if (pitch > 0f)
-        {
-            // 진행 방향이 중심 반대(바깥쪽)일수록 경계 근접에서 전진 입력을 더 강하게 감쇠한다.
-            float outwardHeading = Mathf.Max(0f, Vector3.Dot(transform.forward, -toCenterDir));
-            if (outwardHeading > 0f)
+            Vector3 toCenter = new Vector3(-pos.x, 0f, -pos.z);
+            if (toCenter.sqrMagnitude > 0.0001f)
             {
-                float damp = Mathf.Lerp(1f, _boundaryForwardPitchMinScale, effectiveRisk * outwardHeading);
-                pitch *= damp;
+                Vector3 toCenterDir = toCenter.normalized;
+                Vector3 localToCenter = transform.InverseTransformDirection(toCenterDir);
 
-                if (effectiveRisk >= _boundaryEmergencyRiskThreshold && outwardHeading > 0.20f)
+                if (_dronePhysics != null)
                 {
-                    float emergencyScale = Mathf.InverseLerp(_boundaryEmergencyRiskThreshold, 1f, effectiveRisk);
-                    pitch = Mathf.Min(pitch, 0f);
+                    Vector3 velocity = _dronePhysics.GetVelocity();
+                    outwardSpeed = Mathf.Max(0f, Vector3.Dot(velocity, -toCenterDir));
+                }
+
+                float outwardRisk = Mathf.Clamp01(outwardSpeed / Mathf.Max(0.1f, _boundaryOutwardSpeedReference));
+                planarEffectiveRisk = Mathf.Clamp01(Mathf.Max(boundaryRisk, Mathf.Lerp(boundaryRisk, 1f, outwardRisk * 0.70f)));
+
+                float assistScale = Mathf.Lerp(0.55f, 1f, planarEffectiveRisk);
+                float inwardSide = Mathf.Clamp(localToCenter.x, -1f, 1f);
+                float inwardForward = Mathf.Clamp(localToCenter.z, -1f, 1f);
+
+                roll = Mathf.Clamp(roll + inwardSide * _boundaryInwardRollAssist * assistScale, -1f, 1f);
+                yaw = Mathf.Clamp(yaw + inwardSide * _boundaryInwardYawAssist * assistScale, -1f, 1f);
+
+                // 진행 방향이 중심 반대(바깥쪽)일수록 경계 근접에서 전진 입력을 더 강하게 감쇠한다.
+                float outwardHeading = Mathf.Max(0f, Vector3.Dot(transform.forward, -toCenterDir));
+                if (pitch > 0f && outwardHeading > 0f)
+                {
+                    float damp = Mathf.Lerp(1f, _boundaryForwardPitchMinScale, planarEffectiveRisk * outwardHeading);
+                    pitch *= damp;
+                }
+
+                if (planarEffectiveRisk >= _boundaryEmergencyRiskThreshold)
+                {
+                    float emergencyScale = Mathf.InverseLerp(_boundaryEmergencyRiskThreshold, 1f, planarEffectiveRisk);
                     roll = Mathf.Clamp(roll + inwardSide * _boundaryEmergencyRollAssist * emergencyScale, -1f, 1f);
                     yaw = Mathf.Clamp(yaw + inwardSide * _boundaryEmergencyYawAssist * emergencyScale, -1f, 1f);
+                    pitch = Mathf.Clamp(Mathf.Lerp(pitch, inwardForward, _boundaryEmergencyPitchAssist * emergencyScale), -1f, 1f);
                 }
             }
         }
 
+        if (heightRisk > 0f)
+        {
+            float maxAllowedThrust = Mathf.Lerp(1f, _heightDescendThrottle, heightRisk);
+            thrust = Mathf.Min(thrust, maxAllowedThrust);
+        }
+
+        float effectiveRisk = Mathf.Clamp01(Mathf.Max(planarEffectiveRisk, heightRisk));
         float boundaryPenalty = _boundaryRiskPenaltyPerStep * effectiveRisk;
         if (boundaryPenalty < 0f)
             AddReward(boundaryPenalty);
@@ -1463,8 +1512,38 @@ public class EvaderAgent : DroneAgent
             academy.StatsRecorder.Add("Diagnostics/BoundaryRisk", boundaryRisk);
             academy.StatsRecorder.Add("Diagnostics/BoundaryEffectiveRisk", effectiveRisk);
             academy.StatsRecorder.Add("Diagnostics/BoundaryOutwardSpeed", outwardSpeed);
+            academy.StatsRecorder.Add("Diagnostics/BoundaryHeightRisk", heightRisk);
             if (boundaryPenalty < 0f)
                 academy.StatsRecorder.Add("Diagnostics/BoundaryRiskPenalty", -boundaryPenalty);
+        }
+    }
+
+    private void ApplyBoundarySoftClamp()
+    {
+        if (!_enableBoundarySafety || _boundaryHalfSize <= 1f || _boundarySoftClampTolerance <= 0f)
+            return;
+
+        Vector3 pos = transform.position;
+        float xOverflow = Mathf.Max(0f, Mathf.Abs(pos.x) - _boundaryHalfSize);
+        float zOverflow = Mathf.Max(0f, Mathf.Abs(pos.z) - _boundaryHalfSize);
+        float overflow = Mathf.Max(xOverflow, zOverflow);
+
+        if (overflow <= 0f || overflow > _boundarySoftClampTolerance)
+            return;
+
+        transform.position = ClampPositionWithinBoundary(pos, _boundarySoftClampInset);
+        ResetPhysicsState();
+
+        if (_boundarySoftClampPenalty < 0f)
+            AddReward(_boundarySoftClampPenalty);
+
+        Academy academy = Academy.Instance;
+        if (academy != null)
+        {
+            academy.StatsRecorder.Add("Diagnostics/BoundarySoftClamp", 1f);
+            academy.StatsRecorder.Add("Diagnostics/BoundarySoftClampOverflow", overflow);
+            if (_boundarySoftClampPenalty < 0f)
+                academy.StatsRecorder.Add("Diagnostics/BoundarySoftClampPenalty", -_boundarySoftClampPenalty);
         }
     }
 
