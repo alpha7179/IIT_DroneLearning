@@ -20,12 +20,24 @@ public class PursuerAgent : DroneAgent
     private const int SelfVectorObservationSize = 7;
     private const int TargetTrackingObservationSize = 11;
     private const int GroundTruthHintObservationSize = 4;
+    private const int ObstacleSafetyObservationSize = 6;
     private const int RayObservationSize = 26;
 
     private enum RoundEndReason
     {
         Captured,
         Timeout,
+    }
+
+    private struct ObstacleSafetySample
+    {
+        public bool HasHit;
+        public bool BrakeAssistActive;
+        public float Risk;
+        public float ForwardRisk;
+        public float ClosingSpeed;
+        public float Distance01;
+        public float SteerBias;
     }
 
     private static event Action<RoundEndReason, PursuerAgent> RoundEnded;
@@ -85,6 +97,20 @@ public class PursuerAgent : DroneAgent
     [SerializeField] private int _spawnSyncFixedSteps = 2;
     [SerializeField] private LayerMask _visibilityMask = ~0;
 
+    [Header("Pursuer — Collision Safety")]
+    [SerializeField] private bool _useObstacleSafety = true;
+    [SerializeField] private LayerMask _obstacleMask = ~0;
+    [SerializeField] private float _obstacleProbeDistance = 8f;
+    [SerializeField] private float _obstacleCriticalDistance = 2f;
+    [SerializeField] private float _obstacleProbeRadius = 0.45f;
+    [SerializeField] private float _obstacleProbeOriginYOffset = 0.15f;
+    [SerializeField] private float _obstacleLateralProbeWeight = 0.75f;
+    [SerializeField] private bool _enableObstacleBrakeAssist = true;
+    [SerializeField] private float _obstacleBrakeRiskThreshold = 0.55f;
+    [SerializeField] private float _obstacleBrakePitchScale = 0.35f;
+    [SerializeField] private float _obstacleBrakeReversePitch = 0.25f;
+    [SerializeField] private float _obstacleTurnAssist = 0.25f;
+
     [Header("Pursuer — Observation Normalization")]
     [SerializeField] private float _maxDistance = 50f;
     [SerializeField] private float _maxObsSpeed = 10f;
@@ -92,7 +118,8 @@ public class PursuerAgent : DroneAgent
 
     [Header("Pursuer — Observation Sources")]
     [SerializeField] private bool _includeTargetTrackingObservations = true;
-    [SerializeField] private bool _includeRayObservations = true;
+    [SerializeField] private bool _includeObstacleSafetyObservations = true;
+    [SerializeField] private bool _includeRayObservations = false;
 
     [Header("Pursuer — Diagnostics")]
     [SerializeField] private bool _reportPerceptionDiagnostics = true;
@@ -136,6 +163,14 @@ public class PursuerAgent : DroneAgent
     private int _spawnSyncStepsRemaining;
     private bool _awaitingTargetSpawnPlacement;
     private Vector3 _pendingBaseSpawnPosition;
+    private bool _lastObstacleDetected;
+    private bool _lastObstacleBrakeAssistActive;
+    private float _lastObstacleRisk;
+    private float _lastObstacleForwardRisk;
+    private float _lastObstacleClosingSpeed;
+    private float _lastObstacleDistance01;
+    private float _lastObstacleSteerBias;
+    private readonly RaycastHit[] _obstacleProbeHits = new RaycastHit[16];
 
     public override void Initialize()
     {
@@ -207,6 +242,15 @@ public class PursuerAgent : DroneAgent
         _nearTargetSpawnClearanceRadius = Mathf.Max(0.1f, _nearTargetSpawnClearanceRadius);
         _nearTargetSpawnAttempts = Mathf.Max(1, _nearTargetSpawnAttempts);
         _spawnSyncFixedSteps = Mathf.Max(0, _spawnSyncFixedSteps);
+        _obstacleProbeDistance = Mathf.Max(0.1f, _obstacleProbeDistance);
+        _obstacleCriticalDistance = Mathf.Clamp(_obstacleCriticalDistance, 0.01f, _obstacleProbeDistance);
+        _obstacleProbeRadius = Mathf.Max(0.01f, _obstacleProbeRadius);
+        _obstacleProbeOriginYOffset = Mathf.Max(0f, _obstacleProbeOriginYOffset);
+        _obstacleLateralProbeWeight = Mathf.Clamp01(_obstacleLateralProbeWeight);
+        _obstacleBrakeRiskThreshold = Mathf.Clamp01(_obstacleBrakeRiskThreshold);
+        _obstacleBrakePitchScale = Mathf.Clamp01(_obstacleBrakePitchScale);
+        _obstacleBrakeReversePitch = Mathf.Clamp01(_obstacleBrakeReversePitch);
+        _obstacleTurnAssist = Mathf.Clamp01(_obstacleTurnAssist);
         _maxDistance = Mathf.Max(1f, _maxDistance);
         _maxObsSpeed = Mathf.Max(0.1f, _maxObsSpeed);
         _maxViewportSpeed = Mathf.Max(0.1f, _maxViewportSpeed);
@@ -231,6 +275,7 @@ public class PursuerAgent : DroneAgent
         _spawnSyncStepsRemaining = 0;
         _awaitingTargetSpawnPlacement = false;
         ResetPerceptionState();
+        ResetObstacleSafetyState();
         _rewardCalculator?.ResetEpisodeState();
 
         ResolveGoalZone();
@@ -291,6 +336,9 @@ public class PursuerAgent : DroneAgent
 
         AddGroundTruthHintObservation(sensor);
 
+        if (_includeObstacleSafetyObservations)
+            AddObstacleSafetyObservation(sensor);
+
         if (_includeRayObservations && _sensorSystem != null)
         {
             foreach (float d in _sensorSystem.GetAllNormalizedDistances())
@@ -344,6 +392,19 @@ public class PursuerAgent : DroneAgent
         return UnityEngine.Random.value < probability;
     }
 
+    private void AddObstacleSafetyObservation(VectorSensor sensor)
+    {
+        ObstacleSafetySample sample = SampleObstacleSafety();
+        StoreObstacleSafetySample(sample);
+
+        sensor.AddObservation(sample.HasHit ? 1f : 0f);              // 1
+        sensor.AddObservation(Mathf.Clamp01(sample.Risk));           // 1
+        sensor.AddObservation(Mathf.Clamp01(sample.ForwardRisk));    // 1
+        sensor.AddObservation(Mathf.Clamp01(sample.Distance01));     // 1
+        sensor.AddObservation(Mathf.Clamp01(sample.ClosingSpeed));   // 1
+        sensor.AddObservation(Mathf.Clamp(sample.SteerBias, -1f, 1f)); // 1
+    }
+
     private float GetCurrentGroundTruthHintProbability()
     {
         if (!_useTrainingGroundTruthHint)
@@ -382,6 +443,10 @@ public class PursuerAgent : DroneAgent
         float pitch = Mathf.Clamp(actions.ContinuousActions[2], -1f, 1f);
         float yaw = Mathf.Clamp(actions.ContinuousActions[3], -1f, 1f);
 
+        ObstacleSafetySample obstacleSafety = SampleObstacleSafety();
+        ApplyObstacleBrakeAssist(ref roll, ref pitch, ref obstacleSafety);
+        StoreObstacleSafetySample(obstacleSafety);
+
         _dronePhysics.SetCommand(thrust, roll, pitch, yaw);
 
         bool hasTarget = TargetTransform != null;
@@ -397,7 +462,9 @@ public class PursuerAgent : DroneAgent
             targetVel: targetVel,
             isTargetVisible: _isTargetVisible,
             viewportOffset: _viewportOffset,
-            visualTargetArea: _targetColorBlobFraction));
+            visualTargetArea: _targetColorBlobFraction,
+            obstacleRisk: obstacleSafety.Risk,
+            obstacleClosingSpeed: obstacleSafety.ClosingSpeed));
 
         ReportPerceptionDiagnostics();
         CheckTerminationConditions();
@@ -555,6 +622,7 @@ public class PursuerAgent : DroneAgent
         _spawnSyncStepsRemaining = 0;
         _awaitingTargetSpawnPlacement = false;
         ResetPerceptionState();
+        ResetObstacleSafetyState();
         _rewardCalculator?.ResetEpisodeState();
 
         ResolveGoalZone();
@@ -599,6 +667,8 @@ public class PursuerAgent : DroneAgent
         if (_includeTargetTrackingObservations)
             observationSize += TargetTrackingObservationSize;
         observationSize += GroundTruthHintObservationSize;
+        if (_includeObstacleSafetyObservations)
+            observationSize += ObstacleSafetyObservationSize;
         if (_includeRayObservations)
             observationSize += RayObservationSize;
         return observationSize;
@@ -1232,6 +1302,173 @@ public class PursuerAgent : DroneAgent
         _lastLucasKanadeConfidence = 0f;
     }
 
+    private void ResetObstacleSafetyState()
+    {
+        _lastObstacleDetected = false;
+        _lastObstacleBrakeAssistActive = false;
+        _lastObstacleRisk = 0f;
+        _lastObstacleForwardRisk = 0f;
+        _lastObstacleClosingSpeed = 0f;
+        _lastObstacleDistance01 = 1f;
+        _lastObstacleSteerBias = 0f;
+    }
+
+    private ObstacleSafetySample SampleObstacleSafety()
+    {
+        if (!_useObstacleSafety || !IsDroneReady())
+            return new ObstacleSafetySample { Distance01 = 1f };
+
+        Vector3 forward = Vector3.ProjectOnPlane(transform.forward, Vector3.up);
+        if (forward.sqrMagnitude < 1e-6f)
+            forward = Vector3.forward;
+        forward.Normalize();
+
+        Vector3 right = Vector3.ProjectOnPlane(transform.right, Vector3.up);
+        if (right.sqrMagnitude < 1e-6f)
+            right = Vector3.Cross(Vector3.up, forward);
+        right.Normalize();
+
+        Vector3 origin = transform.position + Vector3.up * _obstacleProbeOriginYOffset;
+        Vector3 leftProbe = (forward - right * 0.65f).normalized;
+        Vector3 rightProbe = (forward + right * 0.65f).normalized;
+
+        bool hasFront = TryProbeObstacleRisk(origin, forward, out float frontRisk, out float frontClosing, out float frontDistance01);
+        bool hasLeft = TryProbeObstacleRisk(origin, leftProbe, out float leftRisk, out float leftClosing, out float leftDistance01);
+        bool hasRight = TryProbeObstacleRisk(origin, rightProbe, out float rightRisk, out float rightClosing, out float rightDistance01);
+
+        float weightedLeftRisk = leftRisk * _obstacleLateralProbeWeight;
+        float weightedRightRisk = rightRisk * _obstacleLateralProbeWeight;
+
+        return new ObstacleSafetySample
+        {
+            HasHit = hasFront || hasLeft || hasRight,
+            Risk = Mathf.Max(frontRisk, weightedLeftRisk, weightedRightRisk),
+            ForwardRisk = frontRisk,
+            ClosingSpeed = Mathf.Max(frontClosing, leftClosing * _obstacleLateralProbeWeight, rightClosing * _obstacleLateralProbeWeight),
+            Distance01 = Mathf.Min(frontDistance01, leftDistance01, rightDistance01),
+            SteerBias = Mathf.Clamp(leftRisk - rightRisk, -1f, 1f),
+        };
+    }
+
+    private void ApplyObstacleBrakeAssist(
+        ref float roll,
+        ref float pitch,
+        ref ObstacleSafetySample sample)
+    {
+        if (!_useObstacleSafety || !_enableObstacleBrakeAssist)
+            return;
+
+        float risk = sample.ForwardRisk;
+        if (risk < _obstacleBrakeRiskThreshold)
+            return;
+
+        float assist = Mathf.InverseLerp(_obstacleBrakeRiskThreshold, 1f, risk);
+        if (pitch > 0f)
+            pitch = Mathf.Lerp(pitch, pitch * _obstacleBrakePitchScale, assist);
+
+        pitch = Mathf.Clamp(
+            pitch - _obstacleBrakeReversePitch * assist * Mathf.Max(0.25f, sample.ClosingSpeed),
+            -1f,
+            1f);
+        roll = Mathf.Clamp(
+            roll + sample.SteerBias * _obstacleTurnAssist * assist,
+            -1f,
+            1f);
+
+        sample.BrakeAssistActive = assist > 0f;
+    }
+
+    private void StoreObstacleSafetySample(ObstacleSafetySample sample)
+    {
+        _lastObstacleDetected = sample.HasHit;
+        _lastObstacleBrakeAssistActive = sample.BrakeAssistActive;
+        _lastObstacleRisk = Mathf.Clamp01(sample.Risk);
+        _lastObstacleForwardRisk = Mathf.Clamp01(sample.ForwardRisk);
+        _lastObstacleClosingSpeed = Mathf.Clamp01(sample.ClosingSpeed);
+        _lastObstacleDistance01 = Mathf.Clamp01(sample.Distance01);
+        _lastObstacleSteerBias = Mathf.Clamp(sample.SteerBias, -1f, 1f);
+    }
+
+    private bool TryProbeObstacleRisk(
+        Vector3 origin,
+        Vector3 direction,
+        out float risk,
+        out float closingSpeed,
+        out float distance01)
+    {
+        risk = 0f;
+        closingSpeed = 0f;
+        distance01 = 1f;
+
+        if (direction.sqrMagnitude < 1e-6f)
+            return false;
+
+        int hitCount = Physics.SphereCastNonAlloc(
+            origin,
+            _obstacleProbeRadius,
+            direction.normalized,
+            _obstacleProbeHits,
+            _obstacleProbeDistance,
+            _obstacleMask,
+            QueryTriggerInteraction.Ignore);
+
+        float nearestDistance = float.MaxValue;
+        for (int i = 0; i < hitCount; i++)
+        {
+            RaycastHit hit = _obstacleProbeHits[i];
+            Collider hitCollider = hit.collider;
+            if (ShouldIgnoreObstacleCollider(hitCollider, origin))
+                continue;
+
+            nearestDistance = Mathf.Min(nearestDistance, Mathf.Max(0f, hit.distance));
+        }
+
+        if (nearestDistance == float.MaxValue)
+            return false;
+
+        float denom = Mathf.Max(0.01f, _obstacleProbeDistance - _obstacleCriticalDistance);
+        risk = 1f - Mathf.Clamp01((nearestDistance - _obstacleCriticalDistance) / denom);
+        distance01 = Mathf.Clamp01(nearestDistance / _obstacleProbeDistance);
+
+        Vector3 horizontalVelocity = Vector3.ProjectOnPlane(_dronePhysics.GetVelocity(), Vector3.up);
+        closingSpeed = Mathf.Clamp01(Vector3.Dot(horizontalVelocity, direction.normalized) / _maxObsSpeed);
+        return true;
+    }
+
+    private bool ShouldIgnoreObstacleCollider(Collider hitCollider, Vector3 origin)
+    {
+        if (hitCollider == null || hitCollider.isTrigger)
+            return true;
+
+        if (hitCollider.attachedRigidbody != null && hitCollider.attachedRigidbody == _rb)
+            return true;
+
+        Bounds bounds = hitCollider.bounds;
+        if (bounds.max.y < origin.y - _obstacleProbeRadius * 0.5f)
+            return true;
+
+        Transform hitTransform = hitCollider.transform;
+        if (hitTransform == transform || hitTransform.IsChildOf(transform))
+            return true;
+
+        if (TargetTransform != null &&
+            (hitTransform == TargetTransform || hitTransform.IsChildOf(TargetTransform)))
+        {
+            return true;
+        }
+
+        if (!string.IsNullOrEmpty(_targetTag) && hitCollider.CompareTag(_targetTag))
+            return true;
+
+        if (_goalZone != null &&
+            (hitTransform == _goalZone.transform || hitTransform.IsChildOf(_goalZone.transform)))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
     private void ReportPerceptionDiagnostics()
     {
         if (!_reportPerceptionDiagnostics)
@@ -1263,6 +1500,13 @@ public class PursuerAgent : DroneAgent
         stats.Add("Diagnostics/PursuerTimeSinceTargetSeen", _timeSinceTargetSeen);
         stats.Add("Diagnostics/PursuerGTHintActive", _lastGroundTruthHintActive ? 1f : 0f);
         stats.Add("Diagnostics/PursuerGTHintProbability", _lastGroundTruthHintProbability);
+        stats.Add("Diagnostics/PursuerObstacleDetected", _lastObstacleDetected ? 1f : 0f);
+        stats.Add("Diagnostics/PursuerObstacleRisk", _lastObstacleRisk);
+        stats.Add("Diagnostics/PursuerObstacleForwardRisk", _lastObstacleForwardRisk);
+        stats.Add("Diagnostics/PursuerObstacleClosingSpeed", _lastObstacleClosingSpeed);
+        stats.Add("Diagnostics/PursuerObstacleDistance01", _lastObstacleDistance01);
+        stats.Add("Diagnostics/PursuerObstacleSteerBias", _lastObstacleSteerBias);
+        stats.Add("Diagnostics/PursuerObstacleBrakeAssist", _lastObstacleBrakeAssistActive ? 1f : 0f);
     }
 
     private void ReleaseColorReadbackTexture()

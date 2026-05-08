@@ -184,7 +184,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_BrainParameters:
-    VectorObservationSize: 22
+    VectorObservationSize: 28
     NumStackedVectorObservations: 1
     m_ActionSpec:
       m_NumContinuousActions: 4
@@ -502,10 +502,25 @@ MonoBehaviour:
   _visibilityMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  _useObstacleSafety: 1
+  _obstacleMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  _obstacleProbeDistance: 8
+  _obstacleCriticalDistance: 2
+  _obstacleProbeRadius: 0.45
+  _obstacleProbeOriginYOffset: 0.15
+  _obstacleLateralProbeWeight: 0.75
+  _enableObstacleBrakeAssist: 1
+  _obstacleBrakeRiskThreshold: 0.55
+  _obstacleBrakePitchScale: 0.35
+  _obstacleBrakeReversePitch: 0.25
+  _obstacleTurnAssist: 0.25
   _maxDistance: 50
   _maxObsSpeed: 10
   _maxViewportSpeed: 4
   _includeTargetTrackingObservations: 1
+  _includeObstacleSafetyObservations: 1
   _includeRayObservations: 0
 --- !u!114 &6249942861304372141
 MonoBehaviour:
@@ -533,6 +548,8 @@ MonoBehaviour:
   _visualAreaRewardCoeff: 0.006
   _visualAreaGrowthCoeff: 0.02
   _maxVisualAreaDeltaPerStep: 0.01
+  _obstacleRiskPenaltyCoeff: 0.035
+  _obstacleClosingPenaltyCoeff: 0.025
   _maxObsSpeed: 10
   _timePenaltyPerStep: -0.001
   _maxDistanceDeltaPerStep: 0.5
@@ -540,7 +557,7 @@ MonoBehaviour:
   _captureReward: 5
   _evaderGoalPenalty: -2
   _timeoutPenalty: -1
-  _crashPenalty: -1.5
+  _crashPenalty: -2.5
 --- !u!114 &1804533257203389816
 MonoBehaviour:
   m_ObjectHideFlags: 0

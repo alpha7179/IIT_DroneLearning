@@ -36,6 +36,9 @@
 #       PursuerAgent._useColorTargetTracking = true
 #       PursuerAgent._useLucasKanadeFlow = true
 #       PursuerAgent._useTrainingGroundTruthHint = true for early curriculum only
+#       PursuerAgent._useObstacleSafety = true
+#       PursuerAgent._includeObstacleSafetyObservations = true
+#       PursuerAgent._enableObstacleBrakeAssist = true
 #       PursuerAgent._targetColor ~= Mat_Evader _BaseColor (1.0, 0.0568, 0.0)
 #       PursuerAgent._catchConfirmSteps = 3
 #       PursuerReward._useGroundTruthDenseShaping = false
@@ -89,7 +92,7 @@ behaviors:
     keep_checkpoints: 5
 
 # Notes
-# - This config assumes one RGB visual sensor and a 22D vector observation.
+# - This config assumes one RGB visual sensor and a 28D vector observation.
 #   If DroneDepth is enabled, it adds a second visual sensor but does not change
 #   the vector observation size.
 # - The 11D target feature block is filled from Evader color segmentation and
@@ -98,5 +101,8 @@ behaviors:
 #   during training and forced to zero outside BehaviorType=Default.
 # - The dense reward is capture-oriented: visibility, centering, and color blob
 #   area/growth help, but capture dominates.
+# - Collision safety uses an internal obstacle probe for reward/assist/diagnostics
+#   and a compact 6D safety observation; 26-ray distances remain excluded from
+#   policy observations.
 # - Route-following after building occlusion is intentionally excluded for this run.
 # - Pursuer spawn should start near the evader with immediate line-of-sight.

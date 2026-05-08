@@ -6,11 +6,12 @@ using UnityEngine;
 /// PursuerAgent에서 step reward를 분리해 Inspector 튜닝을 쉽게 만든다.
 /// strict camera-only 설정에서는 정책 의사결정에 영향을 줄 수 있는
 /// GT 거리 기반 dense shaping을 사용하지 않는다.
-/// 기본 shaping은 다음 네 가지다.
+/// 기본 shaping은 다음 다섯 가지다.
 ///   1. 카메라 내 시야 유지
 ///   2. 화면 중심 정렬
 ///   3. 화면 내 색상 blob 면적 증가
 ///   4. 타겟 상실 패널티
+///   5. 장애물 접근/closing speed 패널티
 /// </summary>
 public class PursuerReward : MonoBehaviour
 {
@@ -63,6 +64,13 @@ public class PursuerReward : MonoBehaviour
     [Tooltip("한 스텝에서 반영할 색상 blob 면적 변화량 상한")]
     [SerializeField] private float _maxVisualAreaDeltaPerStep = 0.01f;
 
+    [Header("Collision Safety")]
+    [Tooltip("전방/측면 장애물 risk에 대한 step penalty 계수")]
+    [SerializeField] private float _obstacleRiskPenaltyCoeff = 0.035f;
+
+    [Tooltip("장애물 방향으로 접근 중일 때 추가되는 step penalty 계수")]
+    [SerializeField] private float _obstacleClosingPenaltyCoeff = 0.025f;
+
     [Header("Observation Normalization")]
     [SerializeField] private float _maxObsSpeed = 10f;
 
@@ -81,7 +89,7 @@ public class PursuerReward : MonoBehaviour
     [SerializeField] private float _captureReward = 5.0f;
     [SerializeField] private float _evaderGoalPenalty = -2.0f;
     [SerializeField] private float _timeoutPenalty = -1.0f;
-    [SerializeField] private float _crashPenalty = -1.5f;
+    [SerializeField] private float _crashPenalty = -2.5f;
 
     private float _prevTargetDistance = float.MaxValue;
     private float _prevVisualTargetArea;
@@ -100,6 +108,8 @@ public class PursuerReward : MonoBehaviour
         _nearCatchDistance = Mathf.Max(0.1f, _nearCatchDistance);
         _visualAreaReference = Mathf.Clamp(_visualAreaReference, 0.0001f, 1f);
         _maxVisualAreaDeltaPerStep = Mathf.Clamp(_maxVisualAreaDeltaPerStep, 0.0001f, 1f);
+        _obstacleRiskPenaltyCoeff = Mathf.Max(0f, _obstacleRiskPenaltyCoeff);
+        _obstacleClosingPenaltyCoeff = Mathf.Max(0f, _obstacleClosingPenaltyCoeff);
         _maxDistanceDeltaPerStep = Mathf.Max(0.01f, _maxDistanceDeltaPerStep);
         _maxStepRewardMagnitude = Mathf.Max(0.001f, _maxStepRewardMagnitude);
     }
@@ -120,7 +130,9 @@ public class PursuerReward : MonoBehaviour
         Vector3 targetVel,
         bool isTargetVisible,
         Vector2 viewportOffset,
-        float visualTargetArea)
+        float visualTargetArea,
+        float obstacleRisk = 0f,
+        float obstacleClosingSpeed = 0f)
     {
         float reward = _timePenaltyPerStep;
 
@@ -208,6 +220,14 @@ public class PursuerReward : MonoBehaviour
         }
 
         _wasTargetVisible = isTargetVisible;
+
+        float clampedObstacleRisk = Mathf.Clamp01(obstacleRisk);
+        if (clampedObstacleRisk > 0f)
+        {
+            float clampedClosingSpeed = Mathf.Clamp01(obstacleClosingSpeed);
+            reward -= _obstacleRiskPenaltyCoeff * clampedObstacleRisk * clampedObstacleRisk;
+            reward -= _obstacleClosingPenaltyCoeff * clampedObstacleRisk * clampedClosingSpeed;
+        }
 
         return ClampStepReward(reward);
     }
