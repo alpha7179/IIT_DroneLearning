@@ -1559,3 +1559,12 @@ pre,
     animation: none;
   }
 }
+
+/* Unity Team route additions */
+.nav-links {
+  gap: clamp(0.55rem, 1.25vw, 1.35rem);
+}
+
+.nav-link {
+  letter-spacing: 0.1em;
+}

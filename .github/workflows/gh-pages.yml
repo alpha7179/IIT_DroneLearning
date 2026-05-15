@@ -30,6 +30,8 @@ jobs:
           test -f web/system/index.html
           test -f web/analysis/index.html
           test -f web/evader/index.html
+          test -f web/pursuer/index.html
+          test -f web/unity/index.html
           test -f web/roadmap/index.html
           test -f web/team/index.html
 

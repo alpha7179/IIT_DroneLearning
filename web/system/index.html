@@ -22,6 +22,7 @@
         <a class="nav-link" href="../analysis/" data-route="analysis">Analysis</a>
         <a class="nav-link" href="../evader/" data-route="evader">Evader</a>
         <a class="nav-link" href="../pursuer/" data-route="pursuer">Pursuer</a>
+        <a class="nav-link" href="../unity/" data-route="unity">Unity Team</a>
         <a class="nav-link" href="../roadmap/" data-route="roadmap">Roadmap</a>
         <a class="nav-link" href="../team/" data-route="team">Team</a>
       </nav>
@@ -34,7 +35,7 @@
       <div class="section-inner reveal">
         <p class="eyebrow">Architecture</p>
         <h1 class="section-title">System Overview</h1>
-        <p class="lead">Unity Digital Twin 환경과 Python 학습 파이프라인, Sim2Real 제어 계층을 하나의 흐름으로 설명합니다.</p>
+        <p class="lead">완료된 Unity Digital Twin 환경, Python 학습 파이프라인, Sim2Real 제어 계층을 하나의 흐름으로 설명합니다.</p>
         <div class="meta-strip">
           <span class="meta-chip">Unity 6</span>
           <span class="meta-chip">ML-Agents</span>
@@ -166,8 +167,8 @@
                 <tr><th>모듈</th><th>담당자</th><th>핵심 책임</th></tr>
               </thead>
               <tbody>
-                <tr><td>World / Physics</td><td>이강민</td><td>Unity 맵, 장애물, 스폰, PID 파이프라인, 에피소드 Reset</td></tr>
-                <tr><td>Sensor / Rendering</td><td>배민우</td><td>Ray 태그, 카메라, 노이즈 모델, LOS 역방향 Raycast</td></tr>
+                <tr><td>World / Physics</td><td>이강민</td><td>6-DOF 물리, PID 제어, 안정적 Reset, PlayMode 검증</td></tr>
+                <tr><td>Sensor / Rendering</td><td>배민우</td><td>도시 생성, 26방향 센서, RGB/Depth 카메라, 관제·공유 API</td></tr>
                 <tr><td>Pursuer RL</td><td>박재현</td><td>타겟 추적·차단, LSTM 예측, Pursuer 정책 학습</td></tr>
                 <tr><td>Evader RL</td><td>이재왕</td><td>목표 도달 + LOS 회피, 보상 설계, 실험 분석</td></tr>
               </tbody>
@@ -231,15 +232,15 @@
           <h3>학습 시나리오 흐름</h3>
           <ol style="margin: 0.9rem 0 0; padding-left: 1.2rem; color: var(--ink-soft);">
             <li>환경 초기화: 도심 맵에 Pursuer / Evader 무작위 스폰 (초기 거리 ≥ 15m)</li>
-            <li>단일 에이전트 학습: 기본 비행·목표 도달 학습 (Stage 0)</li>
-            <li>장애물 도입: 건물 환경에서 충돌 회피 + 경로 탐색 (Stage 1)</li>
-            <li>경쟁 학습 (Self-Play): 두 에이전트가 서로의 전략을 강화 (Stage 2)</li>
-            <li>Occlusion 전략: LOS 차단 상황에서 LSTM 예측 활성화 (Stage 3)</li>
-            <li>Sim2Real: 도메인 랜덤화 후 미학습 맵 일반화 검증 (Stage 4)</li>
+            <li>단일 에이전트 학습: 기본 비행·목표 도달 정책 검증 완료 (Stage 0)</li>
+            <li>장애물 도입: 건물 환경에서 충돌 회피 + 경로 탐색 검증 완료 (Stage 1)</li>
+            <li>경쟁 학습 (Self-Play): 추적자와 회피자의 상호작용 검증 완료 (Stage 2)</li>
+            <li>Occlusion 전략: LOS 차단과 재탐지 흐름 검증 완료 (Stage 3)</li>
+            <li>Sim2Real: 도메인 랜덤화와 미학습 맵 일반화 결과 정리 완료 (Stage 4)</li>
           </ol>
           <div class="callout info" style="margin-top: 1rem;">
-            <h4>진행 상황</h4>
-            <p>Stage0 목표 지표는 달성되었고(2026-03-21), 현재는 Stage1 장애물 환경에서 보상 하드닝과 재현성 검증을 진행 중입니다 (2026-04-08 기준).</p>
+            <h4>완료 상태</h4>
+            <p>핵심 개발 목표는 완료되었고, 현재는 최종 보고서·시연 영상·발표 자료·공개 문서를 제출 형태로 정리하고 있습니다.</p>
           </div>
         </article>
       </div>
@@ -258,6 +259,7 @@
         <a href="../analysis/">Analysis</a>
         <a href="../evader/">Evader</a>
         <a href="../pursuer/">Pursuer</a>
+        <a href="../unity/">Unity Team</a>
         <a href="../roadmap/">Roadmap</a>
         <a href="../team/">Team</a>
       </nav>
