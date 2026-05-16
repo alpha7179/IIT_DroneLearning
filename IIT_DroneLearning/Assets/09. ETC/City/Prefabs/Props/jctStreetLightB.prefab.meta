@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: a192b23e9af2f6f41843dd3a7784f34b
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 240217
+  packageName: Japanese City
+  packageVersion: 1.2
+  assetPath: Assets/JapaneseCity/Prefabs/Props/jctStreetLightB.prefab
+  uploadId: 754803

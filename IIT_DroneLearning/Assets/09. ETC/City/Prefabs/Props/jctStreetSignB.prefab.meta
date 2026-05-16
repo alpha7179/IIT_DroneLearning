@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: e4bdb4d5ddac0aa478810b7d32a1e8a4
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 240217
+  packageName: Japanese City
+  packageVersion: 1.2
+  assetPath: Assets/JapaneseCity/Prefabs/Props/jctStreetSignB.prefab
+  uploadId: 754803

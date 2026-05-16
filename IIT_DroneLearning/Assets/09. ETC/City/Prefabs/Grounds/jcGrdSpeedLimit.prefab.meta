@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: f2b0775e1a45ab94ab1b9bba1dddecea
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 240217
+  packageName: Japanese City
+  packageVersion: 1.2
+  assetPath: Assets/JapaneseCity/Prefabs/Grounds/jcGrdSpeedLimit.prefab
+  uploadId: 754803

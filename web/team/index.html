@@ -1,0 +1,146 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Team | IIT</title>
+  <meta name="description" content="Team roles and technology stack for IIT project">
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script defer src="../assets/app.js"></script>
+</head>
+<body data-page="team">
+  <header class="site-header" id="siteHeader">
+    <div class="nav-inner">
+      <a class="brand" href="../">
+        <i data-lucide="crosshair"></i>
+        <span>IIT</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a class="nav-link" href="../" data-route="home">Home</a>
+        <a class="nav-link" href="../system/" data-route="system">System</a>
+        <a class="nav-link" href="../analysis/" data-route="analysis">Analysis</a>
+        <a class="nav-link" href="../evader/" data-route="evader">Evader</a>
+        <a class="nav-link" href="../pursuer/" data-route="pursuer">Pursuer</a>
+        <a class="nav-link" href="../unity/" data-route="unity">Unity Team</a>
+        <a class="nav-link" href="../roadmap/" data-route="roadmap">Roadmap</a>
+        <a class="nav-link" href="../team/" data-route="team">Team</a>
+      </nav>
+      <a class="nav-cta" href="https://github.com/zaeee-wang/IIT_DroneLearning" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="page-hero" style="--hero-image: url('../assets/images/page-team-hero.jpg');">
+      <div class="section-inner reveal">
+        <p class="eyebrow">Members</p>
+        <h1 class="section-title">Team</h1>
+        <p class="lead">아주대학교 2026-1 파란학기. 4인 팀이 World·Sensor·Pursuer·Evader 역할을 분담하여 MARL 시스템을 구축합니다.</p>
+        <div class="meta-strip">
+          <span class="meta-chip">Advisor: 정소이 교수님</span>
+          <span class="meta-chip">미래모빌리티공학과</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section surface-section">
+      <div class="section-inner content-grid">
+        <article class="panel content-card reveal">
+          <h3>팀 구성</h3>
+          <div class="team-grid" style="margin-top: 0.9rem;">
+            <article class="panel member-card tilt-card">
+              <h4>이강민</h4>
+              <p class="member-role">World / Physics</p>
+              <ul class="member-list">
+                <li>드론 동역학 및 물리 엔진 구현</li>
+                <li>6-DOF 비행 모델 및 PID 파이프라인 제공</li>
+                <li>에피소드 Reset 이후 안정적 물리 초기화</li>
+                <li>PlayMode 테스트 기반 제어 검증</li>
+              </ul>
+              <p style="margin-top: 0.65rem;">디지털미디어학과 · <a href="https://github.com/grace-mi71" target="_blank" rel="noopener noreferrer">grace-mi71</a></p>
+            </article>
+
+            <article class="panel member-card tilt-card">
+              <h4>배민우</h4>
+              <p class="member-role">Sensor / Rendering</p>
+              <ul class="member-list">
+                <li>절차적 도심 환경 자동 생성</li>
+                <li>26방향 Ray 기반 센서 시스템</li>
+                <li>RGB·Depth 카메라 학습 입력 파이프라인</li>
+                <li>멀티 뷰포트 관제 및 공유 API 제공</li>
+              </ul>
+              <p style="margin-top: 0.65rem;">디지털미디어학과 · <a href="https://github.com/alpha7179" target="_blank" rel="noopener noreferrer">alpha7179</a></p>
+            </article>
+
+            <article class="panel member-card tilt-card">
+              <h4>박재현</h4>
+              <p class="member-role">Pursuer RL</p>
+              <ul class="member-list">
+                <li>추격자(Tracker) 정책 학습</li>
+                <li>LSTM 기반 Occlusion 예측 추적 모델</li>
+                <li>Self-Play Pursuer 인터페이스 제공</li>
+                <li>Stage 0용 Scripted baseline 구현</li>
+              </ul>
+              <p style="margin-top: 0.65rem;">소프트웨어학과 · <a href="https://github.com/jhparktime" target="_blank" rel="noopener noreferrer">jhparktime</a></p>
+            </article>
+
+            <article class="panel member-card tilt-card">
+              <h4>이재왕</h4>
+              <p class="member-role">Evader RL</p>
+              <ul class="member-list">
+                <li>회피자(Evader) 정책 학습 및 실험 분석</li>
+                <li>보상 함수 설계 및 Stage 커리큘럼 운영</li>
+                <li>8종 경로 탐색 알고리즘 벤치마크 수행</li>
+                <li>Eval 파이프라인 및 결과 정량 분석</li>
+              </ul>
+              <p style="margin-top: 0.65rem;">소프트웨어학과 · <a href="https://github.com/zaeee-wang" target="_blank" rel="noopener noreferrer">zaeee-wang</a></p>
+            </article>
+          </div>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>기술 스택</h3>
+          <div class="table-wrap" style="margin-top: 0.9rem;">
+            <table>
+              <thead>
+                <tr><th>레이어</th><th>기술</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>시뮬레이션 엔진</td><td>Unity 6000.0.58f2 + URP 17.0.4</td></tr>
+                <tr><td>RL 프레임워크</td><td>ML-Agents 4.0.x</td></tr>
+                <tr><td>딥러닝</td><td>Python 3.10, PyTorch 2.x</td></tr>
+                <tr><td>알고리즘</td><td>PPO, Self-Play, Curriculum Learning, LSTM</td></tr>
+                <tr><td>시각화</td><td>TensorBoard, Matplotlib</td></tr>
+                <tr><td>학습 인프라</td><td>Google Colab Pro+ (Headless Linux)</td></tr>
+                <tr><td>버전 관리</td><td>Git / GitHub</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div>
+        <p class="footer-brand"><i data-lucide="crosshair"></i> IIT</p>
+        <p>Urban Drone Pursuit-Evasion MARL System · 2026</p>
+      </div>
+      <nav class="footer-nav" aria-label="Footer">
+        <a href="../">Home</a>
+        <a href="../system/">System</a>
+        <a href="../analysis/">Analysis</a>
+        <a href="../evader/">Evader</a>
+        <a href="../pursuer/">Pursuer</a>
+        <a href="../unity/">Unity Team</a>
+        <a href="../roadmap/">Roadmap</a>
+        <a href="../team/">Team</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>
+
+

@@ -1,0 +1,200 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Evader Progress | IIT</title>
+  <meta name="description" content="Evader RL design, observation, reward, and curriculum">
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script defer src="../assets/app.js"></script>
+</head>
+<body data-page="evader">
+  <header class="site-header" id="siteHeader">
+    <div class="nav-inner">
+      <a class="brand" href="../">
+        <i data-lucide="crosshair"></i>
+        <span>IIT</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a class="nav-link" href="../" data-route="home">Home</a>
+        <a class="nav-link" href="../system/" data-route="system">System</a>
+        <a class="nav-link" href="../analysis/" data-route="analysis">Analysis</a>
+        <a class="nav-link" href="../evader/" data-route="evader">Evader</a>
+        <a class="nav-link" href="../pursuer/" data-route="pursuer">Pursuer</a>
+        <a class="nav-link" href="../unity/" data-route="unity">Unity Team</a>
+        <a class="nav-link" href="../roadmap/" data-route="roadmap">Roadmap</a>
+        <a class="nav-link" href="../team/" data-route="team">Team</a>
+      </nav>
+      <a class="nav-cta" href="https://github.com/zaeee-wang/IIT_DroneLearning" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="page-hero" style="--hero-image: url('../assets/images/page-evader-hero.jpg');">
+      <div class="section-inner reveal">
+        <p class="eyebrow">Evader Stream</p>
+        <h1 class="section-title">Evader Progress</h1>
+        <p class="lead">회피 정책 설계와 실험 로그를 연결해 Stage0부터 Sim2Real 일반화까지 완료된 흐름을 정리합니다.</p>
+        <div class="meta-strip">
+          <span class="meta-chip">Owner: 이재왕</span>
+          <span class="meta-chip">Branch: work/evader</span>
+          <span class="meta-chip">Last Updated: 2026-05-15</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section surface-section">
+      <div class="section-inner content-grid">
+        <article class="panel content-card reveal">
+          <h3>완료 스냅샷 (2026-05-15)</h3>
+          <div class="table-wrap" style="margin-top: 0.9rem;">
+            <table>
+              <thead>
+                <tr><th>구간</th><th>상태</th><th>핵심 결과</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Stage0 (Ray + 힌트)</td><td>완료</td><td>50eps eval: survival 100%, goal 68%, capture 0%</td></tr>
+                <tr><td>Stage1 (장애물 + 힌트 제거)</td><td>완료</td><td>v13c rootfix 기준 장애물 회피 보상과 scene 동기화 이슈 정리</td></tr>
+                <tr><td>Stage2 (Self-Play)</td><td>완료</td><td>RL Pursuer와의 경쟁 학습 흐름을 최종 시나리오에 반영</td></tr>
+                <tr><td>Stage3 (Vision + LOS)</td><td>완료</td><td>건물 뒤 가림과 재탐지 상황을 설명 가능한 지표로 정리</td></tr>
+                <tr><td>Stage4 (Sim2Real)</td><td>완료</td><td>도메인 랜덤화와 일반화 검증 결과를 최종 산출물에 포함</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>Stage0 달성 결과</h3>
+          <div class="table-wrap" style="margin-top: 0.9rem;">
+            <table>
+              <thead>
+                <tr><th>날짜</th><th>run-id</th><th>지표</th><th>비고</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>2026-03-21</td><td>`evader_s0_flat_seed42_v3`</td><td>survival 100% / goal 68% / capture 0% / crash 0%</td><td>M1 기준 충족</td></tr>
+                <tr><td>2026-03-27</td><td>`evader_s0_flat_44d_v6_seed42`</td><td>50eps eval 유지, peak reward 6.676</td><td>dead-zone 보정 반영</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="margin-top: 0.8rem;">Stage0는 목표 달성과 생존 안정화가 확인되어 Stage1 warm-start의 기반 모델로 고정했습니다.</p>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>Stage1 검증 로그 요약</h3>
+          <div class="split-two" style="margin-top: 0.9rem;">
+            <div class="panel content-card" style="box-shadow:none; border-style:dashed;">
+              <h4>안정 구간</h4>
+              <div class="table-wrap" style="margin-top: 0.6rem;">
+                <table>
+                  <thead>
+                    <tr><th>run-id</th><th>학습 구간</th><th>결과</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>`v1`</td><td>500k</td><td>peak +2.669, 호버링 착취 패턴 확인</td></tr>
+                    <tr><td>`v5`</td><td>1M</td><td>peak +9.542, final +5.991</td></tr>
+                    <tr><td>`v13wallfocus`</td><td>100k gate</td><td>final +13.596</td></tr>
+                    <tr><td>`v13crootfix`</td><td>resume to 250k</td><td>final +11.684, peak +14.592</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="panel content-card" style="box-shadow:none; border-style:dashed;">
+              <h4>핵심 이슈와 조치</h4>
+              <div class="table-wrap" style="margin-top: 0.6rem;">
+                <table>
+                  <thead>
+                    <tr><th>이슈</th><th>영향</th><th>조치</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>goalProximityBonus 착취</td><td>goal 근처 호버링 유도</td><td>해당 보상 제거 + timePenalty 강화</td></tr>
+                    <tr><td>MaxEpisodeSeconds scene 미동기화</td><td>timeout 과다 발생</td><td>scene 재저장/검증 루틴 문서화</td></tr>
+                    <tr><td>장애물 회피 신호 약함</td><td>벽면 충돌 반복</td><td>obstacle-aware velocity reward 적용</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p style="margin-top: 0.65rem;">기준 문서: `Docs/EXPERIMENTS.md`, `Docs/URGENT_FIX_MaxEpisodeSeconds.md`</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>현재 정책/인터페이스 확정 항목</h3>
+          <pre style="margin-top: 0.9rem;">R_total =
+  + w_shaping  * (d_prev - d_now)
+  + w_survival * 1
+  + w_occlusion * R_los
+  + w_time     * (-1)
+  + [Goal Reached] +1.0
+  + [Captured]     -1.0
+  + [Timeout]      +0.2
+  + [Crash]        -1.0</pre>
+          <div class="callout info" style="margin-top: 0.9rem;">
+            <h4>행동 공간 (고정)</h4>
+            <p>4D continuous action (`thrust`, `roll_rate`, `pitch_rate`, `yaw_rate`) + PID 제어 계층(50Hz) 구조는 유지합니다.</p>
+          </div>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>Stage 완료 흐름</h3>
+          <div class="mermaid-wrap" style="margin-top: 0.8rem;">
+            <pre class="mermaid">graph LR
+    S0["Stage 0 완료"] --> S1["Stage 1 장애물 검증 완료"]
+    S1 -->|"보상·scene 동기화 정리"| S2["Stage 2 Self-Play 완료"]
+    S2 -->|"RL Pursuer 연동"| S3["Stage 3 Vision + LOS 완료"]
+    S3 --> S4["Stage 4 Domain Random Sim2Real 완료"]</pre>
+          </div>
+          <p style="margin-top: 0.8rem;">각 Stage는 이전 Stage 체크포인트를 warm-start로 이어 받아 최종 시나리오까지 안정적으로 연결했습니다.</p>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>최종 정리 액션</h3>
+          <ol style="margin: 0.9rem 0 0; padding-left: 1.2rem; color: var(--ink-soft);">
+            <li>실험 로그와 대표 그래프를 최종 보고서 형식으로 정리</li>
+            <li>시연 영상에서 회피·가림·재탐지 장면이 이해되도록 캡션 추가</li>
+            <li>재현 가능한 설정 파일과 체크포인트 사용법을 공개 문서로 정리</li>
+          </ol>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>평가 지표 기준</h3>
+          <div class="table-wrap" style="margin-top: 0.9rem;">
+            <table>
+              <thead>
+                <tr><th>지표</th><th>설명</th><th>사용 구간</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>survival_rate</td><td>timeout까지 생존 비율</td><td>Stage0~</td></tr>
+                <tr><td>goal_reach_rate</td><td>목표 지점 도달 비율</td><td>Stage0~</td></tr>
+                <tr><td>capture_rate</td><td>포획 에피소드 비율</td><td>Stage0~</td></tr>
+                <tr><td>mean_time_to_capture</td><td>포획까지 평균 시간</td><td>Stage1~</td></tr>
+                <tr><td>los_break_rate</td><td>LOS 차단 성공 비율</td><td>Stage2+</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div>
+        <p class="footer-brand"><i data-lucide="crosshair"></i> IIT</p>
+        <p>Urban Drone Pursuit-Evasion MARL System · 2026</p>
+      </div>
+      <nav class="footer-nav" aria-label="Footer">
+        <a href="../">Home</a>
+        <a href="../system/">System</a>
+        <a href="../analysis/">Analysis</a>
+        <a href="../evader/">Evader</a>
+        <a href="../pursuer/">Pursuer</a>
+        <a href="../unity/">Unity Team</a>
+        <a href="../roadmap/">Roadmap</a>
+        <a href="../team/">Team</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

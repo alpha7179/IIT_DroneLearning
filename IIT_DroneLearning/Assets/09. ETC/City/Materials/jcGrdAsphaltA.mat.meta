@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: d171468bcea94da4d8b281d1f00e82bf
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 240217
+  packageName: Japanese City
+  packageVersion: 1.2
+  assetPath: Assets/JapaneseCity/Materials/jcGrdAsphaltA.mat
+  uploadId: 754803

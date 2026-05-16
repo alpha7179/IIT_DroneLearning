@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 5b020820c7f60a04584193d01e238772
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 240217
+  packageName: Japanese City
+  packageVersion: 1.2
+  assetPath: Assets/JapaneseCity/Materials/jctStreetSignA_en.mat
+  uploadId: 754803

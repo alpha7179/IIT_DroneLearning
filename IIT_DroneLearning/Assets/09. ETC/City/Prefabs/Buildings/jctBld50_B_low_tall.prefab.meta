@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: ef9192c1240777e4b827399896ff2908
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 240217
+  packageName: Japanese City
+  packageVersion: 1.2
+  assetPath: Assets/JapaneseCity/Prefabs/Buildings/jctBld50_B_low_tall.prefab
+  uploadId: 754803

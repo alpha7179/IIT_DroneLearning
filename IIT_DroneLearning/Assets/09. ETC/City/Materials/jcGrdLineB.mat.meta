@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: f1418d83df419524bb7753dcb755d96b
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 240217
+  packageName: Japanese City
+  packageVersion: 1.2
+  assetPath: Assets/JapaneseCity/Materials/jcGrdLineB.mat
+  uploadId: 754803

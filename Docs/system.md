@@ -1,5 +1,5 @@
-<div class="featured-split">
-<div class="featured-split__image featured-split__svg">
+<div class="drone-split">
+<div class="drone-split__media">
 <svg viewBox="0 0 400 320" fill="none" xmlns="http://www.w3.org/2000/svg">
   <circle cx="200" cy="60" r="28" stroke="rgba(244,245,240,0.18)" stroke-width="1"/>
   <circle cx="80" cy="180" r="20" stroke="rgba(244,245,240,0.12)" stroke-width="1"/>
@@ -20,10 +20,10 @@
   <circle cx="320" cy="180" r="3" fill="rgba(244,245,240,0.3)"/>
 </svg>
 </div>
-<div class="featured-split__content">
-  <span class="featured-split__tag">Architecture</span>
-  <div class="featured-split__title">System Overview</div>
-  <p class="featured-split__desc">Unity Digital Twin 환경과 Python 학습 파이프라인이 ML-Agents를 통해 연결되는 전체 시스템 구조와 Sim2Real 제어 계층을 설명합니다.</p>
+<div class="drone-split__content">
+  <p class="drone-badge">Architecture</p>
+  <div class="drone-split__title">System Overview</div>
+  <p class="drone-split__desc">Unity Digital Twin 환경과 Python 학습 파이프라인이 ML-Agents를 통해 연결되는 전체 시스템 구조와 Sim2Real 제어 계층을 설명합니다.</p>
 </div>
 </div>
 

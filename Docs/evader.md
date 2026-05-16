@@ -1,5 +1,5 @@
-<div class="featured-split">
-<div class="featured-split__image featured-split__svg">
+<div class="drone-split">
+<div class="drone-split__media">
 <svg viewBox="0 0 400 320" fill="none" xmlns="http://www.w3.org/2000/svg">
   <path d="M60 260 C100 220 140 180 180 140 C210 110 230 90 260 100 C290 110 300 140 320 120 C340 100 350 70 370 60" stroke="rgba(244,245,240,0.15)" stroke-width="1.5" fill="none"/>
   <path d="M60 260 C100 200 160 160 200 130 C240 100 270 80 310 70" stroke="rgba(200,212,184,0.12)" stroke-width="1" fill="none" stroke-dasharray="4 6"/>
@@ -14,10 +14,10 @@
   <rect x="300" y="170" width="35" height="35" stroke="rgba(244,245,240,0.06)" stroke-width="1" fill="none"/>
 </svg>
 </div>
-<div class="featured-split__content">
-  <span class="featured-split__tag">RL Design</span>
-  <div class="featured-split__title">Evader Design</div>
-  <p class="featured-split__desc">회피 드론이 목표 지점에 도달하면서 추격자의 시선(LOS)을 차단하는 전략을 학습하는 PPO 기반 에이전트 설계.</p>
+<div class="drone-split__content">
+  <p class="drone-badge">RL Design</p>
+  <div class="drone-split__title">Evader Design</div>
+  <p class="drone-split__desc">회피 드론이 목표 지점에 도달하면서 추격자의 시선(LOS)을 차단하는 전략을 학습하는 PPO 기반 에이전트 설계.</p>
 </div>
 </div>
 

@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Unity Team | IIT</title>
+  <meta name="description" content="Unity environment, drone physics, sensor, camera, and monitoring contributions">
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script defer src="../assets/app.js"></script>
+</head>
+<body data-page="unity">
+  <header class="site-header" id="siteHeader">
+    <div class="nav-inner">
+      <a class="brand" href="../">
+        <i data-lucide="crosshair"></i>
+        <span>IIT</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a class="nav-link" href="../" data-route="home">Home</a>
+        <a class="nav-link" href="../system/" data-route="system">System</a>
+        <a class="nav-link" href="../analysis/" data-route="analysis">Analysis</a>
+        <a class="nav-link" href="../evader/" data-route="evader">Evader</a>
+        <a class="nav-link" href="../pursuer/" data-route="pursuer">Pursuer</a>
+        <a class="nav-link" href="../unity/" data-route="unity">Unity Team</a>
+        <a class="nav-link" href="../roadmap/" data-route="roadmap">Roadmap</a>
+        <a class="nav-link" href="../team/" data-route="team">Team</a>
+      </nav>
+      <a class="nav-cta" href="https://github.com/zaeee-wang/IIT_DroneLearning" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="page-hero" style="--hero-image: url('../assets/images/page-unity-hero.jpg');">
+      <div class="section-inner reveal">
+        <p class="eyebrow">Unity Team</p>
+        <h1 class="section-title">World, Physics &amp; Sensors</h1>
+        <p class="lead">강화학습 에이전트가 실제처럼 보고, 움직이고, 반복해서 배울 수 있도록 만든 Unity 기반 훈련장입니다.</p>
+        <div class="meta-strip">
+          <span class="meta-chip">이강민 · Drone Physics</span>
+          <span class="meta-chip">배민우 · World / Sensor</span>
+          <span class="meta-chip">Simulation Foundation</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section surface-section">
+      <div class="section-inner content-grid">
+        <article class="panel content-card reveal">
+          <h3>Unity 팀이 만든 것</h3>
+          <p>이 프로젝트에서 Unity 팀은 단순히 배경을 만든 것이 아닙니다. AI가 훈련할 도시, 드론이 실제처럼 움직이는 물리 계층, 주변을 감지하는 센서, 학습 과정을 확인하는 관제 화면까지 전체 실험 무대를 만들었습니다.</p>
+          <div class="split-two" style="margin-top: 1rem;">
+            <div class="callout success">
+              <h4>드론의 몸과 제어</h4>
+              <p>이강민은 드론이 순간이동하는 물체가 아니라 질량, 추력, 자세를 가진 비행체처럼 움직이도록 물리 기반을 구현했습니다.</p>
+            </div>
+            <div class="callout info">
+              <h4>AI가 배우는 환경과 감각</h4>
+              <p>배민우는 도시, 센서, 카메라, 관제 시스템을 구성해 에이전트가 보고 판단할 수 있는 학습 환경을 완성했습니다.</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>이강민 · Drone Physics</h3>
+          <div class="split-two" style="margin-top: 0.9rem;">
+            <div class="callout info">
+              <h4>6-DOF 물리 기반</h4>
+              <p>드론이 앞뒤·좌우·상하 이동과 roll, pitch, yaw 회전을 모두 가진 비행체로 동작하도록 구성했습니다.</p>
+            </div>
+            <div class="callout success">
+              <h4>PID 제어</h4>
+              <p>드론이 고도와 자세를 안정적으로 유지하도록, 목표값과 실제 움직임의 차이를 계속 보정하는 제어기를 만들었습니다.</p>
+            </div>
+            <div class="callout tip">
+              <h4>Reset 안정화</h4>
+              <p>반복 실험 때 이전 비행의 속도나 회전이 남지 않도록, 매 에피소드가 같은 기준 상태에서 시작되게 했습니다.</p>
+            </div>
+            <div class="callout warning">
+              <h4>검증 가능한 테스트</h4>
+              <p>단독 테스트 씬과 PlayMode 테스트를 통해 yaw 반응, 정지 시 감쇠, reset 안정성을 확인했습니다.</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>배민우 · World / Sensor / Rendering</h3>
+          <div class="split-two" style="margin-top: 0.9rem;">
+            <div class="callout info">
+              <h4>도시 자동 생성</h4>
+              <p>건물 밀도, 격자 크기, 높이를 바꿔 다양한 도심을 만들고, 같은 seed로 같은 도시를 재현할 수 있게 했습니다.</p>
+            </div>
+            <div class="callout success">
+              <h4>26방향 센서</h4>
+              <p>드론 주변 360도를 Raycast로 감지해, 실제 LiDAR처럼 장애물까지의 거리를 학습 입력으로 제공했습니다.</p>
+            </div>
+            <div class="callout tip">
+              <h4>RGB / Depth 카메라</h4>
+              <p>드론 1인칭 화면과 깊이 영상을 함께 만들어, 거리 숫자뿐 아니라 시각 정보도 활용할 수 있게 했습니다.</p>
+            </div>
+            <div class="callout warning">
+              <h4>관제와 공유 API</h4>
+              <p>여러 드론의 시점을 한 화면에서 보고, 최단 경로·시야 확인·스폰 위치 같은 공통 기능을 팀이 함께 쓰도록 만들었습니다.</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>Unity 기반 학습 흐름</h3>
+          <div class="diagram-board diagram-board--architecture">
+            <div class="diagram-lane">
+              <div class="diagram-lane__head">
+                <span>World</span>
+                <small>배경이 아니라 훈련장</small>
+              </div>
+              <div class="diagram-flow">
+                <div class="diagram-node">
+                  <i data-lucide="building-2"></i>
+                  <strong>Procedural City</strong>
+                  <span>다양한 도심 지형 생성</span>
+                </div>
+                <div class="diagram-arrow" aria-hidden="true"></div>
+                <div class="diagram-node">
+                  <i data-lucide="plane"></i>
+                  <strong>Drone Physics</strong>
+                  <span>질량·추력·자세 제어</span>
+                </div>
+                <div class="diagram-arrow" aria-hidden="true"></div>
+                <div class="diagram-node">
+                  <i data-lucide="radar"></i>
+                  <strong>Sensors</strong>
+                  <span>Ray, Camera, Depth</span>
+                </div>
+              </div>
+            </div>
+            <div class="diagram-lane">
+              <div class="diagram-lane__head">
+                <span>Training Loop</span>
+                <small>보고 움직이고 다시 배우기</small>
+              </div>
+              <div class="diagram-flow">
+                <div class="diagram-node">
+                  <i data-lucide="eye"></i>
+                  <strong>Observe</strong>
+                  <span>거리와 화면 정보를 관측</span>
+                </div>
+                <div class="diagram-arrow" aria-hidden="true"></div>
+                <div class="diagram-node">
+                  <i data-lucide="brain"></i>
+                  <strong>Policy</strong>
+                  <span>추적·회피 행동 결정</span>
+                </div>
+                <div class="diagram-arrow" aria-hidden="true"></div>
+                <div class="diagram-node">
+                  <i data-lucide="repeat-2"></i>
+                  <strong>Reset &amp; Log</strong>
+                  <span>반복 실험과 결과 기록</span>
+                </div>
+              </div>
+            </div>
+            <p class="diagram-note">Unity 팀의 작업 덕분에 AI 팀은 “어디로 움직일지”에 집중하고, 물리·센서·환경은 공통 기반으로 안정적으로 사용할 수 있었습니다.</p>
+          </div>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>구현 근거 요약</h3>
+          <div class="table-wrap" style="margin-top: 0.9rem;">
+            <table>
+              <thead>
+                <tr><th>담당</th><th>대표 구현</th><th>프로젝트에서의 의미</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>이강민</td><td>DronePhysics, PIDController, ResetPhysics, PlayMode Tests</td><td>드론이 안정적으로 뜨고 반복 실험 가능한 물리 기반 제공</td></tr>
+                <tr><td>배민우</td><td>Procedural City, 26-ray Sensor, RGB/Depth Camera, Multi Viewport, Shared API</td><td>AI가 다양한 도시에서 보고 판단할 수 있는 학습 환경 제공</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div>
+        <p class="footer-brand"><i data-lucide="crosshair"></i> IIT</p>
+        <p>Urban Drone Pursuit-Evasion MARL System · 2026</p>
+      </div>
+      <nav class="footer-nav" aria-label="Footer">
+        <a href="../">Home</a>
+        <a href="../system/">System</a>
+        <a href="../analysis/">Analysis</a>
+        <a href="../evader/">Evader</a>
+        <a href="../pursuer/">Pursuer</a>
+        <a href="../unity/">Unity Team</a>
+        <a href="../roadmap/">Roadmap</a>
+        <a href="../team/">Team</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 33f8ae17e03d90d409df850d4aba752a
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 240217
+  packageName: Japanese City
+  packageVersion: 1.2
+  assetPath: Assets/JapaneseCity/Materials/jctHedgeLeaves.mat
+  uploadId: 754803

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 902ff45437f7db44288a4b1f724b8d34
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 240217
+  packageName: Japanese City
+  packageVersion: 1.2
+  assetPath: Assets/JapaneseCity/Materials/jcBldBaseD.mat
+  uploadId: 754803

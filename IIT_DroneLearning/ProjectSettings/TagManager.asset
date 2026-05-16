@@ -8,6 +8,8 @@ TagManager:
   - Goal
   - Evader
   - Pursuer
+  - Building
+  - Wall
   layers:
   - Default
   - TransparentFX
@@ -17,11 +19,11 @@ TagManager:
   - UI
   - 
   - Mark
-  - 
-  - 
-  - 
-  - 
-  - 
+  - Building
+  - Ground
+  - Wall
+  - DroneMesh
+  - BoxMesh
   - 
   - 
   - 

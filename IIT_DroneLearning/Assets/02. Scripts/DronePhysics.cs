@@ -101,11 +101,15 @@ public bool EnableAntiWindup = true;
     [SerializeField, HideInInspector]
     private int _legacyMigrationVersion = 0;
 
+    [Header("Animation")]
+    public bool EnableAnimationControl = true;
+
     private Rigidbody _rb;
     private PIDController _altPID;
     private PIDController _rollPID;
     private PIDController _pitchPID;
     private PIDController _yawPID;
+    private Animator _animator;
 
     private float _targetAltitude;
     private float _targetRoll;
@@ -121,6 +125,10 @@ public bool EnableAntiWindup = true;
     private void Awake()
     {
         _rb = GetComponent<Rigidbody>();
+
+        _animator = GetComponent<Animator>();
+        if (_animator != null && EnableAnimationControl)
+            _animator.Play("Idle", 0, 0f);
         _rb.mass = Mass;
         _rb.useGravity = true;
         _rb.linearDamping = LinearDrag;
@@ -141,6 +149,18 @@ public bool EnableAntiWindup = true;
         _targetYawDeg = transform.eulerAngles.y;
         _yawRateInput = 0f;
         _throttleInput = 0f;
+    }
+
+    private void Update()
+    {
+        if (!EnableAnimationControl || _animator == null)
+            return;
+
+        if (Input.GetKeyDown(KeyCode.T))
+            _animator.SetTrigger("TakeOffTrigger");
+
+        if (Input.GetKeyDown(KeyCode.L))
+            _animator.SetTrigger("LandTrigger");
     }
 
     private void FixedUpdate()

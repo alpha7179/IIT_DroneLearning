@@ -27,12 +27,11 @@ namespace DroneCamera
     public class DroneCameraSystem : MonoBehaviour
     {
         [Header("카메라 위치")]
-        [Tooltip("카메라 좌우·상하 오프셋 (드론 로컬 X·Y 좌표)")]
-        public Vector2 cameraLateralOffset = new Vector2(0f, 0f);
+        [Tooltip("드론 로컬 좌표 기준 카메라 위치\nX = 좌우, Y = 상하, Z = 전방(+) / 후방(-)\nOnValidate에서 실시간 반영됨")]
+        public Vector3 cameraLocalPosition = new Vector3(0f, 0f, 0.5f);
 
-        [Tooltip("드론으로부터 카메라까지의 전방 거리 (드론 로컬 +Z)")]
-        [Range(0f, 100f)]
-        public float cameraDistance = 0.5f;
+        [Tooltip("드론 로컬 기준 카메라 회전 (Euler 각도, 도)\nX = Pitch (상하), Y = Yaw (좌우), Z = Roll\nOnValidate에서 실시간 반영됨")]
+        public Vector3 cameraLocalEulerAngles = Vector3.zero;
 
         [Header("카메라 설정")]
         [Tooltip("카메라 Field of View")]
@@ -44,6 +43,10 @@ namespace DroneCamera
 
         [Tooltip("카메라 Far Clip Plane")]
         public float farClipPlane = 500f;
+
+        [Header("Layer Visibility")]
+        [Tooltip("Solo / MultiView 카메라가 렌더링할 레이어 마스크. \"Mark\" 레이어는 이 마스크와 무관하게 항상 제외된다.")]
+        public LayerMask cullingMask = ~0;
 
         /// <summary>개별 디스플레이용 카메라 (단독 전체 화면)</summary>
         public Camera Camera { get; private set; }
@@ -66,21 +69,17 @@ namespace DroneCamera
             // 개별 디스플레이용 카메라
             var soloGO = new GameObject("DroneCamera_Solo");
             soloGO.transform.SetParent(transform, false);
-            soloGO.transform.localRotation = Quaternion.identity;
             _cameraTransform = soloGO.transform;
             Camera = soloGO.AddComponent<Camera>();
-            ExcludeMarkLayer(Camera);
             ApplyCameraSettings();
 
             // 다중뷰(Display 1) 분할용 카메라
             var multiGO = new GameObject("DroneCamera_MultiView");
             multiGO.transform.SetParent(transform, false);
-            multiGO.transform.localRotation = Quaternion.identity;
             _multiViewTransform = multiGO.transform;
             MultiViewCamera = multiGO.AddComponent<Camera>();
             MultiViewCamera.targetDisplay = 0;
             MultiViewCamera.enabled = false;
-            ExcludeMarkLayer(MultiViewCamera);
             ApplyCameraSettingsTo(MultiViewCamera);
 
             ApplyCameraPosition();
@@ -192,13 +191,18 @@ namespace DroneCamera
 
         private void ApplyCameraPosition()
         {
-            var localPos = new Vector3(
-                cameraLateralOffset.x,
-                cameraLateralOffset.y,
-                cameraDistance);
+            Quaternion localRot = Quaternion.Euler(cameraLocalEulerAngles);
 
-            if (_cameraTransform != null)    _cameraTransform.localPosition    = localPos;
-            if (_multiViewTransform != null) _multiViewTransform.localPosition = localPos;
+            if (_cameraTransform != null)
+            {
+                _cameraTransform.localPosition = cameraLocalPosition;
+                _cameraTransform.localRotation = localRot;
+            }
+            if (_multiViewTransform != null)
+            {
+                _multiViewTransform.localPosition = cameraLocalPosition;
+                _multiViewTransform.localRotation = localRot;
+            }
         }
 
         private void ApplyCameraSettings()
@@ -211,6 +215,8 @@ namespace DroneCamera
             cam.fieldOfView   = fieldOfView;
             cam.nearClipPlane = nearClipPlane;
             cam.farClipPlane  = farClipPlane;
+            cam.cullingMask   = cullingMask;
+            ExcludeMarkLayer(cam);
         }
 
         /// <summary>

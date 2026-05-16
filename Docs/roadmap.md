@@ -1,5 +1,5 @@
-<div class="featured-split">
-<div class="featured-split__image featured-split__svg">
+<div class="drone-split">
+<div class="drone-split__media">
 <svg viewBox="0 0 400 320" fill="none" xmlns="http://www.w3.org/2000/svg">
   <line x1="200" y1="20" x2="200" y2="300" stroke="rgba(244,245,240,0.1)" stroke-width="1"/>
   <circle cx="200" cy="50"  r="5" fill="rgba(200,212,184,0.5)"/>
@@ -19,10 +19,10 @@
   <text x="278" y="254" font-size="10" fill="rgba(244,245,240,0.1)"  font-family="sans-serif">M6</text>
 </svg>
 </div>
-<div class="featured-split__content">
-  <span class="featured-split__tag">Planning</span>
-  <div class="featured-split__title">Roadmap</div>
-  <p class="featured-split__desc">아주대학교 2026-1 파란학기 16주 일정. Stage 0 환경 구축부터 Sim2Real 검증까지의 마일스톤 계획.</p>
+<div class="drone-split__content">
+  <p class="drone-badge">Planning</p>
+  <div class="drone-split__title">Roadmap</div>
+  <p class="drone-split__desc">아주대학교 2026-1 파란학기 16주 일정. Stage 0 환경 구축부터 Sim2Real 검증까지의 마일스톤 계획.</p>
 </div>
 </div>
 

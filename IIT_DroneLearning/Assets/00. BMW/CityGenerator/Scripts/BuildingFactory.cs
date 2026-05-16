@@ -131,6 +131,14 @@ namespace CityGenerator
                 building.AddComponent<BoxCollider>();
             }
 
+            building.tag = "Building";
+
+            int buildingLayer = LayerMask.NameToLayer("Building");
+            if (buildingLayer >= 0)
+                building.layer = buildingLayer;
+            else
+                Debug.LogWarning("[BuildingFactory] 'Building' 레이어가 없습니다. Project Settings > Tags and Layers에서 추가하세요.");
+
             totalCreated++;
             return building;
         }

@@ -18,7 +18,7 @@ namespace DroneVisualPipeline
     ///   - 기존 DroneAgent, DroneCameraSystem, DroneSensorSystem 코드 수정 없음
     /// </summary>
     [RequireComponent(typeof(DroneCameraSystem))]
-    [DefaultExecutionOrder(-200)]
+    [DefaultExecutionOrder(-201)]
     public class DroneDepthSystem : MonoBehaviour
     {
         #region Unity Inspector 노출 속성
@@ -238,9 +238,14 @@ namespace DroneVisualPipeline
                 }
 
                 // 2. Depth 전용 child GameObject 생성 후 Camera 추가
-                //    (DroneCamera_Solo에는 Camera가 이미 존재하므로 자식 오브젝트에 별도 생성)
+                //    드론 Transform에 직접 부착 (Solo의 자식이 아닌 드론 직접 자식)
+                //    Solo 카메라의 localPosition을 복사해 동일 위치에 배치.
+                //    SetSiblingIndex(0) → 하이라키 최상단에 위치.
                 var depthGO = new GameObject("DroneDepthCamera");
-                depthGO.transform.SetParent(soloCamera.transform, false);
+                depthGO.transform.SetParent(transform, false);
+                depthGO.transform.localPosition = soloCamera.transform.localPosition;
+                depthGO.transform.localRotation = soloCamera.transform.localRotation;
+                depthGO.transform.SetSiblingIndex(0);
                 _depthCamera = depthGO.AddComponent<Camera>();
                 _depthCamera.fieldOfView   = soloCamera.fieldOfView;
                 _depthCamera.nearClipPlane = nearClipOverride > 0f ? nearClipOverride : soloCamera.nearClipPlane;

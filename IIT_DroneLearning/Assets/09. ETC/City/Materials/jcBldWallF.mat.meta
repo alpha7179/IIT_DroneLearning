@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: c86db06f67dd9904db532c1f5d69f18c
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 240217
+  packageName: Japanese City
+  packageVersion: 1.2
+  assetPath: Assets/JapaneseCity/Materials/jcBldWallF.mat
+  uploadId: 754803

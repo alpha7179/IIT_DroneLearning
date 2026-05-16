@@ -35,19 +35,19 @@ namespace CityGenerator
         [Header("Building Settings")]
         [Tooltip("건물 가로 크기 (단위_거리)")]
         [Range(0.5f, 50f)]
-        public float buildingWidth = 2.0f;
+        public float buildingWidth = 3.0f;
 
         [Tooltip("건물 세로 크기 (단위_거리)")]
         [Range(0.5f, 50f)]
-        public float buildingDepth = 2.0f;
+        public float buildingDepth = 3.0f;
 
         [Tooltip("건물 최소 높이 (단위_거리)")]
         [Range(1f, 500f)]
-        public float minBuildingHeight = 5.0f;
+        public float minBuildingHeight = 1.0f;
 
         [Tooltip("건물 최대 높이 (단위_거리)")]
         [Range(1f, 500f)]
-        public float maxBuildingHeight = 10.0f;
+        public float maxBuildingHeight = 15.0f;
 
         [Tooltip("건물 사이의 간격 (단위_거리)")]
         [Range(0f, 50f)]
@@ -55,11 +55,11 @@ namespace CityGenerator
 
         [Tooltip("격자 셀에 건물이 배치될 확률 (0.0 ~ 1.0)")]
         [Range(0f, 1f)]
-        public float buildingDensity = 0.8f;
+        public float buildingDensity = 0.1f;
 
         [Header("Generation Settings")]
         [Tooltip("재현 가능한 도시 생성을 위한 시드값 (-1: 시간 기반 랜덤)")]
-        public int randomSeed = -1;
+        public int randomSeed = 9861437;
 
         [Tooltip("기본 건물 머티리얼")]
         public Material defaultBuildingMaterial;
@@ -116,11 +116,11 @@ namespace CityGenerator
 
         [Tooltip("드론 스폰/타겟 포인트의 최저 비행 고도 (지면 기준, 월드 단위). DronePhysics.MinAltitude = 0.5f / DroneAgent.SpawnHeight = 8f 기준.")]
         [Range(0.5f, 50f)]
-        public float minSpawnHeight = 8f;
+        public float minSpawnHeight = 5f;
 
         [Tooltip("드론 스폰/타겟 포인트의 최고 비행 고도 (지면 기준, 월드 단위). DronePhysics.MaxAltitude = 50f 기준.")]
         [Range(0.5f, 50f)]
-        public float maxSpawnHeight = 50f;
+        public float maxSpawnHeight = 25f;
 
         [Header("Export Settings")]
         [Tooltip("true이면 미니맵 PNG 및 그래프 CSV/JSON 파일 저장을 건너뜁니다.\nCityBatchGenerator가 AllSame 모드로 중복 파일 저장을 막을 때 사용합니다.")]
@@ -147,6 +147,12 @@ namespace CityGenerator
         private GameObject floorObject;
         private SpawnConfiguration spawnConfiguration;
         private GameObject spawnSystemRoot;
+
+        // EpisodeSpawnCoordinator 재생성 시 Inspector 설정 보존용 캐시
+        private bool  _cachedEnablePursuerBoundarySpawn      = false;
+        private float _cachedPursuerBoundaryRadius            = 30f;
+        private bool  _cachedEnablePursuerBoundaryHeightRange = false;
+        private float _cachedPursuerBoundaryHeightRange       = 5f;
 
         #endregion
 
@@ -373,6 +379,16 @@ namespace CityGenerator
             //   CreateSpawnSystem()에서 "이미 존재" 판정 → 재생성 안 함 → 프레임 끝 파괴 버그.
             if (cityGroupRoot != null)
             {
+                // cityGroupRoot 파괴 시 자식인 spawnSystemRoot(EpisodeSpawnCoordinator 포함)도 함께 파괴됨.
+                // 재생성 후 Inspector 설정이 리셋되지 않도록 파괴 전에 설정값을 캐싱한다.
+                if (EpisodeSpawnCoordinator.Instance != null)
+                {
+                    _cachedEnablePursuerBoundarySpawn      = EpisodeSpawnCoordinator.Instance.EnablePursuerBoundarySpawn;
+                    _cachedPursuerBoundaryRadius            = EpisodeSpawnCoordinator.Instance.PursuerBoundaryRadius;
+                    _cachedEnablePursuerBoundaryHeightRange = EpisodeSpawnCoordinator.Instance.EnablePursuerBoundaryHeightRange;
+                    _cachedPursuerBoundaryHeightRange       = EpisodeSpawnCoordinator.Instance.PursuerBoundaryHeightRange;
+                }
+
                 DestroyImmediate(cityGroupRoot);
                 cityGroupRoot = null;
                 Debug.Log("CityGenerator.ClearCity: CityGroup GameObject 제거 완료");
@@ -661,6 +677,14 @@ namespace CityGenerator
         {
             GameObject wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
             wall.name = name;
+            wall.tag = "Wall";
+
+            int wallLayer = LayerMask.NameToLayer("Wall");
+            if (wallLayer >= 0)
+                wall.layer = wallLayer;
+            else
+                Debug.LogWarning("[CityGenerator] 'Wall' 레이어가 없습니다. Project Settings > Tags and Layers에서 추가하세요.");
+
             wall.transform.SetParent(parent, false);
             wall.transform.localPosition = localPosition;
             wall.transform.localScale = size;
@@ -709,6 +733,13 @@ namespace CityGenerator
             floorObject.name = "CityFloor";
             floorObject.transform.position = new Vector3(transform.position.x, 0f, transform.position.z);
             floorObject.transform.localScale = new Vector3(scaleX, 1f, scaleZ);
+
+            int groundLayer = LayerMask.NameToLayer("Ground");
+            if (groundLayer >= 0)
+                floorObject.layer = groundLayer;
+            else
+                Debug.LogWarning("[CityGenerator] 'Ground' 레이어가 없습니다. Project Settings > Tags and Layers에서 추가하세요.");
+
             if (cityGroupRoot != null)
                 floorObject.transform.SetParent(cityGroupRoot.transform, true);
 
@@ -1637,6 +1668,12 @@ namespace CityGenerator
             // EpisodeSpawnCoordinator 컴포넌트 부착 + Strategy = CityMetadata
             EpisodeSpawnCoordinator coordinator = spawnSystemRoot.AddComponent<EpisodeSpawnCoordinator>();
             coordinator.Strategy = EpisodeSpawnCoordinator.SpawnStrategy.CityMetadata;
+
+            // ClearCity()에서 캐싱해 둔 Inspector 설정을 복원 (도시 재생성 시 설정 리셋 방지)
+            coordinator.EnablePursuerBoundarySpawn      = _cachedEnablePursuerBoundarySpawn;
+            coordinator.PursuerBoundaryRadius            = _cachedPursuerBoundaryRadius;
+            coordinator.EnablePursuerBoundaryHeightRange = _cachedEnablePursuerBoundaryHeightRange;
+            coordinator.PursuerBoundaryHeightRange       = _cachedPursuerBoundaryHeightRange;
 
             Debug.Log("CityGenerator.CreateSpawnSystem: SpawnSystem 자동 생성 완료 " +
                       $"(위치: {spawnSystemRoot.transform.position}, " +

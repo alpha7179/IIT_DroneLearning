@@ -45,6 +45,10 @@ namespace DroneVisualPipeline
         [Tooltip("Observation 카메라 Far Clip Plane 오버라이드\n0 이하이면 DroneCameraSystem의 값을 그대로 사용한다")]
         public float farClipOverride = 0f;
 
+        [Header("Layer Visibility")]
+        [Tooltip("Observation 카메라가 렌더링할 레이어 마스크\nDroneCameraSystem.cullingMask와 독립적으로 설정한다.\n예) BoxMesh(12)만 보이고 DroneMesh(11)는 제외")]
+        public LayerMask cullingMask = ~0;
+
         [Header("디버그")]
         [Tooltip("Scene 뷰에서 Observation 카메라의 Frustum을 시각화한다")]
         public bool showDebugFrustum = false;
@@ -132,7 +136,7 @@ namespace DroneVisualPipeline
                 _lastHeight = textureHeight;
             }
 
-            // 3. FOV / FarClip 오버라이드 즉시 반영
+            // 3. FOV / FarClip / CullingMask 오버라이드 즉시 반영
             if (_observationCamera != null && _cameraSystem != null)
             {
                 _observationCamera.fieldOfView = fovOverride > 0f
@@ -141,6 +145,7 @@ namespace DroneVisualPipeline
                 _observationCamera.farClipPlane = farClipOverride > 0f
                     ? farClipOverride
                     : _cameraSystem.farClipPlane;
+                _observationCamera.cullingMask = cullingMask;
             }
 
             // 4. Grayscale 변경 시에만 런타임 경고 (ML-Agents 센서는 채널 수 변경 불가)
@@ -212,11 +217,23 @@ namespace DroneVisualPipeline
             }
 
             // 2. Observation 전용 child GameObject 생성 후 Camera 추가
-            //    (DroneCamera_Solo에는 Camera가 이미 존재하므로 자식 오브젝트에 별도 생성)
-            //    동일 parent Transform → LateUpdate 위치 갱신 자동 추종
+            //    드론 Transform에 직접 부착, (0,0,0) 위치.
+            //    DroneCamera_Solo / MultiView를 자식으로 편입 →
+            //    하이라키: Drone > DroneVisionCamera > {Solo, MultiView}
+            //    SetSiblingIndex(1) → DroneDepthCamera 바로 다음에 위치.
             var obsGO = new GameObject("DroneVisionCamera");
-            obsGO.transform.SetParent(soloCamera.transform, false);
+            obsGO.transform.SetParent(transform, false);
+            obsGO.transform.SetSiblingIndex(1);
             _observationCamera = obsGO.AddComponent<Camera>();
+
+            // DroneCamera_Solo, DroneCamera_MultiView를 DroneVisionCamera 자식으로 편입.
+            // worldPositionStays=false: 기존 localPosition 유지
+            //   → Solo localPos (0,0,cameraDistance)는 DroneVisionCamera 기준으로 동일하게 유지됨.
+            //   DroneCameraSystem.ApplyCameraPosition()이 계속 같은 값을 쓰므로 충돌 없음.
+            soloCamera.transform.SetParent(obsGO.transform, false);
+            Camera multiViewCam = _cameraSystem.MultiViewCamera;
+            if (multiViewCam != null)
+                multiViewCam.transform.SetParent(obsGO.transform, false);
 
             // 3. RenderTexture 생성
             _renderTexture = CreateRenderTexture(textureWidth, textureHeight);
@@ -233,7 +250,7 @@ namespace DroneVisualPipeline
             _observationCamera.farClipPlane  = farClipOverride > 0f ? farClipOverride : soloCamera.farClipPlane;
             _observationCamera.clearFlags    = soloCamera.clearFlags;
             _observationCamera.backgroundColor = soloCamera.backgroundColor;
-            _observationCamera.cullingMask   = soloCamera.cullingMask;
+            _observationCamera.cullingMask   = cullingMask;
             // Display 8(index=7)로 격리 — Display 1은 기존 MultiView 카메라가 사용
             // targetTexture가 설정되므로 실제 Display 출력은 없지만,
             // 기본값 targetDisplay=0(Display 1)을 유지하면 MultiView와 충돌할 수 있다.
