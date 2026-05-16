@@ -1,6 +1,7 @@
 using System;
 using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
+using Unity.MLAgents.Policies;
 using Unity.MLAgents.Sensors;
 using UnityEngine;
 using DroneCamera;
@@ -16,10 +17,27 @@ using DroneVisualPipeline;
 /// </summary>
 public class PursuerAgent : DroneAgent
 {
+    private const int SelfVectorObservationSize = 7;
+    private const int TargetTrackingObservationSize = 11;
+    private const int GroundTruthHintObservationSize = 4;
+    private const int ObstacleSafetyObservationSize = 6;
+    private const int RayObservationSize = 26;
+
     private enum RoundEndReason
     {
         Captured,
         Timeout,
+    }
+
+    private struct ObstacleSafetySample
+    {
+        public bool HasHit;
+        public bool BrakeAssistActive;
+        public float Risk;
+        public float ForwardRisk;
+        public float ClosingSpeed;
+        public float Distance01;
+        public float SteerBias;
     }
 
     private static event Action<RoundEndReason, PursuerAgent> RoundEnded;
@@ -31,18 +49,81 @@ public class PursuerAgent : DroneAgent
     [Header("Pursuer — Episode Settings")]
     [SerializeField] private float _maxEpisodeSeconds = 25f;
     [SerializeField] private float _catchDistance = 2.0f;
+    [SerializeField] private int _catchConfirmSteps = 3;
 
     [Header("Pursuer — Camera Tracking")]
     [SerializeField] private string _targetTag = "Evader";
     [SerializeField] private float _viewportVisibleMargin = 0.05f;
     [SerializeField] private float _lostTargetMemorySeconds = 0.75f;
-    [SerializeField] private float _spawnFacingJitterDeg = 20f;
+    [SerializeField] private float _spawnFacingJitterDeg = 4f;
+
+    [Header("Pursuer — Color Target Tracking")]
+    [SerializeField] private bool _useColorTargetTracking = true;
+    [SerializeField] private Color _targetColor = new Color(1f, 0.06f, 0f, 1f);
+    [SerializeField] private float _colorMatchTolerance = 0.32f;
+    [SerializeField] private float _minColorSaturation = 0.25f;
+    [SerializeField] private float _minColorBrightness = 0.08f;
+    [SerializeField] private int _colorSampleStride = 1;
+    [SerializeField] private int _minMatchedColorSamples = 1;
+    [SerializeField] private float _minMatchedPixelFraction = 0.0001f;
+    [SerializeField] private float _colorReferencePixelFraction = 0.02f;
+    [SerializeField] private float _colorReferenceDistance = 8f;
+    [SerializeField] private float _colorMinEstimatedDistance = 1.5f;
+
+    [Header("Pursuer — Training Ground Truth Hint")]
+    [SerializeField] private bool _useTrainingGroundTruthHint = true;
+    [SerializeField] private float _groundTruthHintInitialProbability = 0.25f;
+    [SerializeField] private float _groundTruthHintFinalProbability = 0f;
+    [SerializeField] private float _groundTruthHintDecaySteps = 1000000f;
+    [SerializeField] private bool _groundTruthHintOnlyWhenTargetHidden = true;
+
+    [Header("Pursuer — Lucas-Kanade Optical Flow")]
+    [SerializeField] private bool _useLucasKanadeFlow = true;
+    [SerializeField] private int _lkWindowRadius = 2;
+    [SerializeField] private int _lkFeatureStride = 2;
+    [SerializeField] private int _lkMaxFeatures = 32;
+    [SerializeField] private float _lkMinGradient = 0.015f;
+    [SerializeField] private float _lkMinDeterminant = 1e-5f;
+    [SerializeField] private float _lkMaxPixelDisplacement = 8f;
+    [SerializeField] private int _lkMinTrackedFeatures = 2;
+
+    [Header("Pursuer — Spawn Assist")]
+    [SerializeField] private bool _spawnNearTargetAtEpisodeStart = true;
+    [SerializeField] private float _nearTargetSpawnMinDistance = 3f;
+    [SerializeField] private float _nearTargetSpawnMaxDistance = 6f;
+    [SerializeField] private float _nearTargetSpawnVerticalJitter = 0.5f;
+    [SerializeField] private float _nearTargetSpawnClearanceRadius = 1.25f;
+    [SerializeField] private int _nearTargetSpawnAttempts = 36;
+    [SerializeField] private int _spawnSyncFixedSteps = 2;
     [SerializeField] private LayerMask _visibilityMask = ~0;
+
+    [Header("Pursuer — Collision Safety")]
+    [SerializeField] private bool _useObstacleSafety = true;
+    [SerializeField] private LayerMask _obstacleMask = ~0;
+    [SerializeField] private float _obstacleProbeDistance = 8f;
+    [SerializeField] private float _obstacleCriticalDistance = 2f;
+    [SerializeField] private float _obstacleProbeRadius = 0.45f;
+    [SerializeField] private float _obstacleProbeOriginYOffset = 0.15f;
+    [SerializeField] private float _obstacleLateralProbeWeight = 0.75f;
+    [SerializeField] private bool _enableObstacleBrakeAssist = true;
+    [SerializeField] private float _obstacleBrakeRiskThreshold = 0.55f;
+    [SerializeField] private float _obstacleBrakePitchScale = 0.35f;
+    [SerializeField] private float _obstacleBrakeReversePitch = 0.25f;
+    [SerializeField] private float _obstacleTurnAssist = 0.25f;
 
     [Header("Pursuer — Observation Normalization")]
     [SerializeField] private float _maxDistance = 50f;
     [SerializeField] private float _maxObsSpeed = 10f;
     [SerializeField] private float _maxViewportSpeed = 4f;
+
+    [Header("Pursuer — Observation Sources")]
+    [SerializeField] private bool _includeTargetTrackingObservations = true;
+    [SerializeField] private bool _includeObstacleSafetyObservations = true;
+    [SerializeField] private bool _includeRayObservations = false;
+
+    [Header("Pursuer — Diagnostics")]
+    [SerializeField] private bool _reportPerceptionDiagnostics = true;
+    [SerializeField] private int _perceptionDiagnosticsIntervalSteps = 10;
 
     private PursuerReward _rewardCalculator;
     private EpisodeLogger _episodeLogger;
@@ -60,11 +141,36 @@ public class PursuerAgent : DroneAgent
     private bool _hasLastKnownTarget;
     private float _timeSinceTargetSeen;
     private Vector3 _lastKnownTargetWorldPos;
+    private Vector3 _lastKnownTargetCameraLocalPos;
     private Vector3 _lastTargetLocalPos;
     private Vector3 _targetLocalVelocity;
     private Vector2 _viewportOffset;
     private Vector2 _viewportVelocity;
+    private float _targetColorBlobFraction;
+    private Texture2D _colorReadbackTexture;
+    private float[] _previousLumaFrame;
+    private float[] _currentLumaFrame;
+    private int _lumaFrameWidth;
+    private int _lumaFrameHeight;
+    private bool _hasPreviousLumaFrame;
+    private bool _previousLumaFrameHadTarget;
+    private float _lastLucasKanadeConfidence;
+    private bool _lastGroundTruthHintActive;
+    private float _lastGroundTruthHintProbability;
     private bool _pendingEpisodeEnd;
+    private int _catchContactSteps;
+    private int _perceptionDiagnosticsCounter;
+    private int _spawnSyncStepsRemaining;
+    private bool _awaitingTargetSpawnPlacement;
+    private Vector3 _pendingBaseSpawnPosition;
+    private bool _lastObstacleDetected;
+    private bool _lastObstacleBrakeAssistActive;
+    private float _lastObstacleRisk;
+    private float _lastObstacleForwardRisk;
+    private float _lastObstacleClosingSpeed;
+    private float _lastObstacleDistance01;
+    private float _lastObstacleSteerBias;
+    private readonly RaycastHit[] _obstacleProbeHits = new RaycastHit[16];
 
     public override void Initialize()
     {
@@ -82,6 +188,7 @@ public class PursuerAgent : DroneAgent
         ResolveGoalZone();
         ResolveTargetTransform();
         ResolveTrackingCamera();
+        SyncBehaviorParameters();
     }
 
     protected override void OnEnable()
@@ -97,6 +204,8 @@ public class PursuerAgent : DroneAgent
         if (_goalZone != null)
             _goalZone.OnArrival -= OnGoalArrived;
 
+        ReleaseColorReadbackTexture();
+
         base.OnDisable();
     }
 
@@ -104,12 +213,49 @@ public class PursuerAgent : DroneAgent
     {
         _maxEpisodeSeconds = Mathf.Max(1f, _maxEpisodeSeconds);
         _catchDistance = Mathf.Max(0.1f, _catchDistance);
+        _catchConfirmSteps = Mathf.Max(1, _catchConfirmSteps);
         _viewportVisibleMargin = Mathf.Clamp(_viewportVisibleMargin, 0f, 0.5f);
         _lostTargetMemorySeconds = Mathf.Max(0f, _lostTargetMemorySeconds);
         _spawnFacingJitterDeg = Mathf.Clamp(_spawnFacingJitterDeg, 0f, 180f);
+        _colorMatchTolerance = Mathf.Max(0.001f, _colorMatchTolerance);
+        _minColorSaturation = Mathf.Clamp01(_minColorSaturation);
+        _minColorBrightness = Mathf.Clamp01(_minColorBrightness);
+        _colorSampleStride = Mathf.Max(1, _colorSampleStride);
+        _minMatchedColorSamples = Mathf.Max(1, _minMatchedColorSamples);
+        _minMatchedPixelFraction = Mathf.Clamp01(_minMatchedPixelFraction);
+        _colorReferencePixelFraction = Mathf.Clamp(_colorReferencePixelFraction, 0.0001f, 1f);
+        _colorReferenceDistance = Mathf.Max(0.1f, _colorReferenceDistance);
+        _colorMinEstimatedDistance = Mathf.Max(0.1f, _colorMinEstimatedDistance);
+        _groundTruthHintInitialProbability = Mathf.Clamp01(_groundTruthHintInitialProbability);
+        _groundTruthHintFinalProbability = Mathf.Clamp01(_groundTruthHintFinalProbability);
+        _groundTruthHintDecaySteps = Mathf.Max(0f, _groundTruthHintDecaySteps);
+        _lkWindowRadius = Mathf.Max(1, _lkWindowRadius);
+        _lkFeatureStride = Mathf.Max(1, _lkFeatureStride);
+        _lkMaxFeatures = Mathf.Max(1, _lkMaxFeatures);
+        _lkMinGradient = Mathf.Max(0f, _lkMinGradient);
+        _lkMinDeterminant = Mathf.Max(1e-8f, _lkMinDeterminant);
+        _lkMaxPixelDisplacement = Mathf.Max(0.1f, _lkMaxPixelDisplacement);
+        _lkMinTrackedFeatures = Mathf.Max(1, _lkMinTrackedFeatures);
+        _nearTargetSpawnMinDistance = Mathf.Max(0.5f, _nearTargetSpawnMinDistance);
+        _nearTargetSpawnMaxDistance = Mathf.Max(_nearTargetSpawnMinDistance, _nearTargetSpawnMaxDistance);
+        _nearTargetSpawnVerticalJitter = Mathf.Max(0f, _nearTargetSpawnVerticalJitter);
+        _nearTargetSpawnClearanceRadius = Mathf.Max(0.1f, _nearTargetSpawnClearanceRadius);
+        _nearTargetSpawnAttempts = Mathf.Max(1, _nearTargetSpawnAttempts);
+        _spawnSyncFixedSteps = Mathf.Max(0, _spawnSyncFixedSteps);
+        _obstacleProbeDistance = Mathf.Max(0.1f, _obstacleProbeDistance);
+        _obstacleCriticalDistance = Mathf.Clamp(_obstacleCriticalDistance, 0.01f, _obstacleProbeDistance);
+        _obstacleProbeRadius = Mathf.Max(0.01f, _obstacleProbeRadius);
+        _obstacleProbeOriginYOffset = Mathf.Max(0f, _obstacleProbeOriginYOffset);
+        _obstacleLateralProbeWeight = Mathf.Clamp01(_obstacleLateralProbeWeight);
+        _obstacleBrakeRiskThreshold = Mathf.Clamp01(_obstacleBrakeRiskThreshold);
+        _obstacleBrakePitchScale = Mathf.Clamp01(_obstacleBrakePitchScale);
+        _obstacleBrakeReversePitch = Mathf.Clamp01(_obstacleBrakeReversePitch);
+        _obstacleTurnAssist = Mathf.Clamp01(_obstacleTurnAssist);
         _maxDistance = Mathf.Max(1f, _maxDistance);
         _maxObsSpeed = Mathf.Max(0.1f, _maxObsSpeed);
         _maxViewportSpeed = Mathf.Max(0.1f, _maxViewportSpeed);
+        _perceptionDiagnosticsIntervalSteps = Mathf.Max(1, _perceptionDiagnosticsIntervalSteps);
+        SyncBehaviorParameters();
     }
 
     public override void OnEpisodeBegin()
@@ -124,30 +270,18 @@ public class PursuerAgent : DroneAgent
         _episodeSteps = 0;
         _episodeClosed = false;
         _pendingEpisodeEnd = false;
+        _catchContactSteps = 0;
+        _perceptionDiagnosticsCounter = 0;
+        _spawnSyncStepsRemaining = 0;
+        _awaitingTargetSpawnPlacement = false;
         ResetPerceptionState();
+        ResetObstacleSafetyState();
         _rewardCalculator?.ResetEpisodeState();
 
         ResolveGoalZone();
         ResolveTargetTransform();
         ResolveTrackingCamera();
-
-        // 코디네이터가 이미 계산했으면 결과 사용, 아니면 SpawnCenter 직접 사용
-        if (EpisodeSpawnCoordinator.Instance != null && EpisodeSpawnCoordinator.Instance.IsComputed)
-        {
-            transform.position = EpisodeSpawnCoordinator.Instance.GetSpawnPosition(gameObject);
-        }
-        else if (SpawnCenter.Current != null)
-        {
-            var range = SpawnCenter.Current.GetPursuerSpawnRange();
-            transform.position = SpawnCenter.Current.GetRandomPosition(range);
-        }
-        else
-        {
-            transform.position = _spawnOrigin;
-        }
-
-        AlignSpawnRotationToTarget();
-        ResetPhysicsState();
+        PrepareEpisodeSpawn();
     }
 
     private void FixedUpdate()
@@ -159,6 +293,7 @@ public class PursuerAgent : DroneAgent
             return;
         }
 
+        TryProcessDeferredSpawnSync();
         UpdateTargetPerception(Time.fixedDeltaTime);
     }
 
@@ -166,7 +301,7 @@ public class PursuerAgent : DroneAgent
     {
         if (!IsDroneReady())
         {
-            for (int i = 0; i < 44; i++)
+            for (int i = 0; i < GetExpectedVectorObservationSize(); i++)
                 sensor.AddObservation(0f);
             return;
         }
@@ -177,30 +312,39 @@ public class PursuerAgent : DroneAgent
         sensor.AddObservation(localAngVel / _maxObsSpeed);            // 3
         sensor.AddObservation(transform.position.y / _maxDistance);   // 1
 
-        bool hasTrackedTarget = TryGetTrackedTargetLocalPosition(out Vector3 targetLocalPos);
-        Vector3 targetDir = targetLocalPos.sqrMagnitude > 1e-6f
-            ? targetLocalPos.normalized
-            : Vector3.zero;
+        bool hasTrackedTarget = false;
+        if (_includeTargetTrackingObservations)
+        {
+            hasTrackedTarget = TryGetTrackedTargetLocalPosition(out Vector3 targetLocalPos);
+            Vector3 targetDir = targetLocalPos.sqrMagnitude > 1e-6f
+                ? targetLocalPos.normalized
+                : Vector3.zero;
 
-        Vector3 observedTargetVelocity = _isTargetVisible ? _targetLocalVelocity : Vector3.zero;
-        Vector2 observedViewportOffset = hasTrackedTarget ? _viewportOffset : Vector2.zero;
-        float observedViewportSpeed = _isTargetVisible
-            ? Mathf.Clamp01(_viewportVelocity.magnitude / _maxViewportSpeed)
-            : 0f;
+            Vector3 observedTargetVelocity = _isTargetVisible ? _targetLocalVelocity : Vector3.zero;
+            Vector2 observedViewportOffset = hasTrackedTarget ? _viewportOffset : Vector2.zero;
+            float observedViewportSpeed = _isTargetVisible
+                ? Mathf.Clamp01(_viewportVelocity.magnitude / _maxViewportSpeed)
+                : 0f;
 
-        sensor.AddObservation(targetDir);                             // 3
-        sensor.AddObservation(targetLocalPos.magnitude / _maxDistance); // 1
-        sensor.AddObservation(observedTargetVelocity / _maxObsSpeed); // 3
-        sensor.AddObservation(observedViewportOffset);                // 2
-        sensor.AddObservation(_isTargetVisible ? 1f : 0f);           // 1
-        sensor.AddObservation(observedViewportSpeed);                 // 1
+            sensor.AddObservation(targetDir);                             // 3
+            sensor.AddObservation(targetLocalPos.magnitude / _maxDistance); // 1
+            sensor.AddObservation(observedTargetVelocity / _maxObsSpeed); // 3
+            sensor.AddObservation(observedViewportOffset);                // 2
+            sensor.AddObservation(_isTargetVisible ? 1f : 0f);           // 1
+            sensor.AddObservation(observedViewportSpeed);                 // 1
+        }
 
-        if (_sensorSystem != null)
+        AddGroundTruthHintObservation(sensor);
+
+        if (_includeObstacleSafetyObservations)
+            AddObstacleSafetyObservation(sensor);
+
+        if (_includeRayObservations && _sensorSystem != null)
         {
             foreach (float d in _sensorSystem.GetAllNormalizedDistances())
                 sensor.AddObservation(d);                             // 26
         }
-        else
+        else if (_includeRayObservations)
         {
             for (int i = 0; i < 26; i++)
                 sensor.AddObservation(0f);
@@ -213,9 +357,82 @@ public class PursuerAgent : DroneAgent
         }
     }
 
+    private void AddGroundTruthHintObservation(VectorSensor sensor)
+    {
+        _lastGroundTruthHintActive = false;
+        _lastGroundTruthHintProbability = GetCurrentGroundTruthHintProbability();
+
+        Vector3 normalizedHintLocalPos = Vector3.zero;
+        if (ShouldExposeGroundTruthHint(_lastGroundTruthHintProbability))
+        {
+            Transform referenceFrame = _trackingCamera != null ? _trackingCamera.transform : transform;
+            Vector3 hintLocalPos = referenceFrame.InverseTransformPoint(TargetTransform.position) / _maxDistance;
+            normalizedHintLocalPos = new Vector3(
+                Mathf.Clamp(hintLocalPos.x, -1f, 1f),
+                Mathf.Clamp(hintLocalPos.y, -1f, 1f),
+                Mathf.Clamp(hintLocalPos.z, -1f, 1f));
+            _lastGroundTruthHintActive = true;
+        }
+
+        sensor.AddObservation(_lastGroundTruthHintActive ? 1f : 0f); // 1
+        sensor.AddObservation(normalizedHintLocalPos);                // 3
+    }
+
+    private bool ShouldExposeGroundTruthHint(float probability)
+    {
+        if (!_useTrainingGroundTruthHint || probability <= 0f || TargetTransform == null)
+            return false;
+
+        if (!IsTrainerControlledBehavior())
+            return false;
+
+        if (_groundTruthHintOnlyWhenTargetHidden && _isTargetVisible)
+            return false;
+
+        return UnityEngine.Random.value < probability;
+    }
+
+    private void AddObstacleSafetyObservation(VectorSensor sensor)
+    {
+        ObstacleSafetySample sample = SampleObstacleSafety();
+        StoreObstacleSafetySample(sample);
+
+        sensor.AddObservation(sample.HasHit ? 1f : 0f);              // 1
+        sensor.AddObservation(Mathf.Clamp01(sample.Risk));           // 1
+        sensor.AddObservation(Mathf.Clamp01(sample.ForwardRisk));    // 1
+        sensor.AddObservation(Mathf.Clamp01(sample.Distance01));     // 1
+        sensor.AddObservation(Mathf.Clamp01(sample.ClosingSpeed));   // 1
+        sensor.AddObservation(Mathf.Clamp(sample.SteerBias, -1f, 1f)); // 1
+    }
+
+    private float GetCurrentGroundTruthHintProbability()
+    {
+        if (!_useTrainingGroundTruthHint)
+            return 0f;
+
+        if (_groundTruthHintDecaySteps <= 0f)
+            return _groundTruthHintFinalProbability;
+
+        int environmentStep = Academy.Instance != null
+            ? Academy.Instance.TotalStepCount
+            : 0;
+        float progress = Mathf.Clamp01(environmentStep / _groundTruthHintDecaySteps);
+        return Mathf.Lerp(
+            _groundTruthHintInitialProbability,
+            _groundTruthHintFinalProbability,
+            progress);
+    }
+
+    private bool IsTrainerControlledBehavior()
+    {
+        BehaviorParameters behaviorParameters = GetComponent<BehaviorParameters>();
+        return behaviorParameters != null &&
+               behaviorParameters.BehaviorType == BehaviorType.Default;
+    }
+
     public override void OnActionReceived(ActionBuffers actions)
     {
-        if (!IsDroneReady() || _episodeClosed)
+        if (!IsDroneReady() || _episodeClosed || _awaitingTargetSpawnPlacement)
             return;
 
         _episodeTimer += Time.fixedDeltaTime;
@@ -225,6 +442,10 @@ public class PursuerAgent : DroneAgent
         float roll = Mathf.Clamp(actions.ContinuousActions[1], -1f, 1f);
         float pitch = Mathf.Clamp(actions.ContinuousActions[2], -1f, 1f);
         float yaw = Mathf.Clamp(actions.ContinuousActions[3], -1f, 1f);
+
+        ObstacleSafetySample obstacleSafety = SampleObstacleSafety();
+        ApplyObstacleBrakeAssist(ref roll, ref pitch, ref obstacleSafety);
+        StoreObstacleSafetySample(obstacleSafety);
 
         _dronePhysics.SetCommand(thrust, roll, pitch, yaw);
 
@@ -240,8 +461,12 @@ public class PursuerAgent : DroneAgent
             agentVel: _dronePhysics.GetVelocity(),
             targetVel: targetVel,
             isTargetVisible: _isTargetVisible,
-            viewportOffset: _viewportOffset));
+            viewportOffset: _viewportOffset,
+            visualTargetArea: _targetColorBlobFraction,
+            obstacleRisk: obstacleSafety.Risk,
+            obstacleClosingSpeed: obstacleSafety.ClosingSpeed));
 
+        ReportPerceptionDiagnostics();
         CheckTerminationConditions();
     }
 
@@ -262,10 +487,16 @@ public class PursuerAgent : DroneAgent
         if (TargetTransform != null &&
             Vector3.Distance(transform.position, TargetTransform.position) < _catchDistance)
         {
-            NotifyEvaderCaptured();
-            BroadcastRoundEnd(RoundEndReason.Captured);
+            _catchContactSteps++;
+            if (_catchContactSteps >= _catchConfirmSteps)
+            {
+                NotifyEvaderCaptured();
+                BroadcastRoundEnd(RoundEndReason.Captured);
+            }
             return;
         }
+
+        _catchContactSteps = 0;
 
         if (_episodeTimer >= _maxEpisodeSeconds)
             BroadcastRoundEnd(RoundEndReason.Timeout);
@@ -386,30 +617,18 @@ public class PursuerAgent : DroneAgent
         _episodeSteps = 0;
         _episodeClosed = false;
         _pendingEpisodeEnd = false;
+        _catchContactSteps = 0;
+        _perceptionDiagnosticsCounter = 0;
+        _spawnSyncStepsRemaining = 0;
+        _awaitingTargetSpawnPlacement = false;
         ResetPerceptionState();
+        ResetObstacleSafetyState();
         _rewardCalculator?.ResetEpisodeState();
 
         ResolveGoalZone();
         ResolveTargetTransform();
         ResolveTrackingCamera();
-
-        // 코디네이터가 이미 계산했으면 결과 사용, 아니면 SpawnCenter 직접 사용
-        if (EpisodeSpawnCoordinator.Instance != null && EpisodeSpawnCoordinator.Instance.IsComputed)
-        {
-            transform.position = EpisodeSpawnCoordinator.Instance.GetSpawnPosition(gameObject);
-        }
-        else if (SpawnCenter.Current != null)
-        {
-            var range = SpawnCenter.Current.GetPursuerSpawnRange();
-            transform.position = SpawnCenter.Current.GetRandomPosition(range);
-        }
-        else
-        {
-            transform.position = _spawnOrigin;
-        }
-
-        AlignSpawnRotationToTarget();
-        ResetPhysicsState();
+        PrepareEpisodeSpawn();
     }
 
     private void EnsureRuntimeReferences()
@@ -419,6 +638,49 @@ public class PursuerAgent : DroneAgent
 
         if (_episodeLogger == null)
             _episodeLogger = GetComponent<EpisodeLogger>();
+    }
+
+    private void PrepareEpisodeSpawn()
+    {
+        if (EpisodeSpawnCoordinator.Instance != null && EpisodeSpawnCoordinator.Instance.IsComputed)
+        {
+            _pendingBaseSpawnPosition = EpisodeSpawnCoordinator.Instance.GetSpawnPosition(gameObject);
+        }
+        else if (SpawnCenter.Current != null)
+        {
+            var range = SpawnCenter.Current.GetPursuerSpawnRange();
+            _pendingBaseSpawnPosition = SpawnCenter.Current.GetRandomPosition(range);
+        }
+        else
+        {
+            _pendingBaseSpawnPosition = _spawnOrigin;
+        }
+
+        ResetPhysicsState();
+        _awaitingTargetSpawnPlacement = true;
+        _spawnSyncStepsRemaining = Mathf.Max(1, _spawnSyncFixedSteps);
+    }
+
+    private int GetExpectedVectorObservationSize()
+    {
+        int observationSize = SelfVectorObservationSize;
+        if (_includeTargetTrackingObservations)
+            observationSize += TargetTrackingObservationSize;
+        observationSize += GroundTruthHintObservationSize;
+        if (_includeObstacleSafetyObservations)
+            observationSize += ObstacleSafetyObservationSize;
+        if (_includeRayObservations)
+            observationSize += RayObservationSize;
+        return observationSize;
+    }
+
+    private void SyncBehaviorParameters()
+    {
+        BehaviorParameters behaviorParameters = GetComponent<BehaviorParameters>();
+        if (behaviorParameters == null)
+            return;
+
+        behaviorParameters.BrainParameters.VectorObservationSize = GetExpectedVectorObservationSize();
     }
 
     private void ResolveTargetTransform()
@@ -452,13 +714,15 @@ public class PursuerAgent : DroneAgent
         ResolveTargetTransform();
         ResolveTrackingCamera();
 
+        if (_useColorTargetTracking)
+        {
+            TryUpdateColorTargetPerception(deltaTime);
+            return;
+        }
+
         if (TargetTransform == null || _trackingCamera == null)
         {
-            _isTargetVisible = false;
-            _timeSinceTargetSeen += deltaTime;
-            _targetLocalVelocity = Vector3.zero;
-            _viewportOffset = Vector2.zero;
-            _viewportVelocity = Vector2.zero;
+            MarkTargetNotVisible(deltaTime);
             return;
         }
 
@@ -497,20 +761,464 @@ public class PursuerAgent : DroneAgent
             _viewportOffset = nextViewportOffset;
             _hasPerceptionSample = true;
             _lastKnownTargetWorldPos = worldTargetPos;
+            _lastKnownTargetCameraLocalPos = targetLocalPos;
             _hasLastKnownTarget = true;
             _timeSinceTargetSeen = 0f;
         }
         else
         {
-            _timeSinceTargetSeen += deltaTime;
+            MarkTargetNotVisible(deltaTime);
+        }
+    }
+
+    private bool TryUpdateColorTargetPerception(float deltaTime)
+    {
+        if (_visionSystem == null || !_visionSystem.IsInitialized || _visionSystem.RenderTexture == null)
+        {
+            MarkTargetNotVisible(deltaTime);
+            _previousLumaFrameHadTarget = false;
+            return false;
+        }
+
+        Camera colorCamera = _visionSystem.ObservationCamera != null
+            ? _visionSystem.ObservationCamera
+            : _trackingCamera;
+        RenderTexture source = _visionSystem.RenderTexture;
+        if (colorCamera == null || source == null)
+        {
+            MarkTargetNotVisible(deltaTime);
+            _previousLumaFrameHadTarget = false;
+            return false;
+        }
+
+        EnsureColorReadbackTexture(source.width, source.height);
+
+        if (colorCamera.targetTexture == source)
+            colorCamera.Render();
+
+        RenderTexture previousActive = RenderTexture.active;
+        try
+        {
+            RenderTexture.active = source;
+            _colorReadbackTexture.ReadPixels(
+                new Rect(0f, 0f, source.width, source.height),
+                0,
+                0,
+                false);
+            _colorReadbackTexture.Apply(false);
+        }
+        finally
+        {
+            RenderTexture.active = previousActive;
+        }
+
+        bool detected = TryFindTargetColorCentroid(
+            _colorReadbackTexture,
+            out Vector2 viewportCenter,
+            out float matchedPixelFraction);
+
+        EnsureLumaBuffers(source.width, source.height);
+        FillCurrentLumaFrame(_colorReadbackTexture);
+
+        if (!detected)
+        {
+            MarkTargetNotVisible(deltaTime);
+            StoreCurrentLumaFrame(false);
+            return true;
+        }
+
+        Vector2 nextViewportOffset = new Vector2(
+            (viewportCenter.x - 0.5f) * 2f,
+            (viewportCenter.y - 0.5f) * 2f);
+
+        float estimatedDistance = EstimateColorTargetDistance(matchedPixelFraction);
+        Ray centerRay = colorCamera.ViewportPointToRay(new Vector3(viewportCenter.x, viewportCenter.y, 1f));
+        Vector3 targetLocalPos =
+            colorCamera.transform.InverseTransformDirection(centerRay.direction.normalized) *
+            estimatedDistance;
+
+        Vector2 opticalFlowPixels = Vector2.zero;
+        bool hasOpticalFlow = _useLucasKanadeFlow &&
+            TryComputeLucasKanadeFlow(_colorReadbackTexture, out opticalFlowPixels, out _lastLucasKanadeConfidence);
+
+        if (_hasPerceptionSample)
+        {
+            float invDelta = 1f / Mathf.Max(deltaTime, 1e-5f);
+
+            if (hasOpticalFlow)
+            {
+                Vector2 previousViewportCenter = new Vector2(
+                    viewportCenter.x - opticalFlowPixels.x / source.width,
+                    viewportCenter.y - opticalFlowPixels.y / source.height);
+                Ray previousCenterRay = colorCamera.ViewportPointToRay(
+                    new Vector3(previousViewportCenter.x, previousViewportCenter.y, 1f));
+                Vector3 previousTargetLocalPos =
+                    colorCamera.transform.InverseTransformDirection(previousCenterRay.direction.normalized) *
+                    estimatedDistance;
+
+                _targetLocalVelocity = (targetLocalPos - previousTargetLocalPos) * invDelta;
+                _viewportVelocity = new Vector2(
+                    opticalFlowPixels.x / source.width * 2f,
+                    opticalFlowPixels.y / source.height * 2f) * invDelta;
+            }
+            else
+            {
+                _targetLocalVelocity = (targetLocalPos - _lastTargetLocalPos) * invDelta;
+                _viewportVelocity = (nextViewportOffset - _viewportOffset) * invDelta;
+            }
+        }
+        else
+        {
             _targetLocalVelocity = Vector3.zero;
             _viewportVelocity = Vector2.zero;
+            _lastLucasKanadeConfidence = 0f;
+        }
 
-            if (!_hasLastKnownTarget || _timeSinceTargetSeen > _lostTargetMemorySeconds)
+        _isTargetVisible = true;
+        _targetColorBlobFraction = matchedPixelFraction;
+        _lastTargetLocalPos = targetLocalPos;
+        _lastKnownTargetCameraLocalPos = targetLocalPos;
+        _viewportOffset = nextViewportOffset;
+        _hasPerceptionSample = true;
+        _hasLastKnownTarget = true;
+        _timeSinceTargetSeen = 0f;
+        StoreCurrentLumaFrame(true);
+        return true;
+    }
+
+    private void EnsureColorReadbackTexture(int width, int height)
+    {
+        if (_colorReadbackTexture != null &&
+            _colorReadbackTexture.width == width &&
+            _colorReadbackTexture.height == height)
+        {
+            return;
+        }
+
+        if (_colorReadbackTexture != null)
+        {
+            if (Application.isPlaying)
+                Destroy(_colorReadbackTexture);
+            else
+                DestroyImmediate(_colorReadbackTexture);
+        }
+
+        _colorReadbackTexture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+    }
+
+    private void EnsureLumaBuffers(int width, int height)
+    {
+        if (_currentLumaFrame != null &&
+            _previousLumaFrame != null &&
+            _lumaFrameWidth == width &&
+            _lumaFrameHeight == height)
+        {
+            return;
+        }
+
+        int pixelCount = width * height;
+        _currentLumaFrame = new float[pixelCount];
+        _previousLumaFrame = new float[pixelCount];
+        _lumaFrameWidth = width;
+        _lumaFrameHeight = height;
+        _hasPreviousLumaFrame = false;
+        _previousLumaFrameHadTarget = false;
+        _lastLucasKanadeConfidence = 0f;
+        _lastGroundTruthHintActive = false;
+        _lastGroundTruthHintProbability = 0f;
+    }
+
+    private void FillCurrentLumaFrame(Texture2D source)
+    {
+        EnsureLumaBuffers(source.width, source.height);
+
+        var pixels = source.GetRawTextureData<Color32>();
+        for (int i = 0; i < pixels.Length; i++)
+        {
+            Color32 pixel = pixels[i];
+            _currentLumaFrame[i] =
+                (0.2126f * pixel.r + 0.7152f * pixel.g + 0.0722f * pixel.b) / 255f;
+        }
+    }
+
+    private void StoreCurrentLumaFrame()
+    {
+        if (_currentLumaFrame == null || _previousLumaFrame == null)
+            return;
+
+        Array.Copy(_currentLumaFrame, _previousLumaFrame, _currentLumaFrame.Length);
+        _hasPreviousLumaFrame = true;
+    }
+
+    private void StoreCurrentLumaFrame(bool hadTarget)
+    {
+        StoreCurrentLumaFrame();
+        _previousLumaFrameHadTarget = hadTarget;
+    }
+
+    private bool TryComputeLucasKanadeFlow(
+        Texture2D source,
+        out Vector2 meanPixelFlow,
+        out float confidence)
+    {
+        meanPixelFlow = Vector2.zero;
+        confidence = 0f;
+
+        if (!_hasPreviousLumaFrame ||
+            !_previousLumaFrameHadTarget ||
+            _currentLumaFrame == null ||
+            _previousLumaFrame == null)
+        {
+            return false;
+        }
+
+        int width = source.width;
+        int height = source.height;
+        int border = _lkWindowRadius + 1;
+        if (width <= border * 2 || height <= border * 2)
+            return false;
+
+        var pixels = source.GetRawTextureData<Color32>();
+        GetTargetChromaticity(out float targetR, out float targetG, out float targetB);
+
+        int trackedCount = 0;
+        int candidateCount = 0;
+        Vector2 weightedFlowSum = Vector2.zero;
+        float totalWeight = 0f;
+
+        for (int y = border; y < height - border; y += _lkFeatureStride)
+        {
+            int rowOffset = y * width;
+            for (int x = border; x < width - border; x += _lkFeatureStride)
             {
-                _viewportOffset = Vector2.zero;
-                _hasPerceptionSample = false;
+                Color32 pixel = pixels[rowOffset + x];
+                if (!TryGetColorMatchWeight(pixel, targetR, targetG, targetB, out _))
+                    continue;
+
+                if (!HasEnoughLumaGradient(x, y, width))
+                    continue;
+
+                candidateCount++;
+                if (!TrySolveLucasKanadeAtPoint(x, y, width, out Vector2 flow, out float determinant))
+                    continue;
+
+                if (Mathf.Abs(flow.x) > _lkMaxPixelDisplacement ||
+                    Mathf.Abs(flow.y) > _lkMaxPixelDisplacement)
+                {
+                    continue;
+                }
+
+                trackedCount++;
+                float weight = Mathf.Sqrt(determinant);
+                weightedFlowSum += flow * weight;
+                totalWeight += weight;
+
+                if (trackedCount >= _lkMaxFeatures)
+                    break;
             }
+
+            if (trackedCount >= _lkMaxFeatures)
+                break;
+        }
+
+        if (trackedCount < _lkMinTrackedFeatures || totalWeight <= 0f)
+            return false;
+
+        meanPixelFlow = weightedFlowSum / totalWeight;
+        confidence = Mathf.Clamp01((float)trackedCount / Mathf.Max(_lkMinTrackedFeatures, candidateCount));
+        return true;
+    }
+
+    private bool HasEnoughLumaGradient(int x, int y, int width)
+    {
+        int index = y * width + x;
+        float gx = 0.5f * (_currentLumaFrame[index + 1] - _currentLumaFrame[index - 1]);
+        float gy = 0.5f * (_currentLumaFrame[index + width] - _currentLumaFrame[index - width]);
+        return gx * gx + gy * gy >= _lkMinGradient * _lkMinGradient;
+    }
+
+    private bool TrySolveLucasKanadeAtPoint(
+        int centerX,
+        int centerY,
+        int width,
+        out Vector2 flow,
+        out float determinant)
+    {
+        flow = Vector2.zero;
+        determinant = 0f;
+
+        float sumIx2 = 0f;
+        float sumIy2 = 0f;
+        float sumIxIy = 0f;
+        float sumIxIt = 0f;
+        float sumIyIt = 0f;
+
+        for (int dy = -_lkWindowRadius; dy <= _lkWindowRadius; dy++)
+        {
+            int y = centerY + dy;
+            int rowOffset = y * width;
+            for (int dx = -_lkWindowRadius; dx <= _lkWindowRadius; dx++)
+            {
+                int x = centerX + dx;
+                int index = rowOffset + x;
+
+                float ix = 0.25f * (
+                    _currentLumaFrame[index + 1] - _currentLumaFrame[index - 1] +
+                    _previousLumaFrame[index + 1] - _previousLumaFrame[index - 1]);
+                float iy = 0.25f * (
+                    _currentLumaFrame[index + width] - _currentLumaFrame[index - width] +
+                    _previousLumaFrame[index + width] - _previousLumaFrame[index - width]);
+                float it = _currentLumaFrame[index] - _previousLumaFrame[index];
+
+                sumIx2 += ix * ix;
+                sumIy2 += iy * iy;
+                sumIxIy += ix * iy;
+                sumIxIt += ix * it;
+                sumIyIt += iy * it;
+            }
+        }
+
+        determinant = sumIx2 * sumIy2 - sumIxIy * sumIxIy;
+        if (determinant < _lkMinDeterminant)
+            return false;
+
+        float bx = -sumIxIt;
+        float by = -sumIyIt;
+        float invDet = 1f / determinant;
+        flow = new Vector2(
+            (bx * sumIy2 - sumIxIy * by) * invDet,
+            (sumIx2 * by - sumIxIy * bx) * invDet);
+
+        return !float.IsNaN(flow.x) &&
+               !float.IsNaN(flow.y) &&
+               !float.IsInfinity(flow.x) &&
+               !float.IsInfinity(flow.y);
+    }
+
+    private bool TryFindTargetColorCentroid(
+        Texture2D source,
+        out Vector2 viewportCenter,
+        out float matchedPixelFraction)
+    {
+        viewportCenter = Vector2.zero;
+        matchedPixelFraction = 0f;
+
+        var pixels = source.GetRawTextureData<Color32>();
+        int width = source.width;
+        int height = source.height;
+        int stride = Mathf.Max(1, _colorSampleStride);
+        int sampledCount = 0;
+        int matchedCount = 0;
+        float weightedX = 0f;
+        float weightedY = 0f;
+        float totalWeight = 0f;
+
+        GetTargetChromaticity(out float targetR, out float targetG, out float targetB);
+
+        for (int y = 0; y < height; y += stride)
+        {
+            int rowOffset = y * width;
+            for (int x = 0; x < width; x += stride)
+            {
+                sampledCount++;
+                Color32 pixel = pixels[rowOffset + x];
+                if (!TryGetColorMatchWeight(pixel, targetR, targetG, targetB, out float weight))
+                    continue;
+
+                matchedCount++;
+                weightedX += (x + 0.5f) * weight;
+                weightedY += (y + 0.5f) * weight;
+                totalWeight += weight;
+            }
+        }
+
+        if (sampledCount <= 0 || totalWeight <= 0f)
+            return false;
+
+        matchedPixelFraction = (float)matchedCount / sampledCount;
+        if (matchedCount < _minMatchedColorSamples ||
+            matchedPixelFraction < _minMatchedPixelFraction)
+        {
+            return false;
+        }
+
+        viewportCenter = new Vector2(
+            Mathf.Clamp01(weightedX / totalWeight / width),
+            Mathf.Clamp01(weightedY / totalWeight / height));
+        return true;
+    }
+
+    private void GetTargetChromaticity(out float targetR, out float targetG, out float targetB)
+    {
+        float sum = Mathf.Max(_targetColor.r + _targetColor.g + _targetColor.b, 1e-5f);
+        targetR = _targetColor.r / sum;
+        targetG = _targetColor.g / sum;
+        targetB = _targetColor.b / sum;
+    }
+
+    private bool TryGetColorMatchWeight(
+        Color32 pixel,
+        float targetR,
+        float targetG,
+        float targetB,
+        out float weight)
+    {
+        weight = 0f;
+
+        float r = pixel.r / 255f;
+        float g = pixel.g / 255f;
+        float b = pixel.b / 255f;
+        float brightness = Mathf.Max(r, Mathf.Max(g, b));
+        if (brightness < _minColorBrightness)
+            return false;
+
+        float minChannel = Mathf.Min(r, Mathf.Min(g, b));
+        float saturation = brightness <= 1e-5f ? 0f : (brightness - minChannel) / brightness;
+        if (saturation < _minColorSaturation)
+            return false;
+
+        float sum = Mathf.Max(r + g + b, 1e-5f);
+        float chromR = r / sum;
+        float chromG = g / sum;
+        float chromB = b / sum;
+        float colorDistance = Mathf.Sqrt(
+            Square(chromR - targetR) +
+            Square(chromG - targetG) +
+            Square(chromB - targetB));
+
+        if (colorDistance > _colorMatchTolerance)
+            return false;
+
+        weight = (1f - colorDistance / _colorMatchTolerance) * saturation * brightness;
+        return weight > 0f;
+    }
+
+    private float EstimateColorTargetDistance(float matchedPixelFraction)
+    {
+        float safeFraction = Mathf.Max(matchedPixelFraction, 1e-5f);
+        float estimatedDistance = _colorReferenceDistance *
+            Mathf.Sqrt(_colorReferencePixelFraction / safeFraction);
+        return Mathf.Clamp(estimatedDistance, _colorMinEstimatedDistance, _maxDistance);
+    }
+
+    private static float Square(float value)
+    {
+        return value * value;
+    }
+
+    private void MarkTargetNotVisible(float deltaTime)
+    {
+        _isTargetVisible = false;
+        _timeSinceTargetSeen += deltaTime;
+        _targetLocalVelocity = Vector3.zero;
+        _viewportVelocity = Vector2.zero;
+        _targetColorBlobFraction = 0f;
+        _lastLucasKanadeConfidence = 0f;
+
+        if (!_hasLastKnownTarget || _timeSinceTargetSeen > _lostTargetMemorySeconds)
+        {
+            _viewportOffset = Vector2.zero;
+            _hasPerceptionSample = false;
         }
     }
 
@@ -548,6 +1256,12 @@ public class PursuerAgent : DroneAgent
             return false;
         }
 
+        if (_isTargetVisible && _useColorTargetTracking)
+        {
+            targetLocalPos = _lastTargetLocalPos;
+            return true;
+        }
+
         if (_isTargetVisible && TargetTransform != null)
         {
             targetLocalPos = _trackingCamera.transform.InverseTransformPoint(TargetTransform.position);
@@ -556,6 +1270,12 @@ public class PursuerAgent : DroneAgent
 
         if (_hasLastKnownTarget && _timeSinceTargetSeen <= _lostTargetMemorySeconds)
         {
+            if (_useColorTargetTracking)
+            {
+                targetLocalPos = _lastKnownTargetCameraLocalPos;
+                return true;
+            }
+
             targetLocalPos = _trackingCamera.transform.InverseTransformPoint(_lastKnownTargetWorldPos);
             return true;
         }
@@ -571,10 +1291,401 @@ public class PursuerAgent : DroneAgent
         _hasLastKnownTarget = false;
         _timeSinceTargetSeen = 0f;
         _lastKnownTargetWorldPos = Vector3.zero;
+        _lastKnownTargetCameraLocalPos = Vector3.zero;
         _lastTargetLocalPos = Vector3.zero;
         _targetLocalVelocity = Vector3.zero;
         _viewportOffset = Vector2.zero;
         _viewportVelocity = Vector2.zero;
+        _targetColorBlobFraction = 0f;
+        _hasPreviousLumaFrame = false;
+        _previousLumaFrameHadTarget = false;
+        _lastLucasKanadeConfidence = 0f;
+    }
+
+    private void ResetObstacleSafetyState()
+    {
+        _lastObstacleDetected = false;
+        _lastObstacleBrakeAssistActive = false;
+        _lastObstacleRisk = 0f;
+        _lastObstacleForwardRisk = 0f;
+        _lastObstacleClosingSpeed = 0f;
+        _lastObstacleDistance01 = 1f;
+        _lastObstacleSteerBias = 0f;
+    }
+
+    private ObstacleSafetySample SampleObstacleSafety()
+    {
+        if (!_useObstacleSafety || !IsDroneReady())
+            return new ObstacleSafetySample { Distance01 = 1f };
+
+        Vector3 forward = Vector3.ProjectOnPlane(transform.forward, Vector3.up);
+        if (forward.sqrMagnitude < 1e-6f)
+            forward = Vector3.forward;
+        forward.Normalize();
+
+        Vector3 right = Vector3.ProjectOnPlane(transform.right, Vector3.up);
+        if (right.sqrMagnitude < 1e-6f)
+            right = Vector3.Cross(Vector3.up, forward);
+        right.Normalize();
+
+        Vector3 origin = transform.position + Vector3.up * _obstacleProbeOriginYOffset;
+        Vector3 leftProbe = (forward - right * 0.65f).normalized;
+        Vector3 rightProbe = (forward + right * 0.65f).normalized;
+
+        bool hasFront = TryProbeObstacleRisk(origin, forward, out float frontRisk, out float frontClosing, out float frontDistance01);
+        bool hasLeft = TryProbeObstacleRisk(origin, leftProbe, out float leftRisk, out float leftClosing, out float leftDistance01);
+        bool hasRight = TryProbeObstacleRisk(origin, rightProbe, out float rightRisk, out float rightClosing, out float rightDistance01);
+
+        float weightedLeftRisk = leftRisk * _obstacleLateralProbeWeight;
+        float weightedRightRisk = rightRisk * _obstacleLateralProbeWeight;
+
+        return new ObstacleSafetySample
+        {
+            HasHit = hasFront || hasLeft || hasRight,
+            Risk = Mathf.Max(frontRisk, weightedLeftRisk, weightedRightRisk),
+            ForwardRisk = frontRisk,
+            ClosingSpeed = Mathf.Max(frontClosing, leftClosing * _obstacleLateralProbeWeight, rightClosing * _obstacleLateralProbeWeight),
+            Distance01 = Mathf.Min(frontDistance01, leftDistance01, rightDistance01),
+            SteerBias = Mathf.Clamp(leftRisk - rightRisk, -1f, 1f),
+        };
+    }
+
+    private void ApplyObstacleBrakeAssist(
+        ref float roll,
+        ref float pitch,
+        ref ObstacleSafetySample sample)
+    {
+        if (!_useObstacleSafety || !_enableObstacleBrakeAssist)
+            return;
+
+        float risk = sample.ForwardRisk;
+        if (risk < _obstacleBrakeRiskThreshold)
+            return;
+
+        float assist = Mathf.InverseLerp(_obstacleBrakeRiskThreshold, 1f, risk);
+        if (pitch > 0f)
+            pitch = Mathf.Lerp(pitch, pitch * _obstacleBrakePitchScale, assist);
+
+        pitch = Mathf.Clamp(
+            pitch - _obstacleBrakeReversePitch * assist * Mathf.Max(0.25f, sample.ClosingSpeed),
+            -1f,
+            1f);
+        roll = Mathf.Clamp(
+            roll + sample.SteerBias * _obstacleTurnAssist * assist,
+            -1f,
+            1f);
+
+        sample.BrakeAssistActive = assist > 0f;
+    }
+
+    private void StoreObstacleSafetySample(ObstacleSafetySample sample)
+    {
+        _lastObstacleDetected = sample.HasHit;
+        _lastObstacleBrakeAssistActive = sample.BrakeAssistActive;
+        _lastObstacleRisk = Mathf.Clamp01(sample.Risk);
+        _lastObstacleForwardRisk = Mathf.Clamp01(sample.ForwardRisk);
+        _lastObstacleClosingSpeed = Mathf.Clamp01(sample.ClosingSpeed);
+        _lastObstacleDistance01 = Mathf.Clamp01(sample.Distance01);
+        _lastObstacleSteerBias = Mathf.Clamp(sample.SteerBias, -1f, 1f);
+    }
+
+    private bool TryProbeObstacleRisk(
+        Vector3 origin,
+        Vector3 direction,
+        out float risk,
+        out float closingSpeed,
+        out float distance01)
+    {
+        risk = 0f;
+        closingSpeed = 0f;
+        distance01 = 1f;
+
+        if (direction.sqrMagnitude < 1e-6f)
+            return false;
+
+        int hitCount = Physics.SphereCastNonAlloc(
+            origin,
+            _obstacleProbeRadius,
+            direction.normalized,
+            _obstacleProbeHits,
+            _obstacleProbeDistance,
+            _obstacleMask,
+            QueryTriggerInteraction.Ignore);
+
+        float nearestDistance = float.MaxValue;
+        for (int i = 0; i < hitCount; i++)
+        {
+            RaycastHit hit = _obstacleProbeHits[i];
+            Collider hitCollider = hit.collider;
+            if (ShouldIgnoreObstacleCollider(hitCollider, origin))
+                continue;
+
+            nearestDistance = Mathf.Min(nearestDistance, Mathf.Max(0f, hit.distance));
+        }
+
+        if (nearestDistance == float.MaxValue)
+            return false;
+
+        float denom = Mathf.Max(0.01f, _obstacleProbeDistance - _obstacleCriticalDistance);
+        risk = 1f - Mathf.Clamp01((nearestDistance - _obstacleCriticalDistance) / denom);
+        distance01 = Mathf.Clamp01(nearestDistance / _obstacleProbeDistance);
+
+        Vector3 horizontalVelocity = Vector3.ProjectOnPlane(_dronePhysics.GetVelocity(), Vector3.up);
+        closingSpeed = Mathf.Clamp01(Vector3.Dot(horizontalVelocity, direction.normalized) / _maxObsSpeed);
+        return true;
+    }
+
+    private bool ShouldIgnoreObstacleCollider(Collider hitCollider, Vector3 origin)
+    {
+        if (hitCollider == null || hitCollider.isTrigger)
+            return true;
+
+        if (hitCollider.attachedRigidbody != null && hitCollider.attachedRigidbody == _rb)
+            return true;
+
+        Bounds bounds = hitCollider.bounds;
+        if (bounds.max.y < origin.y - _obstacleProbeRadius * 0.5f)
+            return true;
+
+        Transform hitTransform = hitCollider.transform;
+        if (hitTransform == transform || hitTransform.IsChildOf(transform))
+            return true;
+
+        if (TargetTransform != null &&
+            (hitTransform == TargetTransform || hitTransform.IsChildOf(TargetTransform)))
+        {
+            return true;
+        }
+
+        if (!string.IsNullOrEmpty(_targetTag) && hitCollider.CompareTag(_targetTag))
+            return true;
+
+        if (_goalZone != null &&
+            (hitTransform == _goalZone.transform || hitTransform.IsChildOf(_goalZone.transform)))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private void ReportPerceptionDiagnostics()
+    {
+        if (!_reportPerceptionDiagnostics)
+            return;
+
+        _perceptionDiagnosticsCounter++;
+        if (_perceptionDiagnosticsCounter < _perceptionDiagnosticsIntervalSteps)
+            return;
+        _perceptionDiagnosticsCounter = 0;
+
+        Academy academy = Academy.Instance;
+        if (academy == null)
+            return;
+
+        var stats = academy.StatsRecorder;
+        float viewportError = _isTargetVisible ? Mathf.Clamp01(_viewportOffset.magnitude) : 1f;
+        float normalizedBlobArea = _colorReferencePixelFraction > 0f
+            ? Mathf.Clamp01(_targetColorBlobFraction / _colorReferencePixelFraction)
+            : 0f;
+
+        stats.Add("Diagnostics/PursuerTargetVisible", _isTargetVisible ? 1f : 0f);
+        stats.Add("Diagnostics/PursuerColorBlobArea", _targetColorBlobFraction);
+        stats.Add("Diagnostics/PursuerColorBlobAreaNorm", normalizedBlobArea);
+        stats.Add("Diagnostics/PursuerViewportError", viewportError);
+        stats.Add("Diagnostics/PursuerViewportCentered", 1f - viewportError);
+        stats.Add("Diagnostics/PursuerLKConfidence", _lastLucasKanadeConfidence);
+        stats.Add("Diagnostics/PursuerViewportSpeed", Mathf.Clamp01(_viewportVelocity.magnitude / _maxViewportSpeed));
+        stats.Add("Diagnostics/PursuerHasLastKnownTarget", _hasLastKnownTarget ? 1f : 0f);
+        stats.Add("Diagnostics/PursuerTimeSinceTargetSeen", _timeSinceTargetSeen);
+        stats.Add("Diagnostics/PursuerGTHintActive", _lastGroundTruthHintActive ? 1f : 0f);
+        stats.Add("Diagnostics/PursuerGTHintProbability", _lastGroundTruthHintProbability);
+        stats.Add("Diagnostics/PursuerObstacleDetected", _lastObstacleDetected ? 1f : 0f);
+        stats.Add("Diagnostics/PursuerObstacleRisk", _lastObstacleRisk);
+        stats.Add("Diagnostics/PursuerObstacleForwardRisk", _lastObstacleForwardRisk);
+        stats.Add("Diagnostics/PursuerObstacleClosingSpeed", _lastObstacleClosingSpeed);
+        stats.Add("Diagnostics/PursuerObstacleDistance01", _lastObstacleDistance01);
+        stats.Add("Diagnostics/PursuerObstacleSteerBias", _lastObstacleSteerBias);
+        stats.Add("Diagnostics/PursuerObstacleBrakeAssist", _lastObstacleBrakeAssistActive ? 1f : 0f);
+    }
+
+    private void ReleaseColorReadbackTexture()
+    {
+        if (_colorReadbackTexture == null)
+            return;
+
+        if (Application.isPlaying)
+            Destroy(_colorReadbackTexture);
+        else
+            DestroyImmediate(_colorReadbackTexture);
+
+        _colorReadbackTexture = null;
+        _previousLumaFrame = null;
+        _currentLumaFrame = null;
+        _lumaFrameWidth = 0;
+        _lumaFrameHeight = 0;
+        _hasPreviousLumaFrame = false;
+        _previousLumaFrameHadTarget = false;
+        _lastLucasKanadeConfidence = 0f;
+        _lastGroundTruthHintActive = false;
+        _lastGroundTruthHintProbability = 0f;
+    }
+
+    private void TryOverrideSpawnNearTarget()
+    {
+        if (!_spawnNearTargetAtEpisodeStart)
+            return;
+
+        ResolveTargetTransform();
+        if (TargetTransform == null)
+            return;
+
+        Vector3 targetPos = TargetTransform.position;
+        Vector3 bestClearCandidate = Vector3.zero;
+        bool hasBestClearCandidate = false;
+        int bestOverlapCount = int.MaxValue;
+        Vector3 bestOverlapCandidate = targetPos;
+
+        for (int i = 0; i < _nearTargetSpawnAttempts; i++)
+        {
+            Vector3 candidate = SampleNearTargetSpawnCandidate(targetPos, i);
+            int overlapCount = GetSpawnCandidateBlockerCount(candidate);
+            if (overlapCount < bestOverlapCount)
+            {
+                bestOverlapCount = overlapCount;
+                bestOverlapCandidate = candidate;
+            }
+
+            if (overlapCount > 0)
+                continue;
+
+            if (!HasSpawnLineOfSightToTarget(candidate, targetPos))
+            {
+                if (!hasBestClearCandidate)
+                {
+                    bestClearCandidate = candidate;
+                    hasBestClearCandidate = true;
+                }
+                continue;
+            }
+
+            transform.position = candidate;
+            return;
+        }
+
+        if (hasBestClearCandidate)
+        {
+            transform.position = bestClearCandidate;
+            return;
+        }
+
+        transform.position = bestOverlapCandidate;
+    }
+
+    private void TryProcessDeferredSpawnSync()
+    {
+        if (_awaitingTargetSpawnPlacement)
+        {
+            ResolveTargetTransform();
+            if (TargetTransform == null)
+                return;
+
+            transform.position = _pendingBaseSpawnPosition;
+            TryOverrideSpawnNearTarget();
+            AlignSpawnRotationToTarget();
+            ResetPhysicsState();
+            _awaitingTargetSpawnPlacement = false;
+            _spawnSyncStepsRemaining = Mathf.Max(0, _spawnSyncStepsRemaining - 1);
+            return;
+        }
+
+        if (_spawnSyncStepsRemaining <= 0)
+            return;
+
+        ResolveTargetTransform();
+        if (TargetTransform == null)
+            return;
+
+        TryOverrideSpawnNearTarget();
+        AlignSpawnRotationToTarget();
+        ResetPhysicsState();
+        _spawnSyncStepsRemaining--;
+    }
+
+    private Vector3 SampleNearTargetSpawnCandidate(Vector3 targetPos, int sampleIndex)
+    {
+        float baseAngle = (Mathf.PI * 2f * sampleIndex) / Mathf.Max(1, _nearTargetSpawnAttempts);
+        float angleJitter = UnityEngine.Random.Range(-0.25f, 0.25f);
+        float angle = baseAngle + angleJitter;
+        float distance = UnityEngine.Random.Range(_nearTargetSpawnMinDistance, _nearTargetSpawnMaxDistance);
+        Vector3 horizontalOffset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * distance;
+        float verticalOffset = UnityEngine.Random.Range(-_nearTargetSpawnVerticalJitter, _nearTargetSpawnVerticalJitter);
+
+        Vector3 candidate = targetPos + horizontalOffset;
+        candidate.y = Mathf.Max(1f, targetPos.y + verticalOffset);
+        return candidate;
+    }
+
+    private int GetSpawnCandidateBlockerCount(Vector3 candidate)
+    {
+        Collider[] hits = Physics.OverlapSphere(
+            candidate,
+            _nearTargetSpawnClearanceRadius,
+            ~0,
+            QueryTriggerInteraction.Ignore);
+
+        int blockerCount = 0;
+        foreach (Collider hit in hits)
+        {
+            if (hit == null || hit.isTrigger)
+                continue;
+
+            Transform hitTransform = hit.transform;
+            if (hitTransform == transform || hitTransform.IsChildOf(transform))
+                continue;
+
+            if (TargetTransform != null &&
+                (hitTransform == TargetTransform || hitTransform.IsChildOf(TargetTransform)))
+            {
+                continue;
+            }
+
+            if (_goalZone != null &&
+                (hitTransform == _goalZone.transform || hitTransform.IsChildOf(_goalZone.transform)))
+            {
+                continue;
+            }
+
+            blockerCount++;
+        }
+
+        return blockerCount;
+    }
+
+    private bool HasSpawnLineOfSightToTarget(Vector3 spawnPos, Vector3 targetPos)
+    {
+        if (TargetTransform == null)
+            return false;
+
+        Vector3 origin = spawnPos + Vector3.up * 0.15f;
+        Vector3 toTarget = targetPos - origin;
+        float distance = toTarget.magnitude;
+        if (distance <= 1e-5f)
+            return true;
+
+        if (!Physics.Raycast(
+                origin,
+                toTarget.normalized,
+                out RaycastHit hit,
+                distance,
+                _visibilityMask,
+                QueryTriggerInteraction.Ignore))
+        {
+            return true;
+        }
+
+        Transform hitTransform = hit.transform;
+        return hitTransform == TargetTransform || hitTransform.IsChildOf(TargetTransform);
     }
 
     private void AlignSpawnRotationToTarget()

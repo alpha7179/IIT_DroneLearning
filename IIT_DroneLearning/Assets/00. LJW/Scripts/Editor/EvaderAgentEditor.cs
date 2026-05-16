@@ -128,6 +128,24 @@ public class EvaderAgentEditor : Editor
             EditorGUILayout.LabelField("Boundary / Collision", EditorStyles.miniBoldLabel);
             DrawProp("_maxFlightHeight");
             DrawProp("_boundaryHalfSize");
+            DrawProp("_spawnBoundaryInset");
+            DrawProp("_enableBoundarySafety");
+            DrawProp("_boundarySafetyMargin");
+            DrawProp("_boundaryInwardRollAssist");
+            DrawProp("_boundaryInwardYawAssist");
+            DrawProp("_boundaryForwardPitchMinScale");
+            DrawProp("_boundaryRiskPenaltyPerStep");
+            DrawProp("_boundaryOutwardSpeedReference");
+            DrawProp("_boundaryEmergencyRiskThreshold");
+            DrawProp("_boundaryEmergencyRollAssist");
+            DrawProp("_boundaryEmergencyYawAssist");
+            DrawProp("_boundaryEmergencyPitchAssist");
+            DrawProp("_boundarySoftClampInset");
+            DrawProp("_boundarySoftClampTolerance");
+            DrawProp("_boundarySoftClampPenalty");
+            DrawProp("_heightSafetyMargin");
+            DrawProp("_heightDescendThrottle");
+            DrawProp("_terminalPenaltyBoundaryOverflow");
             DrawProp("_crashTags");
             EditorGUILayout.Space(2);
 
