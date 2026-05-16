@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 0c1a61bdaad33e0449fbfa20bfbd862e
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 240217
+  packageName: Japanese City
+  packageVersion: 1.2
+  assetPath: Assets/JapaneseCity/Prefabs/Buildings/jctBldLowSetA.prefab
+  uploadId: 754803

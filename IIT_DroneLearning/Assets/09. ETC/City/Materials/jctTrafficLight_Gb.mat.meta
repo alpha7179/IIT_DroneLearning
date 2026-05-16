@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: f2fc0c5a67ff3054fa4b9042e963569f
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 240217
+  packageName: Japanese City
+  packageVersion: 1.2
+  assetPath: Assets/JapaneseCity/Materials/jctTrafficLight_Gb.mat
+  uploadId: 754803

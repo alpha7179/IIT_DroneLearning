@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: c163525381abe9347844e4114af95c09
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 240217
+  packageName: Japanese City
+  packageVersion: 1.2
+  assetPath: Assets/JapaneseCity/Prefabs/Grounds/jcGrdGuideBlockA.prefab
+  uploadId: 754803

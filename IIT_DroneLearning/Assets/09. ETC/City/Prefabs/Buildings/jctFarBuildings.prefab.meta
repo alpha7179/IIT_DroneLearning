@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 2b38c031e721aed48a8821ed69ffd91e
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 240217
+  packageName: Japanese City
+  packageVersion: 1.2
+  assetPath: Assets/JapaneseCity/Prefabs/Buildings/jctFarBuildings.prefab
+  uploadId: 754803

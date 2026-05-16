@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 229b0adead886904fb80874c3224ea5d
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 240217
+  packageName: Japanese City
+  packageVersion: 1.2
+  assetPath: Assets/JapaneseCity/Materials/jcGrdGuideBlockA.mat
+  uploadId: 754803
