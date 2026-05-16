@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pursuer Vision | IIT</title>
+  <meta name="description" content="Vision-based Pursuer drone agent implementation and next steps">
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script defer src="../assets/app.js"></script>
+</head>
+<body data-page="pursuer">
+  <header class="site-header" id="siteHeader">
+    <div class="nav-inner">
+      <a class="brand" href="../">
+        <i data-lucide="crosshair"></i>
+        <span>IIT</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a class="nav-link" href="../" data-route="home">Home</a>
+        <a class="nav-link" href="../system/" data-route="system">System</a>
+        <a class="nav-link" href="../analysis/" data-route="analysis">Analysis</a>
+        <a class="nav-link" href="../evader/" data-route="evader">Evader</a>
+        <a class="nav-link" href="../pursuer/" data-route="pursuer">Pursuer</a>
+        <a class="nav-link" href="../unity/" data-route="unity">Unity Team</a>
+        <a class="nav-link" href="../roadmap/" data-route="roadmap">Roadmap</a>
+        <a class="nav-link" href="../team/" data-route="team">Team</a>
+      </nav>
+      <a class="nav-cta" href="https://github.com/zaeee-wang/IIT_DroneLearning" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="page-hero" style="--hero-image: url('../assets/images/page-evader-hero.jpg');">
+      <div class="section-inner reveal">
+        <p class="eyebrow">Pursuer Stream</p>
+        <h1 class="section-title">Pursuer Vision</h1>
+        <p class="lead">추적 드론이 정답 좌표를 직접 받지 않고, 전방 카메라 화면에서 Evader를 찾아 따라가도록 검증한 비전 기반 정책입니다.</p>
+        <div class="meta-strip">
+          <span class="meta-chip">Owner: 박재현</span>
+          <span class="meta-chip">RGB Camera</span>
+          <span class="meta-chip">Optical Flow + LSTM</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section surface-section">
+      <div class="section-inner content-grid">
+        <article class="panel content-card reveal">
+          <h3>프로젝트 개요</h3>
+          <p>이 파트의 목표는 Pursuer가 Evader의 실제 좌표를 외워서 따라가는 것이 아니라, 카메라에 보이는 색과 움직임을 단서로 추적하는 정책을 만드는 것입니다.</p>
+          <div class="split-two" style="margin-top: 1rem;">
+            <div class="callout info">
+              <h4>무엇을 보나요?</h4>
+              <p>전방 RGB 카메라에서 Evader의 붉은색 물체 영역을 찾고, 화면 중심에서 얼마나 벗어났는지 계산합니다.</p>
+            </div>
+            <div class="callout success">
+              <h4>왜 필요한가요?</h4>
+              <p>도심에서는 목표가 건물 뒤로 가려지므로, 실제 드론에 가까운 “보고 판단하는 추적” 구조가 필요합니다.</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>핵심 구현</h3>
+          <div class="split-two" style="margin-top: 0.9rem;">
+            <div class="callout info">
+              <h4>색상 기반 탐지</h4>
+              <p>Evader의 고유 색을 화면에서 찾아 중심점, 면적, 화면 중심 대비 offset을 계산합니다.</p>
+            </div>
+            <div class="callout tip">
+              <h4>Lucas-Kanade Optical Flow</h4>
+              <p>Optical Flow는 화면에서 물체가 어느 방향으로 움직이는지 추정하는 방법입니다. Pursuer는 이 값으로 Evader의 다음 움직임을 짐작합니다.</p>
+            </div>
+            <div class="callout success">
+              <h4>시각 기반 보상</h4>
+              <p>좌표 거리를 직접 보상하지 않고, Evader를 화면에 유지하고 중심에 가깝게 잡을수록 보상을 줍니다.</p>
+            </div>
+            <div class="callout warning">
+              <h4>LSTM Memory</h4>
+              <p>짧은 가림 상황에서 직전 화면 흐름을 기억해, Evader가 순간적으로 사라져도 추적 방향을 잃지 않게 합니다.</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>입력과 제외 입력</h3>
+          <div class="split-two" style="margin-top: 0.9rem;">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>사용 입력</th><th>역할</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>RGB 카메라</td><td>Evader가 화면에 보이는지 판단</td></tr>
+                  <tr><td>색상 blob 중심/면적</td><td>목표 방향과 거리 proxy 추정</td></tr>
+                  <tr><td>viewport offset</td><td>화면 중심에서 얼마나 벗어났는지 측정</td></tr>
+                  <tr><td>Optical Flow</td><td>화면상 이동 방향과 속도 추정</td></tr>
+                  <tr><td>LSTM memory</td><td>최근 시각 추적 흐름 저장</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>제외 입력</th><th>이유</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>항상 제공되는 GT 좌표</td><td>정답 좌표만 따라가는 쉬운 정책을 막기 위해 제외</td></tr>
+                  <tr><td>GT 거리 기반 dense reward</td><td>카메라 화면 중심 유지 학습을 더 명확히 하기 위해 제거</td></tr>
+                  <tr><td>Ray 기반 장애물 거리</td><td>현재 단계에서는 시각 추적 능력 자체를 먼저 검증</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>보상 설계</h3>
+          <div class="table-wrap" style="margin-top: 0.9rem;">
+            <table>
+              <thead>
+                <tr><th>보상/패널티</th><th>쉬운 설명</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>visibility reward</td><td>Evader가 카메라에 보이면 보상</td></tr>
+                <tr><td>centering reward</td><td>Evader를 화면 중앙에 둘수록 보상</td></tr>
+                <tr><td>visual area reward</td><td>Evader가 더 크게 보이면 가까워졌다고 보고 보상</td></tr>
+                <tr><td>lost target penalty</td><td>보고 있던 목표를 잃으면 감점</td></tr>
+                <tr><td>capture / timeout / crash</td><td>잡기, 시간 초과, 충돌 같은 종료 상황 평가</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel content-card reveal">
+          <h3>완료 상태와 최종 정리</h3>
+          <div class="split-two" style="margin-top: 0.9rem;">
+            <div class="callout success">
+              <h4>완료된 성과</h4>
+              <p>색상 조건, spawn 설정, Optical Flow, LSTM 기억 구조를 조정해 카메라 기반 추적 흐름을 최종 시나리오에 반영했습니다.</p>
+            </div>
+            <div class="callout info">
+              <h4>최종 정리</h4>
+              <p>비전 추적이 왜 필요한지 대중도 이해할 수 있도록 시연 장면과 설명 문구를 최종 자료에 정리합니다.</p>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div>
+        <p class="footer-brand"><i data-lucide="crosshair"></i> IIT</p>
+        <p>Urban Drone Pursuit-Evasion MARL System · 2026</p>
+      </div>
+      <nav class="footer-nav" aria-label="Footer">
+        <a href="../">Home</a>
+        <a href="../system/">System</a>
+        <a href="../analysis/">Analysis</a>
+        <a href="../evader/">Evader</a>
+        <a href="../pursuer/">Pursuer</a>
+        <a href="../unity/">Unity Team</a>
+        <a href="../roadmap/">Roadmap</a>
+        <a href="../team/">Team</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

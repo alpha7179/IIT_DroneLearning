@@ -896,6 +896,165 @@ pre,
   background: #fef2f2;
 }
 
+.diagram-board {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
+  display: grid;
+  gap: 1rem;
+  overflow: hidden;
+}
+
+.diagram-lane {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.diagram-lane__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+  padding: 0 0.2rem;
+}
+
+.diagram-lane__head span,
+.diagram-node strong {
+  color: var(--brand-navy);
+  font-family: 'Montserrat', 'Noto Sans KR', sans-serif;
+  font-weight: 800;
+}
+
+.diagram-lane__head small,
+.diagram-node span {
+  color: var(--ink-mute);
+  line-height: 1.5;
+}
+
+.diagram-flow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 38px minmax(0, 1fr) 38px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0.45rem;
+}
+
+.diagram-flow--compact {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.diagram-node {
+  min-height: 118px;
+  padding: 1rem;
+  border: 1px solid rgba(27, 47, 89, 0.14);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 18px 34px -30px rgba(15, 23, 42, 0.55);
+  display: grid;
+  align-content: start;
+  gap: 0.38rem;
+}
+
+.diagram-node i {
+  width: 1.35rem;
+  height: 1.35rem;
+  color: var(--brand-blue);
+}
+
+.diagram-node--wide {
+  min-height: auto;
+}
+
+.diagram-node--terminal {
+  background: #10213f;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.diagram-node--terminal strong,
+.diagram-node--terminal span,
+.diagram-node--terminal i {
+  color: #ffffff;
+}
+
+.diagram-arrow {
+  position: relative;
+  min-height: 100%;
+}
+
+.diagram-arrow::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: rgba(59, 94, 163, 0.38);
+  transform: translateY(-50%);
+}
+
+.diagram-arrow::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid rgba(59, 94, 163, 0.55);
+  border-right: 2px solid rgba(59, 94, 163, 0.55);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.diagram-stack {
+  width: min(720px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.diagram-stack .diagram-node {
+  min-height: auto;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.75rem;
+  align-items: center;
+}
+
+.diagram-stack .diagram-node span {
+  grid-column: 2;
+}
+
+.diagram-arrow--down {
+  height: 32px;
+  min-height: 32px;
+}
+
+.diagram-arrow--down::before {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  right: auto;
+  width: 2px;
+  height: auto;
+  transform: translateX(-50%);
+}
+
+.diagram-arrow--down::after {
+  top: auto;
+  bottom: 3px;
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%) rotate(135deg);
+}
+
+.diagram-note {
+  padding: 0.78rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(52, 103, 202, 0.16);
+  background: rgba(219, 234, 254, 0.64);
+  color: var(--brand-navy);
+  font-weight: 700;
+}
+
 .mermaid-wrap {
   padding: 1rem;
   border-radius: var(--radius-sm);
@@ -1067,6 +1226,37 @@ pre,
     grid-template-columns: 1fr;
   }
 
+  .diagram-flow {
+    grid-template-columns: 1fr;
+  }
+
+  .diagram-arrow {
+    height: 28px;
+    min-height: 28px;
+  }
+
+  .diagram-arrow::before {
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    right: auto;
+    width: 2px;
+    height: auto;
+    transform: translateX(-50%);
+  }
+
+  .diagram-arrow::after {
+    top: auto;
+    bottom: 2px;
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%) rotate(135deg);
+  }
+
+  .diagram-lane__head {
+    display: grid;
+  }
+
   .lead-image {
     position: static;
     width: 100%;
@@ -1117,4 +1307,264 @@ pre,
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Stronger visual language for System diagrams: make the component read as a diagram, not a plain text card. */
+.diagram-board {
+  position: relative;
+  isolation: isolate;
+  padding: clamp(1.25rem, 2.4vw, 2rem);
+  border: 1px solid rgba(34, 73, 139, 0.16);
+  border-radius: calc(var(--radius-md) + 8px);
+  background:
+    radial-gradient(circle at 14% 10%, rgba(52, 103, 202, 0.16), transparent 28%),
+    radial-gradient(circle at 92% 18%, rgba(119, 141, 169, 0.18), transparent 24%),
+    linear-gradient(135deg, #f8fbff 0%, #edf4fb 52%, #ffffff 100%);
+  box-shadow: 0 24px 70px -48px rgba(15, 23, 42, 0.65);
+}
+
+.diagram-board::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image:
+    linear-gradient(rgba(27, 47, 89, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(27, 47, 89, 0.045) 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 86%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.diagram-board--architecture {
+  gap: 1.25rem;
+}
+
+.diagram-board--architecture .diagram-lane {
+  position: relative;
+  padding: clamp(1rem, 1.8vw, 1.35rem);
+  border: 1px solid rgba(27, 47, 89, 0.12);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86), 0 20px 45px -42px rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+}
+
+.diagram-board--architecture .diagram-lane::after {
+  content: '';
+  position: absolute;
+  left: clamp(1.25rem, 2vw, 1.7rem);
+  right: clamp(1.25rem, 2vw, 1.7rem);
+  bottom: -0.72rem;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(52, 103, 202, 0.44), transparent);
+}
+
+.diagram-board--architecture .diagram-lane:nth-of-type(3)::after {
+  display: none;
+}
+
+.diagram-lane__head {
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.diagram-lane__head span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  letter-spacing: -0.02em;
+}
+
+.diagram-board--architecture .diagram-lane__head span::before {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--brand-navy), var(--brand-blue));
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  box-shadow: 0 10px 22px -14px rgba(27, 47, 89, 0.8);
+}
+
+.diagram-board--architecture .diagram-lane:nth-of-type(1) .diagram-lane__head span::before { content: '01'; }
+.diagram-board--architecture .diagram-lane:nth-of-type(2) .diagram-lane__head span::before { content: '02'; }
+.diagram-board--architecture .diagram-lane:nth-of-type(3) .diagram-lane__head span::before { content: '03'; }
+
+.diagram-lane__head small {
+  padding: 0.28rem 0.65rem;
+  border: 1px solid rgba(52, 103, 202, 0.14);
+  border-radius: 999px;
+  background: rgba(219, 234, 254, 0.58);
+  color: #2a4f88;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.diagram-node {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(27, 47, 89, 0.16);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.82));
+  box-shadow: 0 20px 42px -34px rgba(15, 23, 42, 0.9);
+}
+
+.diagram-node::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(180deg, #3467ca, #7aa7ff);
+  opacity: 0.86;
+}
+
+.diagram-node i {
+  padding: 0.35rem;
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 0.8rem;
+  color: #1f55b5;
+  background: rgba(219, 234, 254, 0.82);
+}
+
+.diagram-node strong {
+  font-size: clamp(1rem, 1.4vw, 1.15rem);
+}
+
+.diagram-arrow::before {
+  left: 4px;
+  right: 4px;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(52, 103, 202, 0.15), rgba(52, 103, 202, 0.82), rgba(52, 103, 202, 0.15));
+  background-size: 200% 100%;
+  animation: diagram-flow-pulse 2.8s linear infinite;
+}
+
+.diagram-arrow::after {
+  right: 3px;
+  border-color: rgba(52, 103, 202, 0.9);
+}
+
+.diagram-board--control .diagram-stack {
+  position: relative;
+  width: min(760px, 100%);
+}
+
+.diagram-board--control .diagram-stack::before {
+  content: '';
+  position: absolute;
+  top: 1.5rem;
+  bottom: 1.5rem;
+  left: 1.55rem;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(52, 103, 202, 0.2), rgba(52, 103, 202, 0.8), rgba(27, 38, 59, 0.85));
+}
+
+.diagram-board--control .diagram-node {
+  padding: 1rem 1.15rem 1rem 1.25rem;
+  border-radius: 1.1rem;
+}
+
+.diagram-board--control .diagram-node i {
+  position: relative;
+  z-index: 1;
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--brand-blue), var(--brand-navy));
+  box-shadow: 0 10px 20px -14px rgba(27, 47, 89, 0.95);
+}
+
+.diagram-board--control .diagram-node--terminal {
+  background: linear-gradient(135deg, #10213f, #1b3c75);
+}
+
+.diagram-note {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.95rem 1rem;
+  border-color: rgba(52, 103, 202, 0.2);
+  background: linear-gradient(135deg, rgba(219, 234, 254, 0.92), rgba(255, 255, 255, 0.72));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.diagram-note::before {
+  content: 'POINT';
+  flex: 0 0 auto;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  color: #ffffff;
+  background: var(--brand-navy);
+  font-family: 'Montserrat', 'Noto Sans KR', sans-serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+}
+
+@keyframes diagram-flow-pulse {
+  from { background-position: 200% 0; }
+  to { background-position: 0 0; }
+}
+
+@media (max-width: 860px) {
+  .diagram-lane__head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .diagram-flow {
+    grid-template-columns: 1fr;
+  }
+
+  .diagram-arrow {
+    min-height: 32px;
+    height: 32px;
+  }
+
+  .diagram-arrow::before {
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    right: auto;
+    width: 3px;
+    height: auto;
+    transform: translateX(-50%);
+    background: linear-gradient(180deg, rgba(52, 103, 202, 0.15), rgba(52, 103, 202, 0.82), rgba(52, 103, 202, 0.15));
+    background-size: 100% 200%;
+  }
+
+  .diagram-arrow::after {
+    top: auto;
+    bottom: 4px;
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%) rotate(135deg);
+  }
+
+  .diagram-stack .diagram-node {
+    grid-template-columns: auto 1fr;
+  }
+
+  .diagram-note {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .diagram-arrow::before {
+    animation: none;
+  }
+}
+
+/* Unity Team route additions */
+.nav-links {
+  gap: clamp(0.55rem, 1.25vw, 1.35rem);
+}
+
+.nav-link {
+  letter-spacing: 0.1em;
 }

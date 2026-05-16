@@ -22,6 +22,8 @@
         <a class="nav-link" href="../system/" data-route="system">System</a>
         <a class="nav-link" href="../analysis/" data-route="analysis">Analysis</a>
         <a class="nav-link" href="../evader/" data-route="evader">Evader</a>
+        <a class="nav-link" href="../pursuer/" data-route="pursuer">Pursuer</a>
+        <a class="nav-link" href="../unity/" data-route="unity">Unity Team</a>
         <a class="nav-link" href="../roadmap/" data-route="roadmap">Roadmap</a>
         <a class="nav-link" href="../team/" data-route="team">Team</a>
       </nav>
@@ -34,11 +36,11 @@
       <div class="section-inner reveal">
         <p class="eyebrow">Evader Stream</p>
         <h1 class="section-title">Evader Progress</h1>
-        <p class="lead">회피 정책 설계 문서와 실제 실험 로그를 연결해 Stage0 달성 결과와 Stage1 진행 현황을 추적합니다.</p>
+        <p class="lead">회피 정책 설계와 실험 로그를 연결해 Stage0부터 Sim2Real 일반화까지 완료된 흐름을 정리합니다.</p>
         <div class="meta-strip">
           <span class="meta-chip">Owner: 이재왕</span>
           <span class="meta-chip">Branch: work/evader</span>
-          <span class="meta-chip">Last Updated: 2026-04-08</span>
+          <span class="meta-chip">Last Updated: 2026-05-15</span>
         </div>
       </div>
     </section>
@@ -46,7 +48,7 @@
     <section class="section surface-section">
       <div class="section-inner content-grid">
         <article class="panel content-card reveal">
-          <h3>현재 진행 스냅샷 (2026-04-08)</h3>
+          <h3>완료 스냅샷 (2026-05-15)</h3>
           <div class="table-wrap" style="margin-top: 0.9rem;">
             <table>
               <thead>
@@ -54,8 +56,10 @@
               </thead>
               <tbody>
                 <tr><td>Stage0 (Ray + 힌트)</td><td>완료</td><td>50eps eval: survival 100%, goal 68%, capture 0%</td></tr>
-                <tr><td>Stage1 (장애물 + 힌트 제거)</td><td>진행 중</td><td>v13c rootfix: final +11.684 @250k, peak +14.592 @245k</td></tr>
-                <tr><td>Stage2 (Self-Play)</td><td>다음</td><td>RL Pursuer 연동 및 los_break 계측 자동화 예정</td></tr>
+                <tr><td>Stage1 (장애물 + 힌트 제거)</td><td>완료</td><td>v13c rootfix 기준 장애물 회피 보상과 scene 동기화 이슈 정리</td></tr>
+                <tr><td>Stage2 (Self-Play)</td><td>완료</td><td>RL Pursuer와의 경쟁 학습 흐름을 최종 시나리오에 반영</td></tr>
+                <tr><td>Stage3 (Vision + LOS)</td><td>완료</td><td>건물 뒤 가림과 재탐지 상황을 설명 가능한 지표로 정리</td></tr>
+                <tr><td>Stage4 (Sim2Real)</td><td>완료</td><td>도메인 랜덤화와 일반화 검증 결과를 최종 산출물에 포함</td></tr>
               </tbody>
             </table>
           </div>
@@ -78,7 +82,7 @@
         </article>
 
         <article class="panel content-card reveal">
-          <h3>Stage1 진행 로그 요약</h3>
+          <h3>Stage1 검증 로그 요약</h3>
           <div class="split-two" style="margin-top: 0.9rem;">
             <div class="panel content-card" style="box-shadow:none; border-style:dashed;">
               <h4>안정 구간</h4>
@@ -133,23 +137,23 @@
         </article>
 
         <article class="panel content-card reveal">
-          <h3>Stage 전환 계획</h3>
+          <h3>Stage 완료 흐름</h3>
           <div class="mermaid-wrap" style="margin-top: 0.8rem;">
             <pre class="mermaid">graph LR
-    S0["Stage 0 완료"] --> S1["Stage 1 하드닝 진행중"]
-    S1 -->|"v13c 기준 안정화"| S2["Stage 2 Self-Play 준비"]
-    S2 -->|"RL Pursuer 연동"| S3["Stage 3 Vision + LOS"]
-    S3 --> S4["Stage 4 Domain Random Sim2Real"]</pre>
+    S0["Stage 0 완료"] --> S1["Stage 1 장애물 검증 완료"]
+    S1 -->|"보상·scene 동기화 정리"| S2["Stage 2 Self-Play 완료"]
+    S2 -->|"RL Pursuer 연동"| S3["Stage 3 Vision + LOS 완료"]
+    S3 --> S4["Stage 4 Domain Random Sim2Real 완료"]</pre>
           </div>
-          <p style="margin-top: 0.8rem;">각 Stage는 이전 Stage 체크포인트를 `--initialize-from`으로 warm-start하여 학습 리스크를 줄입니다.</p>
+          <p style="margin-top: 0.8rem;">각 Stage는 이전 Stage 체크포인트를 warm-start로 이어 받아 최종 시나리오까지 안정적으로 연결했습니다.</p>
         </article>
 
         <article class="panel content-card reveal">
-          <h3>다음 스프린트 액션</h3>
+          <h3>최종 정리 액션</h3>
           <ol style="margin: 0.9rem 0 0; padding-left: 1.2rem; color: var(--ink-soft);">
-            <li>Stage2 self-play 설정 분리 및 run-id 규칙 고정</li>
-            <li>`los_break_rate`/`occlusion_reacquisition_time` 자동 집계 파이프라인 연결</li>
-            <li>seed 3종 이상에서 Stage1 재현성 확인 후 Stage2 전환</li>
+            <li>실험 로그와 대표 그래프를 최종 보고서 형식으로 정리</li>
+            <li>시연 영상에서 회피·가림·재탐지 장면이 이해되도록 캡션 추가</li>
+            <li>재현 가능한 설정 파일과 체크포인트 사용법을 공개 문서로 정리</li>
           </ol>
         </article>
 
@@ -185,6 +189,8 @@
         <a href="../system/">System</a>
         <a href="../analysis/">Analysis</a>
         <a href="../evader/">Evader</a>
+        <a href="../pursuer/">Pursuer</a>
+        <a href="../unity/">Unity Team</a>
         <a href="../roadmap/">Roadmap</a>
         <a href="../team/">Team</a>
       </nav>
@@ -192,4 +198,3 @@
   </footer>
 </body>
 </html>
-
